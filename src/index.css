@@ -92,25 +92,38 @@
   }
   @keyframes tabu-fly {
     /* הופעה אצל המשלם */
-    0%   { transform: translate(calc(var(--x0) - 50%), calc(var(--y0) - 50%)) scale(0.5) rotate(-8deg); opacity: 0; }
-    9%   { transform: translate(calc(var(--x0) - 50%), calc(var(--y0) - 50%)) scale(1.06) rotate(-3deg); opacity: 1; }
+    0%   { transform: translate(calc(var(--x0) - 50%), calc(var(--y0) - 118%)) scale(0.5) rotate(-8deg); opacity: 0; }
+    9%   { transform: translate(calc(var(--x0) - 50%), calc(var(--y0) - 118%)) scale(1.06) rotate(-3deg); opacity: 1; }
     /* שהייה קצרה, כדי שיהיה זמן לקרוא את הסכום */
-    22%  { transform: translate(calc(var(--x0) - 50%), calc(var(--y0) - 50%)) scale(1) rotate(0deg); opacity: 1; }
+    22%  { transform: translate(calc(var(--x0) - 50%), calc(var(--y0) - 118%)) scale(1) rotate(0deg); opacity: 1; }
     /* קשת דרך נקודת אמצע מורמת — קו ישר נקרא כהחלקה, לא כהעברה */
-    58%  { transform: translate(calc(var(--xm) - 50%), calc(var(--ym) - 50%)) scale(1.1) rotate(4deg); opacity: 1; }
+    58%  { transform: translate(calc(var(--xm) - 50%), calc(var(--ym) - 118%)) scale(1.1) rotate(4deg); opacity: 1; }
     /* נחיתה אצל המקבל */
-    86%  { transform: translate(calc(var(--x1) - 50%), calc(var(--y1) - 50%)) scale(1) rotate(0deg); opacity: 1; }
-    100% { transform: translate(calc(var(--x1) - 50%), calc(var(--y1) - 50%)) scale(0.82); opacity: 0; }
+    86%  { transform: translate(calc(var(--x1) - 50%), calc(var(--y1) - 118%)) scale(1) rotate(0deg); opacity: 1; }
+    100% { transform: translate(calc(var(--x1) - 50%), calc(var(--y1) - 118%)) scale(0.82); opacity: 0; }
   }
+
+  /* ── קצות התנועה ──
+     בלי הדגשה, העברה בין שני שחקנים היא שטר שעף בין שני כרטיסים שנראים
+     זהים. הטבעת אומרת מי משלם ומי מקבל. */
+  /* outline ולא box-shadow: הכרטיסים נושאים ring-1 של Tailwind, שהוא
+     עצמו box-shadow — והוא היה דורס את ההדגשה בלי להשאיר סימן. */
+  .tabu-anchor-out { outline: 2px solid rgb(248 113 113 / 0.9); outline-offset: 1px; }
+  .tabu-anchor-in  { outline: 2px solid rgb(74 222 128 / 0.95); outline-offset: 1px; }
 
   /* מראה של שטר כסף, לא של תג */
   .tabu-bill__note {
-    background: linear-gradient(160deg, #1f6b3f, #0f4527);
-    border: 1px solid rgb(255 255 255 / 0.22);
-    box-shadow: 0 8px 20px rgb(0 0 0 / 0.5), inset 0 1px 0 rgb(255 255 255 / 0.18);
+    text-align: center;
+    background:
+      repeating-linear-gradient(45deg, rgb(255 255 255 / 0.035) 0 6px, transparent 6px 12px),
+      linear-gradient(160deg, #1f6b3f, #0d3d22);
+    border: 1px solid rgb(255 255 255 / 0.25);
+    box-shadow: 0 10px 26px rgb(0 0 0 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.2);
   }
   .tabu-bill__note[data-dir="out"] {
-    background: linear-gradient(160deg, #8a2b28, #4a1412);
+    background:
+      repeating-linear-gradient(45deg, rgb(255 255 255 / 0.035) 0 6px, transparent 6px 12px),
+      linear-gradient(160deg, #8a2b28, #431110);
   }
 
   /* יתרה שהשתנתה */

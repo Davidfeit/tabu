@@ -64,6 +64,9 @@ export interface Debt {
   creditorSeat: number | null;
   amount: number;
   deadline: number | null;
+  /** על מה החוב — נשמר כדי שסגירתו תדע לומר זאת, כמו כל תשלום אחר. */
+  reason: string;
+  meta: Record<string, unknown>;
 }
 
 export interface Settings {

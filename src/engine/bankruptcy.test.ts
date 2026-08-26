@@ -9,7 +9,7 @@ describe("גיוס כספים", () => {
     let s = own(newGame(3), 39, 0);         // תל אביב, שווי משכון ₪210,000
     s = setCash(s, 0, 1_000);
     s = setPhase(s, "debt");
-    s.debt = { debtorSeat: 0, creditorSeat: 1, amount, deadline: s.turnDeadline! + 60_000 };
+    s.debt = { debtorSeat: 0, creditorSeat: 1, amount, deadline: s.turnDeadline! + 60_000 , reason: "test", meta: {} };
     return s;
   }
 
@@ -47,7 +47,7 @@ describe("גיוס כספים", () => {
     for (const p of SKY) s = own(s, p, 0, { houses: 2 });
     s = setCash(s, 0, 0);
     s = setPhase(s, "debt");
-    s.debt = { debtorSeat: 0, creditorSeat: 1, amount: 50_000, deadline: s.turnDeadline! };
+    s.debt = { debtorSeat: 0, creditorSeat: 1, amount: 50_000, deadline: s.turnDeadline! , reason: "test", meta: {} };
     s = act(s, { type: "claim_timeout" }, 1, s.turnDeadline! + 1);
     expect(s.debt).toBeNull();
     // כוסה במכירת בתים בלבד; אף שטר לא מושכן
@@ -63,7 +63,7 @@ describe("פשיטת רגל לשחקן", () => {
     s = own(s, 39, 0, { mortgaged: true });
     s = setCash(s, 0, 5_000);
     s = setPhase(s, "debt");
-    s.debt = { debtorSeat: 0, creditorSeat: 1, amount: 9_000_000, deadline: null };
+    s.debt = { debtorSeat: 0, creditorSeat: 1, amount: 9_000_000, deadline: null , reason: "test", meta: {} };
     return s;
   }
 
@@ -111,7 +111,7 @@ describe("פשיטת רגל לבנק", () => {
     s = own(s, 39, 0); s = own(s, 6, 0); s = own(s, 24, 0);
     s = setCash(s, 0, 0);
     s = setPhase(s, "debt");
-    s.debt = { debtorSeat: 0, creditorSeat: null, amount: 9_000_000, deadline: null };
+    s.debt = { debtorSeat: 0, creditorSeat: null, amount: 9_000_000, deadline: null , reason: "test", meta: {} };
     s = act(s, { type: "declare_bankruptcy" }, 0);
     expect(s.phase).toBe("auction");
     expect(s.auction!.pos).toBe(6);
@@ -122,7 +122,7 @@ describe("פשיטת רגל לבנק", () => {
     let s = own(newGame(3), 39, 0, { mortgaged: true });
     s = setCash(s, 0, 0);
     s = setPhase(s, "debt");
-    s.debt = { debtorSeat: 0, creditorSeat: null, amount: 9_000_000, deadline: null };
+    s.debt = { debtorSeat: 0, creditorSeat: null, amount: 9_000_000, deadline: null , reason: "test", meta: {} };
     s = act(s, { type: "declare_bankruptcy" }, 0);
     expect(s.auction!.pos).toBe(39);
   });
@@ -133,7 +133,7 @@ describe("תנאי ניצחון", () => {
     let s = own(newGame(2), 39, 0);
     s = setCash(s, 0, 0);
     s = setPhase(s, "debt");
-    s.debt = { debtorSeat: 0, creditorSeat: 1, amount: 9_000_000, deadline: null };
+    s.debt = { debtorSeat: 0, creditorSeat: 1, amount: 9_000_000, deadline: null , reason: "test", meta: {} };
     s = act(s, { type: "declare_bankruptcy" }, 0);
     expect(s.phase).toBe("finished");
     expect(s.winnerSeat).toBe(1);

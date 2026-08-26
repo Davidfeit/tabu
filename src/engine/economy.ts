@@ -31,6 +31,9 @@ export function credit(s: GameState, seat: number, amount: number): void {
 export function charge(
   s: GameState, events: GameEvent[], seat: number, amount: number,
   creditorSeat: number | null, reason: string,
+  /** פרטים נוספים שנכנסים לאירוע — למשל על איזה נכס שולם. הממשק מציג
+   *  אותם, ובלעדיהם "שכר דירה" נאמר בלי לומר על מה. */
+  meta: Record<string, unknown> = {},
 ): void {
   if (amount <= 0) return;
   const p = player(s, seat);
@@ -39,12 +42,12 @@ export function charge(
     p.cash -= amount;
     if (creditorSeat !== null) credit(s, creditorSeat, amount);
     else if (s.settings.eilatJackpot) s.pot += amount;
-    emit(s, events, "pay", seat, { amount, to: creditorSeat, reason });
+    emit(s, events, "pay", seat, { amount, to: creditorSeat, reason, ...meta });
     return;
   }
 
   if (liquidValue(s, seat) < amount) {
-    emit(s, events, "cannot_pay", seat, { amount, to: creditorSeat, reason });
+    emit(s, events, "cannot_pay", seat, { amount, to: creditorSeat, reason, ...meta });
     bankrupt(s, events, seat, creditorSeat);
     return;
   }
@@ -52,9 +55,10 @@ export function charge(
   s.debt = {
     debtorSeat: seat, creditorSeat, amount,
     deadline: s.turnDeadline === null ? null : s.turnDeadline + 60_000,
+    reason, meta,
   };
   s.phase = "debt";
-  emit(s, events, "debt_opened", seat, { amount, to: creditorSeat, reason });
+  emit(s, events, "debt_opened", seat, { amount, to: creditorSeat, reason, ...meta });
 }
 
 /** גבייה מכל שחקן פעיל אחר (קלף החתונה). */
@@ -120,7 +124,7 @@ export function bankrupt(
       // הנושה משלם מיד 10% ריבית על כל שטר משוכן שקיבל.
       if (s.deeds[pos]!.mortgaged) {
         const fee = Math.round(deedAt(pos).mortgage * BOARD.meta.unmortgageInterest);
-        charge(s, events, creditorSeat, fee, null, "mortgage_transfer_fee");
+        charge(s, events, creditorSeat, fee, null, "mortgage_transfer_fee", { pos });
       }
     }
     player(s, creditorSeat).getOutCards += p.getOutCards;

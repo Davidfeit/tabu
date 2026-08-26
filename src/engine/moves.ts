@@ -77,7 +77,7 @@ export function resolveLanding(
     const rent = rentFor(s, p.pos, diceSum, forced);
     if (rent > 0) {
       emit(s, events, "rent_due", seat, { pos: p.pos, amount: rent, to: d.owner });
-      charge(s, events, seat, rent, d.owner, "rent");
+      charge(s, events, seat, rent, d.owner, "rent", { pos: p.pos });
     }
     if (s.phase !== "debt" && s.phase !== "finished") s.phase = "awaiting_end";
     return;
@@ -85,7 +85,7 @@ export function resolveLanding(
 
   switch (sq.type) {
     case "tax":
-      charge(s, events, seat, sq.amount, null, "tax");
+      charge(s, events, seat, sq.amount, null, "tax", { pos: p.pos });
       break;
     case "card":
       drawCard(s, events, seat, sq.deck);
@@ -148,7 +148,7 @@ export function applyCard(s: GameState, events: GameEvent[], seat: number): void
         if (d.hotel) total += Math.abs(Number(e.perHotel));
         else total += d.houses * Math.abs(Number(e.perHouse));
       }
-      if (total > 0) charge(s, events, seat, total, null, "card_repairs");
+      if (total > 0) charge(s, events, seat, total, null, "card_repairs", {});
       break;
     }
     case "keep_out_of_jail":

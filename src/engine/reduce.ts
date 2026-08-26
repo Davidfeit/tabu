@@ -4,7 +4,7 @@ import { buildHouse, mortgage, sellHouse, unmortgage } from "./build";
 import { bankrupt, charge, checkVictory, credit, emit, finishOnTime } from "./economy";
 import { applyCard, moveTo, resolveLanding, sendToJail } from "./moves";
 import {
-  BOARD_SIZE, activePlayers, buildingUnits, deedAt, houseCost, liquidValue, player,
+  BOARD_SIZE, JAIL_POS, activePlayers, buildingUnits, deedAt, houseCost, liquidValue, player,
 } from "./selectors";
 import { DEED_POSITIONS } from "./setup";
 import type {
@@ -79,7 +79,7 @@ function settleDebtIfPossible(s: GameState, events: GameEvent[]): void {
   if (debt.creditorSeat !== null) credit(s, debt.creditorSeat, debt.amount);
   else if (s.settings.eilatJackpot) s.pot += debt.amount;
   emit(s, events, "debt_settled", debt.debtorSeat,
-       { amount: debt.amount, to: debt.creditorSeat });
+       { amount: debt.amount, to: debt.creditorSeat, reason: debt.reason, ...debt.meta });
   s.debt = null;
   resumeAfterDebt(s, events);
 }
@@ -160,14 +160,14 @@ function executeTrade(s: GameState, events: GameEvent[], offer: TradeOffer): voi
     s.deeds[pos]!.owner = offer.toSeat;
     if (s.deeds[pos]!.mortgaged) {
       charge(s, events, offer.toSeat, Math.round(deedAt(pos).mortgage * fee), null,
-             "mortgage_transfer_fee");
+             "mortgage_transfer_fee", { pos });
     }
   }
   for (const pos of offer.receive.deeds) {
     s.deeds[pos]!.owner = offer.fromSeat;
     if (s.deeds[pos]!.mortgaged) {
       charge(s, events, offer.fromSeat, Math.round(deedAt(pos).mortgage * fee), null,
-             "mortgage_transfer_fee");
+             "mortgage_transfer_fee", { pos });
     }
   }
   emit(s, events, "trade_executed", offer.fromSeat, { with: offer.toSeat });
@@ -462,7 +462,7 @@ function doRoll(s: GameState, events: GameEvent[], ctx: Ctx): void {
     // ניסיון שלישי שנכשל: חובה לשלם ואז לזוז.
     emit(s, events, "jail_term_ended", seat, {});
     s.pendingMove = sum;
-    charge(s, events, seat, BOARD.meta.jailFine, null, "jail_fine");
+    charge(s, events, seat, BOARD.meta.jailFine, null, "jail_fine", { pos: JAIL_POS });
     if (phaseOf(s) === "debt" || phaseOf(s) === "finished") return;   // התנועה תמתין
     s.pendingMove = null;
     p.inJail = false;

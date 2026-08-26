@@ -77,7 +77,7 @@ function settle(s: GameState, events: GameEvent[], now: number): void {
   if (a.bidderSeat !== null && a.bid !== null) {
     s.deeds[a.pos]!.owner = a.bidderSeat;
     s.deeds[a.pos]!.mortgaged = false;
-    charge(s, events, a.bidderSeat, a.bid, null, "auction");
+    charge(s, events, a.bidderSeat, a.bid, null, "auction", { pos: a.pos });
     emit(s, events, "auction_won", a.bidderSeat, { pos: a.pos, amount: a.bid });
   } else {
     // כולם פסחו במחיר הפתיחה: השטר חוזר לבנק ויוצע שוב רק בנחיתה הבאה.
