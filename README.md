@@ -19,11 +19,15 @@ npm run test         # 195 טסטים
 npm run typecheck
 npm run build
 npm run build:engine # מקבץ את המנוע ל-Edge Function
+npm run build:single # אורז לקובץ HTML אחד — dist/tabu.html
 npm run db:test      # בדיקות SQL מול Postgres מקומי
 ```
 
-משחק מקומי (כל השחקנים על מסך אחד) עובד ללא שום תשתית.
-למשחק אונליין ראו [`docs/deploy.md`](docs/deploy.md).
+משחק מקומי (כל השחקנים על מסך אחד) עובד ללא שום תשתית — אין שרת, אין
+קריאות רשת חוץ מהפונטים, וכל המנוע רץ בדפדפן. `npm run build:single`
+אורז אותו לקובץ HTML יחיד שאפשר לפתוח ישר מהדיסק או לשלוח למישהו.
+
+למשחק אונליין עם וידאו ראו [`docs/deploy.md`](docs/deploy.md).
 
 ---
 

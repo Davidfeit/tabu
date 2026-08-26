@@ -10,7 +10,8 @@
     "test": "vitest run",
     "typecheck": "tsc -b --noEmit",
     "build:engine": "node scripts/build-engine-bundle.mjs",
-    "db:test": "scripts/db-test.sh"
+    "db:test": "scripts/db-test.sh",
+    "build:single": "npm run build && node scripts/build-single-file.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",
