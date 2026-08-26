@@ -15,9 +15,9 @@ export function Board({ state, center }: {
   center: React.ReactNode;
 }) {
   return (
-    // h-full בלבד, בלי w-full: הרוחב נגזר מהגובה דרך aspect-square. שניהם
-    // יחד יוצרים תלות מעגלית מול עמודת auto, והלוח גולש מהמסך.
-    <div className="board relative aspect-square h-full max-w-full select-none rounded-lg
+    // הריבועיות נקבעת בהורה (aspectRatio), והלוח פשוט ממלא אותו. הגדרת
+    // aspect-square גם כאן מול הורה שכבר ריבועי יצרה תלות מעגלית.
+    <div className="board relative h-full w-full select-none rounded-lg
                     bg-felt p-[6px] shadow-2xl ring-1 ring-black/40"
          style={{ direction: "ltr", unicodeBidi: "isolate" } as React.CSSProperties}>
       <div className="grid h-full w-full gap-[3px]"

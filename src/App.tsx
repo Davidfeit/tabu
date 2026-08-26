@@ -16,6 +16,7 @@ import { ManagePanel } from "@/components/ManagePanel";
 import { MoneyFlow } from "@/components/MoneyFlow";
 import { MediaPrompt } from "@/components/MediaPrompt";
 import { PlayerPanel } from "@/components/PlayerPanel";
+import { ViewControls } from "@/components/ViewControls";
 import { SetupScreen } from "@/components/SetupScreen";
 import { CenterPanel } from "@/components/CenterPanel";
 import { VideoTiles } from "@/components/VideoTiles";
@@ -59,31 +60,41 @@ function GameScreen({ onRestart, videoTiles }: {
   onRestart: () => void; videoTiles?: React.ReactNode;
 }) {
   const { state, events } = useGame();
+  const [bare, setBare] = useState(false);
   const nearEnd = state.settings.hardLimitMinutes !== null
     && Date.now() - state.startedAt > (state.settings.hardLimitMinutes - 20) * 60_000;
 
+  const aside = `absolute inset-y-0 z-30 flex w-[17rem] flex-col gap-2.5 overflow-y-auto
+                 p-2 transition-transform duration-200`;
+
   return (
-    // הלוח נמדד לפי *גובה* המסך ולא לפי רוחב, והעמודות מקבלות את מה
-    // שנשאר. אין סרגל תחתון: הפעולות עברו למרכז הלוח, שממילא פנוי —
-    // סרגל מתחת גוזל בדיוק את המימד שחסר.
-    <main dir="rtl" className="grid h-[100dvh] w-full gap-3 overflow-hidden p-3
-                               grid-cols-[minmax(13rem,1fr)_auto_minmax(13rem,1fr)]
-                               grid-rows-[minmax(0,1fr)]">
-      <aside className="flex h-full min-h-0 flex-col gap-2.5 overflow-y-auto">
+    // ── למה הלוח מוחלט והפאנלים צפים ──
+    // לוח ריבועי חסום ע"י גובה המסך. במסך 16:9 בגובה מלא נשארים ~300px
+    // פנויים בכל צד ממילא, ולכן אין סיבה שהפאנלים יגזלו מהלוח: הם צפים
+    // מעל השוליים האלה. כך הלוח תמיד min(100dvh, 100vw) — המקסימום
+    // הפיזי — גם במסכים צרים, שבהם פריסת עמודות הייתה מכווצת אותו.
+    <main dir="rtl" className="relative h-[100dvh] w-full overflow-hidden">
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="relative h-full max-h-full" style={{ aspectRatio: "1 / 1" }}>
+          <Board state={state} center={<CenterPanel videoTiles={videoTiles} />} />
+          <AuctionPanel />
+          <CardModal />
+          <GameOver onRestart={onRestart} />
+        </div>
+      </div>
+
+      <aside className={`${aside} right-0 ${bare ? "translate-x-full" : ""}`}
+             aria-hidden={bare}>
         <PlayerPanel state={state} showWorth={nearEnd || state.phase === "finished"} />
         <EventLog events={events} state={state} />
       </aside>
 
-      <div className="relative h-full">
-        <Board state={state} center={<CenterPanel videoTiles={videoTiles} />} />
-        <AuctionPanel />
-        <CardModal />
-        <GameOver onRestart={onRestart} />
-      </div>
-
-      <aside className="flex h-full min-h-0 flex-col gap-2.5 overflow-y-auto">
+      <aside className={`${aside} left-0 ${bare ? "-translate-x-full" : ""}`}
+             aria-hidden={bare}>
         <ManageColumn />
       </aside>
+
+      <ViewControls bare={bare} onToggleBare={() => setBare((v) => !v)} />
 
       {/* שכבה קבועה מעל הכל: השטרות חוצים בין העמודות, ואלמנט בתוך
           כרטיס שחקן היה כלוא ב-overflow שלו. */}

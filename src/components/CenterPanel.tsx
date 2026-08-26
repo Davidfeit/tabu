@@ -3,6 +3,7 @@ import { shekel } from "@/lib/format";
 import { liquidValue } from "@/engine/selectors";
 import { useGame } from "@/ui/GameContext";
 import { useCountdown } from "@/ui/useCountdown";
+import { BankCard } from "./BankCard";
 import { Button } from "./Button";
 import { Dice } from "./Dice";
 import { seatColor, Token } from "./Token";
@@ -16,8 +17,6 @@ import { seatColor, Token } from "./Token";
  */
 export function CenterPanel({ videoTiles }: { videoTiles?: React.ReactNode }) {
   const { state } = useGame();
-  const active = state.players.filter((p) => !p.bankrupt);
-
   return (
     <div dir="rtl"
          className="relative flex h-full w-full flex-col items-center justify-center gap-5
@@ -32,12 +31,9 @@ export function CenterPanel({ videoTiles }: { videoTiles?: React.ReactNode }) {
         <Actions />
       </div>
 
-      {/* עוגן הבנק לשטרות המעופפים — מסים, קניות ובנייה נעים לכאן */}
-      {/* עוגן הבנק לשטרות המעופפים — מסים, קניות ובנייה נעים לכאן */}
-      <div data-money="bank"
-           className="absolute bottom-[3%] text-[0.6rem] text-parchment/25">
-        <bdi>{active.length}</bdi> שחקנים · בבנק <bdi>{state.bank.houses}</bdi> בתים
-        · <bdi>{state.bank.hotels}</bdi> מלונות
+      {/* הבנק — עוגן גלוי לשטרות המעופפים */}
+      <div className="absolute bottom-[4%]">
+        <BankCard />
       </div>
     </div>
   );

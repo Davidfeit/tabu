@@ -154,14 +154,35 @@ export function cellCenter(pos: number): Point {
   };
 }
 
+/** רוחב חייל בודד, באחוזים מרוחב הלוח. */
+export const TOKEN_PCT = 3.4;
+
+/** חצי משבצת רגילה, באחוזים. זהו הגבול שחייל לא אמור לחרוג ממנו. */
+export const HALF_CELL_PCT = 100 / TOTAL_UNITS / 2;
+
 /**
- * היסט קטן לחייל, כדי ששניים על אותה משבצת לא יסתירו זה את זה.
- * מסודר במעגל סביב מרכז המשבצת.
+ * הקטנת חיילים כשהם צפופים על משבצת אחת.
+ *
+ * בלי זה, פיזור מספיק כדי שלא יסתירו זה את זה גורר חריגה מהמשבצת אל
+ * השכנות. הקטנה מפנה את המרווח שהפיזור צריך.
+ */
+export function crowdScale(total: number): number {
+  if (total <= 2) return 1;
+  if (total <= 4) return 0.86;
+  return 0.74;
+}
+
+/**
+ * היסט חייל בתוך המשבצת, כדי ששניים לא יסתירו זה את זה.
+ *
+ * מסודר במעגל סביב מרכז המשבצת. הרדיוס נגזר מהמקום שנשאר אחרי ההקטנה,
+ * ולא נבחר ביד — כך חייל לעולם לא גולש למשבצת השכנה.
  */
 export function crowdOffset(indexInCell: number, total: number): Point {
   if (total <= 1) return { xPct: 0, yPct: 0 };
+  const halfToken = (TOKEN_PCT * crowdScale(total)) / 2;
+  const radius = Math.max(0, HALF_CELL_PCT - halfToken) * 0.92;
   const angle = (indexInCell / total) * Math.PI * 2 - Math.PI / 2;
-  const radius = total <= 4 ? 1.1 : 1.5;
   return { xPct: Math.cos(angle) * radius, yPct: Math.sin(angle) * radius };
 }
 

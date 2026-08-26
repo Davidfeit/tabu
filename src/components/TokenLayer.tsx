@@ -1,4 +1,4 @@
-import { cellCenter, crowdOffset } from "@/lib/geometry";
+import { cellCenter, crowdOffset, crowdScale, TOKEN_PCT } from "@/lib/geometry";
 import { useTokenMotion } from "@/ui/useTokenMotion";
 import type { GameState } from "@/engine/types";
 import { Token } from "./Token";
@@ -23,12 +23,16 @@ export function TokenLayer({ state }: { state: GameState }) {
   }
 
   return (
-    <div className="pointer-events-none absolute inset-0 z-20" aria-hidden="true">
+    <div className="pointer-events-none absolute inset-0 z-20"
+         style={{ containerType: "inline-size" }} aria-hidden="true">
       {active.map((p) => {
         const m = motion.get(p.seat);
         const pos = m?.pos ?? p.pos;
         const crowd = perCell.get(pos) ?? [p.seat];
         const off = crowdOffset(crowd.indexOf(p.seat), crowd.length);
+        // הרוחב ביחידות מכולה של הלוח — חייל בגודל פיקסלים קבוע נראה
+        // זעיר במסך גדול ומגושם במסך קטן.
+        const width = `${TOKEN_PCT * crowdScale(crowd.length)}cqw`;
         const { xPct, yPct } = cellCenter(pos);
         const isTurn = p.seat === state.currentSeat;
 
@@ -45,7 +49,7 @@ export function TokenLayer({ state }: { state: GameState }) {
                  zIndex: isTurn ? 3 : 2,
                }}>
             <span className="tabu-token__inner block">
-              <Token token={p.token} seat={p.seat} size={22}
+              <Token token={p.token} seat={p.seat} size={width}
                      dimmed={p.inJail && pos === 10} />
             </span>
           </div>

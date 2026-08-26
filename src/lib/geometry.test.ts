@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cellCenter, cellFor, colorBarEdge, contentInset, crowdOffset, labelRotation, pathBetween, travelArrowRotation, BAR_PERCENT, GRID, SQUARE_COUNT } from "./geometry";
+import { cellCenter, cellFor, colorBarEdge, contentInset, crowdOffset, crowdScale, labelRotation, pathBetween, travelArrowRotation, BAR_PERCENT, GRID, HALF_CELL_PCT, SQUARE_COUNT, TOKEN_PCT } from "./geometry";
 import type { Side } from "./geometry";
 
 describe("cellFor", () => {
@@ -185,12 +185,30 @@ describe("crowdOffset", () => {
     expect(keys.size).toBe(4);
   });
 
-  it("ההיסט קטן — החיילים נשארים בתוך המשבצת", () => {
+  it("חייל לא חורג מהמשבצת שלו, בכל צפיפות", () => {
+    // זו האילוץ האמיתי: מרכז ההיסט ועוד חצי רוחב חייל, מול חצי משבצת.
     for (let n = 2; n <= 6; n++) {
+      const halfToken = (TOKEN_PCT * crowdScale(n)) / 2;
       for (let i = 0; i < n; i++) {
         const { xPct, yPct } = crowdOffset(i, n);
-        expect(Math.hypot(xPct, yPct)).toBeLessThan(2);
+        expect(Math.hypot(xPct, yPct) + halfToken).toBeLessThanOrEqual(HALF_CELL_PCT);
       }
+    }
+  });
+
+  it("מקטין חיילים ככל שהמשבצת צפופה יותר", () => {
+    expect(crowdScale(2)).toBe(1);
+    expect(crowdScale(4)).toBeLessThan(crowdScale(2));
+    expect(crowdScale(6)).toBeLessThan(crowdScale(4));
+    expect(crowdScale(6)).toBeGreaterThan(0.6);   // עדיין נראה
+  });
+
+  it("שני חיילים על משבצת אחת מרוחקים מספיק כדי לא להסתיר זה את זה", () => {
+    for (let n = 2; n <= 6; n++) {
+      const width = TOKEN_PCT * crowdScale(n);
+      const a = crowdOffset(0, n), b = crowdOffset(1, n);
+      const gap = Math.hypot(a.xPct - b.xPct, a.yPct - b.yPct);
+      expect(gap).toBeGreaterThan(width * 0.5);
     }
   });
 });

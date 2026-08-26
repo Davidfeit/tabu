@@ -4,11 +4,14 @@ import { transferFor, TRANSFER_LABEL, type Party, type Transfer } from "@/lib/mo
 import { useGame } from "@/ui/GameContext";
 import { seatColor } from "./Token";
 
-const FLIGHT_MS = 900;
+const FLIGHT_MS = 2000;
+/** גובה הקשת, ביחס למרחק. קו ישר נקרא כהחלקה ולא כהעברה. */
+const ARC_LIFT = 0.22;
 
 interface Flight extends Transfer {
   id: string;
   x0: number; y0: number;
+  xm: number; ym: number;
   x1: number; y1: number;
 }
 
@@ -35,7 +38,8 @@ function reducedMotion(): boolean {
  * עם מספר השחקנים ועם גודל החלון.
  */
 export function MoneyFlow() {
-  const { events } = useGame();
+  const { events, state } = useGame();
+  const name = (seat: number) => state.players[seat]?.name ?? "";
   const [flights, setFlights] = useState<Flight[]>([]);
   const handled = useRef(new Set<number>());
   const primed = useRef(false);
@@ -62,10 +66,14 @@ export function MoneyFlow() {
       if (!t) continue;
       const a = anchorOf(t.from), b = anchorOf(t.to);
       if (!a || !b) continue;
+      const x0 = a.left + a.width / 2, y0 = a.top + a.height / 2;
+      const x1 = b.left + b.width / 2, y1 = b.top + b.height / 2;
+      const span = Math.hypot(x1 - x0, y1 - y0);
       fresh.push({
         ...t, id: `${e.seq}-${t.from}-${t.to}`,
-        x0: a.left + a.width / 2, y0: a.top + a.height / 2,
-        x1: b.left + b.width / 2, y1: b.top + b.height / 2,
+        x0, y0, x1, y1,
+        xm: (x0 + x1) / 2,
+        ym: (y0 + y1) / 2 - span * ARC_LIFT,
       });
     }
     if (!fresh.length) return;
@@ -73,7 +81,7 @@ export function MoneyFlow() {
     setFlights((prev) => [...prev, ...fresh]);
     const id = setTimeout(() => {
       setFlights((prev) => prev.filter((f) => !fresh.some((n) => n.id === f.id)));
-    }, FLIGHT_MS + 120);
+    }, FLIGHT_MS + fresh.length * 260 + 200);
     return () => clearTimeout(id);
   }, [events]);
 
@@ -82,22 +90,42 @@ export function MoneyFlow() {
   return (
     <div className="pointer-events-none fixed inset-0 z-[60]" aria-hidden="true">
       {flights.map((f, i) => (
-        <span key={f.id}
-              className="tabu-bill absolute flex items-center gap-1 whitespace-nowrap
-                         rounded-md px-2 py-1 text-[0.72rem] font-bold shadow-lg"
+        <span key={f.id} className="tabu-bill absolute"
               style={{
                 // הנתיב נמסר כמשתני CSS, כי הקואורדינטות נקראות בזמן ריצה
                 // ואי אפשר לכתוב אותן ב-keyframes סטטי.
                 ["--x0" as string]: `${f.x0}px`, ["--y0" as string]: `${f.y0}px`,
+                ["--xm" as string]: `${f.xm}px`, ["--ym" as string]: `${f.ym}px`,
                 ["--x1" as string]: `${f.x1}px`, ["--y1" as string]: `${f.y1}px`,
-                animationDelay: `${i * 90}ms`,
-                backgroundColor: f.to === "bank" ? "#7f1d1d" : "#14532d",
-                color: "#f5f0e4",
-                borderInlineStart: `3px solid ${
-                  typeof f.to === "number" ? seatColor(f.to) : "#d4d4d4"}`,
+                // תשלומים מרובים יוצאים בזה אחר זה ולא נערמים זה על זה.
+                animationDelay: `${i * 260}ms`,
               }}>
-          <bdi className="tabular-nums">{shekelShort(f.amount)}</bdi>
-          <span className="opacity-60">{TRANSFER_LABEL[f.reason] ?? ""}</span>
+          <span data-dir={f.to === "bank" ? "out" : "in"}
+                className="tabu-bill__note flex flex-col items-center rounded-md
+                           px-3 py-1.5 text-parchment">
+            <span className="text-[0.55rem] uppercase tracking-wide opacity-55">
+              {TRANSFER_LABEL[f.reason] ?? "תשלום"}
+            </span>
+            <bdi className="tabular-nums text-[0.95rem] font-bold leading-tight">
+              {shekelShort(f.amount)}
+            </bdi>
+            <span className="mt-0.5 flex items-center gap-1 text-[0.55rem] opacity-75">
+              <span style={{ unicodeBidi: "plaintext" }}>
+                {f.from === "bank" ? "הבנק" : name(f.from)}
+              </span>
+              {/* חץ SVG ולא תו טקסט: גיליון סגנון RTL הופך תווי חץ, והם
+                  מתחילים לסתור את הכיוון שהם אמורים לתאר. */}
+              <svg viewBox="0 0 24 24" className="h-2.5 w-2.5 shrink-0 opacity-80"
+                   fill="none" stroke="currentColor" strokeWidth="3"
+                   strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M20 12H5M11 6l-6 6 6 6" />
+              </svg>
+              <span style={{ unicodeBidi: "plaintext",
+                             color: typeof f.to === "number" ? seatColor(f.to) : undefined }}>
+                {f.to === "bank" ? "הבנק" : name(f.to)}
+              </span>
+            </span>
+          </span>
         </span>
       ))}
     </div>
