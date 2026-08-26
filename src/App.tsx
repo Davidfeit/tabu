@@ -1,17 +1,25 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { SeatSpec } from "@/engine/setup";
-import type { Settings } from "@/engine/types";
+import type { GameState, Settings } from "@/engine/types";
+import { ONLINE_ENABLED } from "@/net/supabase";
 import { LocalGameProvider, useGame } from "@/ui/GameContext";
+import { RemoteGameProvider } from "@/ui/RemoteGameProvider";
+import { useMesh } from "@/ui/useMesh";
 import { ActionBar } from "@/components/ActionBar";
 import { AuctionPanel } from "@/components/AuctionPanel";
 import { Board } from "@/components/Board";
+import { Button } from "@/components/Button";
 import { CardModal } from "@/components/CardModal";
 import { EventLog } from "@/components/EventLog";
 import { GameOver } from "@/components/GameOver";
+import { Lobby, type JoinedRoom } from "@/components/Lobby";
 import { ManagePanel } from "@/components/ManagePanel";
+import { MediaPrompt } from "@/components/MediaPrompt";
 import { PlayerPanel } from "@/components/PlayerPanel";
 import { SetupScreen } from "@/components/SetupScreen";
 import { VideoStage } from "@/components/VideoStage";
+import { VideoTiles } from "@/components/VideoTiles";
+import { WaitingRoom } from "@/components/WaitingRoom";
 
 /** הודעת שגיאה חולפת. השגיאות מגיעות כקודים מהמנוע ומתורגמות ב-messages.ts. */
 function ErrorToast() {
@@ -31,7 +39,25 @@ function ErrorToast() {
   );
 }
 
-function GameScreen({ onRestart }: { onRestart: () => void }) {
+/**
+ * ניהול נכסים מוצג לשחקן שבתור, ובנוסף למי שנמצא בגיוס כספים — הוא חייב
+ * למכור ולמשכן גם כשזה לא תורו. במשחק מקוון: רק המושב שלי.
+ */
+function ManageColumn() {
+  const { state, mySeat } = useGame();
+  const seats = new Set<number>();
+  if (mySeat !== null) {
+    if (!state.players[mySeat]!.bankrupt) seats.add(mySeat);
+  } else {
+    if (!state.players[state.currentSeat]!.bankrupt) seats.add(state.currentSeat);
+    if (state.debt) seats.add(state.debt.debtorSeat);
+  }
+  return <>{[...seats].map((seat) => <ManagePanel key={seat} seat={seat} />)}</>;
+}
+
+function GameScreen({ onRestart, center }: {
+  onRestart: () => void; center?: React.ReactNode;
+}) {
   const { state, events } = useGame();
   const nearEnd = state.settings.hardLimitMinutes !== null
     && Date.now() - state.startedAt > (state.settings.hardLimitMinutes - 20) * 60_000;
@@ -50,7 +76,7 @@ function GameScreen({ onRestart }: { onRestart: () => void }) {
 
       <div className="relative flex flex-col items-center gap-4">
         <div className="w-full max-w-[min(78vh,900px)]">
-          <Board state={state} center={<VideoStage />} />
+          <Board state={state} center={<VideoStage tiles={center} />} />
         </div>
         <div className="w-full max-w-[min(78vh,900px)]">
           <ActionBar />
@@ -67,33 +93,112 @@ function GameScreen({ onRestart }: { onRestart: () => void }) {
   );
 }
 
-/**
- * ניהול נכסים מוצג לשחקן שבתור, ובנוסף למי שנמצא בגיוס כספים — הוא חייב
- * למכור ולמשכן גם כשזה לא תורו. שלושה פאנלים במקביל הם רעש.
- */
-function ManageColumn() {
-  const { state } = useGame();
-  const seats = new Set<number>();
-  if (!state.players[state.currentSeat]!.bankrupt) seats.add(state.currentSeat);
-  if (state.debt) seats.add(state.debt.debtorSeat);
-  return <>{[...seats].map((seat) => <ManagePanel key={seat} seat={seat} />)}</>;
+/** מסך המשחק המקוון, כולל רשת הווידאו. */
+function OnlineGame({ room, initial, version, onLeave }: {
+  room: JoinedRoom; initial: GameState; version: number; onLeave: () => void;
+}) {
+  const [videoOn, setVideoOn] = useState<boolean | null>(null);
+  const peerIds = initial.players.map((p) => p.userId).filter((id) => id !== room.userId);
+  const mesh = useMesh(room.userId, peerIds, videoOn === true);
+
+  return (
+    <RemoteGameProvider roomId={room.roomId} mySeat={room.seat}
+                        initialState={initial} initialVersion={version}>
+      <ErrorToast />
+      {videoOn === null && (
+        <MediaPrompt onAllow={() => setVideoOn(true)} onSkip={() => setVideoOn(false)} />
+      )}
+      <GameScreen
+        onRestart={onLeave}
+        center={videoOn ? (
+          <VideoTilesBridge local={mesh.local} peers={mesh.peers} error={mesh.error}
+                            mySeat={room.seat} />
+        ) : undefined}
+      />
+    </RemoteGameProvider>
+  );
 }
 
-interface GameConfig { seats: SeatSpec[]; settings: Partial<Settings>; key: number }
+function VideoTilesBridge(props: Omit<Parameters<typeof VideoTiles>[0], "state">) {
+  const { state } = useGame();
+  return <VideoTiles state={state} {...props} />;
+}
+
+// ── מסך פתיחה ────────────────────────────────────────────────────────────
+
+type Screen =
+  | { kind: "home" }
+  | { kind: "local"; seats: SeatSpec[]; settings: Partial<Settings>; key: number }
+  | { kind: "lobby" }
+  | { kind: "waiting"; room: JoinedRoom }
+  | { kind: "online"; room: JoinedRoom; state: GameState; version: number };
+
+function Home({ onLocal, onOnline }: { onLocal: () => void; onOnline: () => void }) {
+  return (
+    <div dir="rtl" className="mx-auto max-w-sm space-y-6 py-20 text-center">
+      <h1 className="font-logo text-6xl text-parchment">טאבו</h1>
+      <p className="text-sm text-parchment/50">משחק הנדל״ן הישראלי</p>
+      <div className="flex flex-col gap-2">
+        <Button variant="primary" className="!py-2.5 !text-base" onClick={onOnline}
+                disabled={!ONLINE_ENABLED}>
+          משחק אונליין עם וידאו
+        </Button>
+        <Button className="!py-2.5" onClick={onLocal}>משחק מקומי על מסך אחד</Button>
+      </div>
+      {!ONLINE_ENABLED && (
+        <p className="text-[0.7rem] leading-relaxed text-parchment/35">
+          משחק אונליין דורש הגדרת Supabase.
+          ראו <code className="text-parchment/50">.env.example</code>.
+        </p>
+      )}
+    </div>
+  );
+}
 
 export default function App() {
-  const [config, setConfig] = useState<GameConfig | null>(null);
+  const [screen, setScreen] = useState<Screen>({ kind: "home" });
+
+  // לינק הזמנה: ‎#CODE‎ פותח ישר את הלובי עם הקוד.
+  useEffect(() => {
+    if (location.hash.length > 1 && ONLINE_ENABLED) setScreen({ kind: "lobby" });
+  }, []);
+
+  const toHome = useCallback(() => setScreen({ kind: "home" }), []);
+  const startOnline = useCallback((room: JoinedRoom) =>
+    (state: unknown, version: number) =>
+      setScreen({ kind: "online", room, state: state as GameState, version }), []);
 
   return (
     <div dir="rtl" className="min-h-screen bg-neutral-900 bg-gradient-to-br
                               from-neutral-900 via-neutral-900 to-neutral-950">
-      {config === null ? (
-        <SetupScreen onStart={(seats, settings) => setConfig({ seats, settings, key: Date.now() })} />
-      ) : (
-        <LocalGameProvider key={config.key} seats={config.seats} settings={config.settings}>
+      {screen.kind === "home" && (
+        <Home onLocal={() => setScreen({ kind: "local", seats: [], settings: {}, key: 0 })}
+              onOnline={() => setScreen({ kind: "lobby" })} />
+      )}
+
+      {screen.kind === "local" && screen.seats.length === 0 && (
+        <SetupScreen onStart={(seats, settings) =>
+          setScreen({ kind: "local", seats, settings, key: Date.now() })} />
+      )}
+
+      {screen.kind === "local" && screen.seats.length > 0 && (
+        <LocalGameProvider key={screen.key} seats={screen.seats} settings={screen.settings}>
           <ErrorToast />
-          <GameScreen onRestart={() => setConfig(null)} />
+          <GameScreen onRestart={toHome} />
         </LocalGameProvider>
+      )}
+
+      {screen.kind === "lobby" && (
+        <Lobby onJoined={(room) => setScreen({ kind: "waiting", room })} onBack={toHome} />
+      )}
+
+      {screen.kind === "waiting" && (
+        <WaitingRoom room={screen.room} onStart={startOnline(screen.room)} />
+      )}
+
+      {screen.kind === "online" && (
+        <OnlineGame room={screen.room} initial={screen.state}
+                    version={screen.version} onLeave={toHome} />
       )}
     </div>
   );
