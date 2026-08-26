@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    /* עברית: אותיות מרובעות עם מעט קווים עולים/יורדים, גובה ה-x שולט, ולכן
+       אותו גודל נומינלי נקרא קטן יותר מלטינית. בסיס 17px במקום 16. */
+    font-size: 17px;
+  }
+
+  body {
+    @apply bg-neutral-900 font-sans text-neutral-100 antialiased;
+    line-height: 1.65; /* עברית צריכה יותר אוויר מ-1.5 הלטיני */
+  }
+
+  /* לעברית אין איטליק אמיתי — הדפדפן יסנתז עיוות משופע. מדגישים במשקל או בצבע. */
+  em, i { font-style: normal; font-weight: 600; }
+
+  /* עברית סובלת ריווח אותיות גרוע מאוד. */
+  * { letter-spacing: normal; }
+}
+
+@layer components {
+  /* עמודות כסף — בלי זה טבלת השווי תרעד בכל תשלום שכר דירה. */
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+}
+
+/* תנועת החייל הופכת לקפיצה מיידית עם הבהוב, לא 40 צעדים. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
