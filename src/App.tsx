@@ -1,76 +1,100 @@
-import { BOARD, GROUPS, SQUARES } from "@/lib/board";
-import { shekel } from "@/lib/format";
+import { useEffect, useState } from "react";
+import type { SeatSpec } from "@/engine/setup";
+import type { Settings } from "@/engine/types";
+import { LocalGameProvider, useGame } from "@/ui/GameContext";
+import { ActionBar } from "@/components/ActionBar";
+import { AuctionPanel } from "@/components/AuctionPanel";
 import { Board } from "@/components/Board";
-import { GroupIcon } from "@/components/GroupIcon";
-import type { PropertySquare } from "@/lib/types";
+import { CardModal } from "@/components/CardModal";
+import { EventLog } from "@/components/EventLog";
+import { GameOver } from "@/components/GameOver";
+import { ManagePanel } from "@/components/ManagePanel";
+import { PlayerPanel } from "@/components/PlayerPanel";
+import { SetupScreen } from "@/components/SetupScreen";
+import { VideoStage } from "@/components/VideoStage";
 
-function Legend() {
+/** הודעת שגיאה חולפת. השגיאות מגיעות כקודים מהמנוע ומתורגמות ב-messages.ts. */
+function ErrorToast() {
+  const { error, clearError } = useGame();
+  useEffect(() => {
+    if (!error) return;
+    const id = setTimeout(clearError, 3200);
+    return () => clearTimeout(id);
+  }, [error, clearError]);
+  if (!error) return null;
   return (
-    <aside dir="rtl" className="w-full max-w-xs shrink-0 space-y-3">
-      <h2 className="font-display text-lg font-bold text-parchment">קבוצות הצבע</h2>
-      <ul className="space-y-1.5">
-        {GROUPS.map((g) => {
-          const members = SQUARES.filter(
-            (s): s is PropertySquare => s.type === "property" && s.group === g.key,
-          );
-          return (
-            <li key={g.key}
-                className="flex items-center gap-2.5 rounded-md bg-black/20 px-2.5 py-1.5
-                           ring-1 ring-white/10">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded"
-                    style={{ backgroundColor: g.color, color: g.textOn }}>
-                <GroupIcon icon={g.icon} className="h-3.5 w-3.5" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[0.8rem] font-semibold text-parchment">
-                  {g.name}
-                </span>
-                <span className="block truncate text-[0.68rem] text-parchment/50">
-                  {members.map((m) => m.name).join(" · ")}
-                </span>
-              </span>
-              <span className="shrink-0 tabular-nums text-[0.68rem] text-parchment/60">
-                בית {shekel(g.houseCost)}
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-
-      <div className="rounded-md bg-black/20 p-3 text-[0.72rem] leading-relaxed
-                      text-parchment/70 ring-1 ring-white/10">
-        <div className="mb-1.5 font-display text-sm font-bold text-parchment">כללי פתיחה</div>
-        <dl className="space-y-1">
-          {[
-            ["הון פתיחה", shekel(BOARD.meta.startingCash)],
-            ["מעבר בזינוק", shekel(BOARD.meta.passStartBonus)],
-            ["ערובה למעצר בית", shekel(BOARD.meta.jailFine)],
-            ["מלאי הבנק", `${BOARD.meta.houseSupply} בתים · ${BOARD.meta.hotelSupply} מלונות`],
-            ["שחקנים", `${BOARD.meta.minPlayers}–${BOARD.meta.maxPlayers}`],
-          ].map(([k, v]) => (
-            <div key={k} className="flex items-baseline justify-between gap-2">
-              <dt className="text-parchment/50">{k}</dt>
-              <dd className="tabular-nums font-medium text-parchment/90">
-                <bdi>{v}</bdi>
-              </dd>
-            </div>
-          ))}
-        </dl>
-      </div>
-    </aside>
+    <div dir="rtl" role="status" aria-live="assertive"
+         className="fixed inset-x-0 top-4 z-50 mx-auto w-fit rounded-lg bg-red-500/90
+                    px-4 py-2 text-sm font-medium text-white shadow-lg">
+      {error}
+    </div>
   );
 }
 
+function GameScreen({ onRestart }: { onRestart: () => void }) {
+  const { state, events } = useGame();
+  const nearEnd = state.settings.hardLimitMinutes !== null
+    && Date.now() - state.startedAt > (state.settings.hardLimitMinutes - 20) * 60_000;
+
+  return (
+    // רשת של שלוש עמודות: minmax(0,1fr) באמצע הוא מה שמונע מהלוח לחרוג
+    // ולכסות את הפאנלים — עמודת grid ברירת-מחדל היא auto ולא מתכווצת מתחת
+    // לתוכן שלה.
+    <main dir="rtl"
+          className="mx-auto grid w-full max-w-[1560px] items-start gap-5 px-5 py-5
+                     grid-cols-[18rem_minmax(0,1fr)_18rem]">
+      <aside className="space-y-3">
+        <PlayerPanel state={state} showWorth={nearEnd || state.phase === "finished"} />
+        <EventLog events={events} state={state} />
+      </aside>
+
+      <div className="relative flex flex-col items-center gap-4">
+        <div className="w-full max-w-[min(78vh,900px)]">
+          <Board state={state} center={<VideoStage />} />
+        </div>
+        <div className="w-full max-w-[min(78vh,900px)]">
+          <ActionBar />
+        </div>
+        <AuctionPanel />
+        <CardModal />
+        <GameOver onRestart={onRestart} />
+      </div>
+
+      <aside className="space-y-3">
+        <ManageColumn />
+      </aside>
+    </main>
+  );
+}
+
+/**
+ * ניהול נכסים מוצג לשחקן שבתור, ובנוסף למי שנמצא בגיוס כספים — הוא חייב
+ * למכור ולמשכן גם כשזה לא תורו. שלושה פאנלים במקביל הם רעש.
+ */
+function ManageColumn() {
+  const { state } = useGame();
+  const seats = new Set<number>();
+  if (!state.players[state.currentSeat]!.bankrupt) seats.add(state.currentSeat);
+  if (state.debt) seats.add(state.debt.debtorSeat);
+  return <>{[...seats].map((seat) => <ManagePanel key={seat} seat={seat} />)}</>;
+}
+
+interface GameConfig { seats: SeatSpec[]; settings: Partial<Settings>; key: number }
+
 export default function App() {
+  const [config, setConfig] = useState<GameConfig | null>(null);
+
   return (
     <div dir="rtl" className="min-h-screen bg-neutral-900 bg-gradient-to-br
-                              from-neutral-900 via-neutral-900 to-neutral-950 py-8">
-      <main className="mx-auto flex w-full max-w-[1400px] items-start justify-center gap-8 px-8">
-        <div className="w-[min(78vh,1000px)] min-w-[720px]">
-          <Board />
-        </div>
-        <Legend />
-      </main>
+                              from-neutral-900 via-neutral-900 to-neutral-950">
+      {config === null ? (
+        <SetupScreen onStart={(seats, settings) => setConfig({ seats, settings, key: Date.now() })} />
+      ) : (
+        <LocalGameProvider key={config.key} seats={config.seats} settings={config.settings}>
+          <ErrorToast />
+          <GameScreen onRestart={() => setConfig(null)} />
+        </LocalGameProvider>
+      )}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { BOARD, SQUARES } from "@/lib/board";
 import { GRID } from "@/lib/geometry";
+import type { GameState } from "@/engine/types";
 import { Tile } from "./Tile";
-import { VideoStage } from "./VideoStage";
 
 /**
  * הלוח, ברשת 11×11.
@@ -9,7 +9,7 @@ import { VideoStage } from "./VideoStage";
  * הרשת מוגדרת direction: ltr במכוון (ראה geometry.ts) — זו מערכת קואורדינטות
  * יציבה. רק הטקסט בתוך המשבצות הוא RTL. הליבה 9×9 נשארת פנויה לווידאו.
  */
-export function Board() {
+export function Board({ state, center }: { state: GameState | null; center: React.ReactNode }) {
   return (
     <div className="board relative aspect-square w-full select-none rounded-lg
                     bg-felt p-[6px] shadow-2xl ring-1 ring-black/40"
@@ -21,11 +21,11 @@ export function Board() {
              gridTemplateColumns: `1.5fr repeat(${GRID - 2}, 1fr) 1.5fr`,
              gridTemplateRows: `1.5fr repeat(${GRID - 2}, 1fr) 1.5fr`,
            }}>
-        {SQUARES.map((sq) => <Tile key={sq.pos} square={sq} />)}
+        {SQUARES.map((sq) => <Tile key={sq.pos} square={sq} state={state} />)}
 
         <div style={{ gridRow: `2 / ${GRID}`, gridColumn: `2 / ${GRID}` }}
              className="relative flex items-center justify-center">
-          <VideoStage />
+          {center}
         </div>
       </div>
     </div>
