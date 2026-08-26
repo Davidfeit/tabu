@@ -118,3 +118,65 @@ export function contentInset(barEdge: Edge): Inset {
   inset[barEdge] = BAR_PERCENT;
   return inset;
 }
+
+/**
+ * ── קואורדינטות לשכבת החיילים ──
+ *
+ * החיילים לא יושבים *בתוך* המשבצות אלא בשכבה מוחלטת מעל הלוח, כי אחרת
+ * אי אפשר להנפיש תנועה: אלמנט שעובר מהורה אחד לאחר קופץ ולא זז.
+ *
+ * הרשת היא `1.5fr repeat(9,1fr) 1.5fr` — הפינות רחבות פי 1.5 מהמשבצות
+ * הרגילות. סך הכל 12 יחידות לכל ציר.
+ */
+export const CORNER_UNITS = 1.5;
+export const TOTAL_UNITS = CORNER_UNITS * 2 + (GRID - 2);
+
+/** רוחב עמודה (או גובה שורה) ביחידות רשת. */
+function trackSize(index: number): number {
+  return index === 1 || index === GRID ? CORNER_UNITS : 1;
+}
+
+/** קצה המסלול, ביחידות, מתחילת הציר. */
+function trackStart(index: number): number {
+  let sum = 0;
+  for (let i = 1; i < index; i++) sum += trackSize(i);
+  return sum;
+}
+
+export interface Point { xPct: number; yPct: number }
+
+/** מרכז המשבצת באחוזים מרוחב וגובה הלוח. */
+export function cellCenter(pos: number): Point {
+  const { row, col } = cellFor(pos);
+  return {
+    xPct: ((trackStart(col) + trackSize(col) / 2) / TOTAL_UNITS) * 100,
+    yPct: ((trackStart(row) + trackSize(row) / 2) / TOTAL_UNITS) * 100,
+  };
+}
+
+/**
+ * היסט קטן לחייל, כדי ששניים על אותה משבצת לא יסתירו זה את זה.
+ * מסודר במעגל סביב מרכז המשבצת.
+ */
+export function crowdOffset(indexInCell: number, total: number): Point {
+  if (total <= 1) return { xPct: 0, yPct: 0 };
+  const angle = (indexInCell / total) * Math.PI * 2 - Math.PI / 2;
+  const radius = total <= 4 ? 1.1 : 1.5;
+  return { xPct: Math.cos(angle) * radius, yPct: Math.sin(angle) * radius };
+}
+
+/**
+ * מסלול התנועה בין שתי משבצות, כולל את שתיהן.
+ *
+ * תמיד קדימה עם כיוון השעון וגולש סביב הלוח — כך שמעבר מ-38 ל-2 עובר דרך
+ * הזינוק ונראה נכון, במקום לחתוך אחורה על פני חצי לוח.
+ */
+export function pathBetween(from: number, to: number): number[] {
+  const steps: number[] = [from];
+  let cur = from;
+  for (let guard = 0; guard < SQUARE_COUNT && cur !== to; guard++) {
+    cur = (cur + 1) % SQUARE_COUNT;
+    steps.push(cur);
+  }
+  return steps;
+}

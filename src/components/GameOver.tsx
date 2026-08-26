@@ -14,7 +14,7 @@ export function GameOver({ onRestart }: { onRestart: () => void }) {
   return (
     <div dir="rtl" role="dialog" aria-modal="true" aria-label="סיום המשחק"
          className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 p-6">
-      <div className="w-full max-w-md space-y-4 rounded-xl bg-neutral-900 p-6
+      <div className="tabu-pop w-full max-w-md space-y-4 rounded-xl bg-neutral-900 p-6
                       text-center ring-1 ring-white/15">
         <div className="font-logo text-3xl text-amber-300">
           {state.winnerSeat !== null ? `ניצחון ל${state.players[state.winnerSeat]!.name}` : "תיקו"}

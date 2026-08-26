@@ -26,10 +26,94 @@
   .tabular-nums { font-variant-numeric: tabular-nums; }
 }
 
-/* תנועת החייל הופכת לקפיצה מיידית עם הבהוב, לא 40 צעדים. */
+@layer components {
+  /* ── החייל ──
+     ההזזה על left/top, כדי ש-transform יישאר פנוי לקפיצה האנכית. שניהם
+     יחד על אותו אלמנט היו נלחמים זה בזה. */
+  .tabu-token {
+    transform: translate(-50%, -50%);
+    transition-property: left, top;
+    transition-timing-function: cubic-bezier(0.34, 1.2, 0.64, 1);
+    filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.55));
+  }
+  .tabu-token[data-walking="true"] .tabu-token__inner {
+    animation: tabu-hop 100ms ease-in-out;
+  }
+  @keyframes tabu-hop {
+    50% { transform: translateY(-7px) scale(1.12); }
+  }
+
+  /* ── הקוביות ──
+     מתגלגלות בזמן שהשרת כבר החזיר את התוצאה. זו הנפשה, לא הגרלה: הערך
+     נקבע במנוע ומוצג בסוף. */
+  .tabu-die { transition: transform 140ms ease-out; }
+  .tabu-die[data-rolling="true"] { animation: tabu-tumble 480ms linear; }
+  @keyframes tabu-tumble {
+    0%   { transform: rotate(0deg)    scale(1);    }
+    25%  { transform: rotate(-140deg) scale(1.18); }
+    50%  { transform: rotate(160deg)  scale(0.92); }
+    75%  { transform: rotate(-70deg)  scale(1.12); }
+    100% { transform: rotate(0deg)    scale(1);    }
+  }
+
+  /* המשבצת שנחתו עליה זה עתה */
+  .tabu-landed { animation: tabu-flash 900ms ease-out; }
+  @keyframes tabu-flash {
+    0%, 100% { box-shadow: inset 0 0 0 0 rgb(251 191 36 / 0); }
+    18%      { box-shadow: inset 0 0 0 3px rgb(251 191 36 / 0.9); }
+  }
+
+  /* כניסת מודאלים — קלף, מכרז, סיום */
+  .tabu-pop { animation: tabu-pop 220ms cubic-bezier(0.2, 0.9, 0.3, 1.2); }
+  @keyframes tabu-pop {
+    from { opacity: 0; transform: translateY(10px) scale(0.96); }
+    to   { opacity: 1; transform: none; }
+  }
+
+  /* ── שטר מעופף בין חשבונות ──
+     נע בין שתי נקודות שנקראו מה-DOM ברגע האירוע, ולכן הנתיב מגיע
+     כמשתני CSS ולא ככתובות קבועות ב-keyframes. */
+  .tabu-bill {
+    left: 0; top: 0;
+    animation: tabu-fly 900ms cubic-bezier(0.4, 0, 0.25, 1) both;
+  }
+  @keyframes tabu-fly {
+    0% {
+      transform: translate(calc(var(--x0) - 50%), calc(var(--y0) - 50%)) scale(0.6);
+      opacity: 0;
+    }
+    14%  { transform: translate(calc(var(--x0) - 50%), calc(var(--y0) - 50%)) scale(1); opacity: 1; }
+    78%  { opacity: 1; }
+    100% {
+      transform: translate(calc(var(--x1) - 50%), calc(var(--y1) - 50%)) scale(0.72);
+      opacity: 0;
+    }
+  }
+
+  /* יתרה שהשתנתה */
+  .tabu-cash-up   { animation: tabu-cash-up 700ms ease-out; }
+  .tabu-cash-down { animation: tabu-cash-down 700ms ease-out; }
+  @keyframes tabu-cash-up {
+    30% { color: #4ade80; transform: scale(1.09); }
+  }
+  @keyframes tabu-cash-down {
+    30% { color: #f87171; transform: scale(0.94); }
+  }
+
+  /* שורה חדשה ביומן */
+  .tabu-log-in { animation: tabu-slide 260ms ease-out; }
+  @keyframes tabu-slide {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: none; }
+  }
+}
+
+/* תנועת החייל הופכת לקפיצה מיידית, לא 40 צעדים — וכל השאר נעצר איתה.
+   useTokenMotion בודק את אותה העדפה ומדלג על ההליכה מלכתחילה. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
 }

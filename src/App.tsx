@@ -5,7 +5,6 @@ import { ONLINE_ENABLED } from "@/net/supabase";
 import { LocalGameProvider, useGame } from "@/ui/GameContext";
 import { RemoteGameProvider } from "@/ui/RemoteGameProvider";
 import { useMesh } from "@/ui/useMesh";
-import { ActionBar } from "@/components/ActionBar";
 import { AuctionPanel } from "@/components/AuctionPanel";
 import { Board } from "@/components/Board";
 import { Button } from "@/components/Button";
@@ -14,10 +13,11 @@ import { EventLog } from "@/components/EventLog";
 import { GameOver } from "@/components/GameOver";
 import { Lobby, type JoinedRoom } from "@/components/Lobby";
 import { ManagePanel } from "@/components/ManagePanel";
+import { MoneyFlow } from "@/components/MoneyFlow";
 import { MediaPrompt } from "@/components/MediaPrompt";
 import { PlayerPanel } from "@/components/PlayerPanel";
 import { SetupScreen } from "@/components/SetupScreen";
-import { VideoStage } from "@/components/VideoStage";
+import { CenterPanel } from "@/components/CenterPanel";
 import { VideoTiles } from "@/components/VideoTiles";
 import { WaitingRoom } from "@/components/WaitingRoom";
 
@@ -55,40 +55,39 @@ function ManageColumn() {
   return <>{[...seats].map((seat) => <ManagePanel key={seat} seat={seat} />)}</>;
 }
 
-function GameScreen({ onRestart, center }: {
-  onRestart: () => void; center?: React.ReactNode;
+function GameScreen({ onRestart, videoTiles }: {
+  onRestart: () => void; videoTiles?: React.ReactNode;
 }) {
   const { state, events } = useGame();
   const nearEnd = state.settings.hardLimitMinutes !== null
     && Date.now() - state.startedAt > (state.settings.hardLimitMinutes - 20) * 60_000;
 
   return (
-    // רשת של שלוש עמודות: minmax(0,1fr) באמצע הוא מה שמונע מהלוח לחרוג
-    // ולכסות את הפאנלים — עמודת grid ברירת-מחדל היא auto ולא מתכווצת מתחת
-    // לתוכן שלה.
-    <main dir="rtl"
-          className="mx-auto grid w-full max-w-[1560px] items-start gap-5 px-5 py-5
-                     grid-cols-[18rem_minmax(0,1fr)_18rem]">
-      <aside className="space-y-3">
+    // הלוח נמדד לפי *גובה* המסך ולא לפי רוחב, והעמודות מקבלות את מה
+    // שנשאר. אין סרגל תחתון: הפעולות עברו למרכז הלוח, שממילא פנוי —
+    // סרגל מתחת גוזל בדיוק את המימד שחסר.
+    <main dir="rtl" className="grid h-[100dvh] w-full gap-3 overflow-hidden p-3
+                               grid-cols-[minmax(13rem,1fr)_auto_minmax(13rem,1fr)]
+                               grid-rows-[minmax(0,1fr)]">
+      <aside className="flex h-full min-h-0 flex-col gap-2.5 overflow-y-auto">
         <PlayerPanel state={state} showWorth={nearEnd || state.phase === "finished"} />
         <EventLog events={events} state={state} />
       </aside>
 
-      <div className="relative flex flex-col items-center gap-4">
-        <div className="w-full max-w-[min(78vh,900px)]">
-          <Board state={state} center={<VideoStage tiles={center} />} />
-        </div>
-        <div className="w-full max-w-[min(78vh,900px)]">
-          <ActionBar />
-        </div>
+      <div className="relative h-full">
+        <Board state={state} center={<CenterPanel videoTiles={videoTiles} />} />
         <AuctionPanel />
         <CardModal />
         <GameOver onRestart={onRestart} />
       </div>
 
-      <aside className="space-y-3">
+      <aside className="flex h-full min-h-0 flex-col gap-2.5 overflow-y-auto">
         <ManageColumn />
       </aside>
+
+      {/* שכבה קבועה מעל הכל: השטרות חוצים בין העמודות, ואלמנט בתוך
+          כרטיס שחקן היה כלוא ב-overflow שלו. */}
+      <MoneyFlow />
     </main>
   );
 }
@@ -110,7 +109,7 @@ function OnlineGame({ room, initial, version, onLeave }: {
       )}
       <GameScreen
         onRestart={onLeave}
-        center={videoOn ? (
+        videoTiles={videoOn ? (
           <VideoTilesBridge local={mesh.local} peers={mesh.peers} error={mesh.error}
                             mySeat={room.seat} />
         ) : undefined}

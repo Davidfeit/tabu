@@ -19,7 +19,7 @@ export function AuctionPanel() {
   return (
     <div dir="rtl" role="dialog" aria-modal="true" aria-label={`מכרז על ${sq.name}`}
          className="absolute inset-0 z-30 flex items-center justify-center bg-black/70 p-6">
-      <div className="w-full max-w-md space-y-4 rounded-xl bg-neutral-900 p-5
+      <div className="tabu-pop w-full max-w-md space-y-4 rounded-xl bg-neutral-900 p-5
                       ring-1 ring-white/15">
         <header className="text-center">
           <div className="font-logo text-2xl text-parchment">מכרז</div>

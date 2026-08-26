@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { squareAt } from "@/lib/board";
 import { shekel, shekelShort } from "@/lib/format";
 import { netWorth } from "@/engine/selectors";
@@ -31,6 +32,39 @@ function Holdings({ state, seat }: { state: GameState; seat: number }) {
   );
 }
 
+/**
+ * מהבהב את היתרה כשהיא משתנה — ירוק לזכות, אדום לחובה.
+ *
+ * המספר לבדו משתנה בשקט, ובמשחק שכולו כסף זה בדיוק מה שצריך להיקלט מיד.
+ * ההבהוב משלים את השטר המעופף: השטר מראה *לאן* הכסף עבר, וההבהוב מראה
+ * *למי* זה קרה בטבלה.
+ */
+function useCashFlash(seat: number, cash: number): "up" | "down" | null {
+  const [flash, setFlash] = useState<"up" | "down" | null>(null);
+  const previous = useRef<number | undefined>(undefined);
+
+  useEffect(() => {
+    const before = previous.current;
+    previous.current = cash;
+    if (before === undefined || before === cash) return;
+    setFlash(cash > before ? "up" : "down");
+    const id = setTimeout(() => setFlash(null), 720);
+    return () => clearTimeout(id);
+  }, [cash, seat]);
+
+  return flash;
+}
+
+function CashLine({ seat, cash }: { seat: number; cash: number }) {
+  const flash = useCashFlash(seat, cash);
+  return (
+    <span className={`tabular-nums font-display text-base font-bold text-parchment
+                      ${flash === "up" ? "tabu-cash-up" : flash === "down" ? "tabu-cash-down" : ""}`}>
+      <bdi>{shekel(cash)}</bdi>
+    </span>
+  );
+}
+
 export function PlayerPanel({ state, showWorth }: { state: GameState; showWorth: boolean }) {
   return (
     <section dir="rtl" className="space-y-2" aria-label="שחקנים">
@@ -38,6 +72,7 @@ export function PlayerPanel({ state, showWorth }: { state: GameState; showWorth:
         const active = p.seat === state.currentSeat && !p.bankrupt;
         return (
           <article key={p.seat}
+                   data-money={`seat-${p.seat}`}
                    className={`rounded-lg p-2.5 ring-1 transition-colors
                      ${p.bankrupt ? "bg-black/30 opacity-45 ring-white/5"
                        : active ? "bg-black/40 ring-2 ring-amber-400/70"
@@ -66,9 +101,7 @@ export function PlayerPanel({ state, showWorth }: { state: GameState; showWorth:
             </header>
 
             <div className="mt-1.5 flex items-baseline justify-between gap-2">
-              <span className="tabular-nums font-display text-base font-bold text-parchment">
-                <bdi>{shekel(p.cash)}</bdi>
-              </span>
+              <CashLine seat={p.seat} cash={p.cash} />
               {showWorth && (
                 <span className="tabular-nums text-[0.68rem] text-parchment/50">
                   שווי נקי <bdi>{shekelShort(netWorth(state, p.seat))}</bdi>

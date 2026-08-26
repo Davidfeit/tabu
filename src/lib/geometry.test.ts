@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { cellFor, colorBarEdge, contentInset, labelRotation, travelArrowRotation, BAR_PERCENT, GRID, SQUARE_COUNT } from "./geometry";
+import { cellCenter, cellFor, colorBarEdge, contentInset, crowdOffset, labelRotation, pathBetween, travelArrowRotation, BAR_PERCENT, GRID, SQUARE_COUNT } from "./geometry";
 import type { Side } from "./geometry";
 
 describe("cellFor", () => {
@@ -108,6 +108,89 @@ describe("contentInset", () => {
       expect(inset[edge]).toBe(BAR_PERCENT);
       const others = (["top", "right", "bottom", "left"] as const).filter((e) => e !== edge);
       for (const o of others) expect(inset[o]).toBe(0);
+    }
+  });
+});
+
+describe("cellCenter", () => {
+  it("ממקם את הפינות בפינות הלוח", () => {
+    // זינוק — ימין-למטה. הפינה רחבה פי 1.5, ולכן מרכזה ב-0.75/12.
+    const start = cellCenter(0);
+    expect(start.xPct).toBeCloseTo((10.5 + 0.75) / 12 * 100, 4);
+    expect(start.yPct).toBeCloseTo((10.5 + 0.75) / 12 * 100, 4);
+
+    const eilat = cellCenter(20);   // שמאל-למעלה
+    expect(eilat.xPct).toBeCloseTo(0.75 / 12 * 100, 4);
+    expect(eilat.yPct).toBeCloseTo(0.75 / 12 * 100, 4);
+  });
+
+  it("כל המרכזים בתוך הלוח", () => {
+    for (let p = 0; p < SQUARE_COUNT; p++) {
+      const { xPct, yPct } = cellCenter(p);
+      expect(xPct).toBeGreaterThan(0);
+      expect(xPct).toBeLessThan(100);
+      expect(yPct).toBeGreaterThan(0);
+      expect(yPct).toBeLessThan(100);
+    }
+  });
+
+  it("משבצות עוקבות סמוכות זו לזו — אין קפיצות במסלול", () => {
+    for (let p = 0; p < SQUARE_COUNT; p++) {
+      const a = cellCenter(p);
+      const b = cellCenter((p + 1) % SQUARE_COUNT);
+      const dist = Math.hypot(a.xPct - b.xPct, a.yPct - b.yPct);
+      // מרווח משבצת רגילה הוא 100/12 ≈ 8.33; פינה מוסיפה עד 1.25 יחידות.
+      expect(dist).toBeLessThan(12);
+      expect(dist).toBeGreaterThan(5);
+    }
+  });
+
+  it("שני מרכזים אינם חופפים", () => {
+    const seen = new Set<string>();
+    for (let p = 0; p < SQUARE_COUNT; p++) {
+      const c = cellCenter(p);
+      seen.add(`${c.xPct.toFixed(3)},${c.yPct.toFixed(3)}`);
+    }
+    expect(seen.size).toBe(SQUARE_COUNT);
+  });
+});
+
+describe("pathBetween", () => {
+  it("הולך קדימה וכולל את שני הקצוות", () => {
+    expect(pathBetween(3, 7)).toEqual([3, 4, 5, 6, 7]);
+  });
+
+  it("גולש סביב הלוח דרך הזינוק ולא חותך אחורה", () => {
+    // מעבר מ-38 ל-2 חייב לעבור ב-39 ואז 0 — אחרת הוא נראה כמו נסיגה.
+    expect(pathBetween(38, 2)).toEqual([38, 39, 0, 1, 2]);
+  });
+
+  it("מיקום זהה נותן צעד יחיד", () => {
+    expect(pathBetween(5, 5)).toEqual([5]);
+  });
+
+  it("הקפה מלאה אורכה 41 עצירות", () => {
+    expect(pathBetween(0, 39)).toHaveLength(40);
+  });
+});
+
+describe("crowdOffset", () => {
+  it("לא מזיז חייל בודד", () => {
+    expect(crowdOffset(0, 1)).toEqual({ xPct: 0, yPct: 0 });
+  });
+
+  it("מפזר כמה חיילים למקומות שונים", () => {
+    const points = [0, 1, 2, 3].map((i) => crowdOffset(i, 4));
+    const keys = new Set(points.map((p) => `${p.xPct.toFixed(3)},${p.yPct.toFixed(3)}`));
+    expect(keys.size).toBe(4);
+  });
+
+  it("ההיסט קטן — החיילים נשארים בתוך המשבצת", () => {
+    for (let n = 2; n <= 6; n++) {
+      for (let i = 0; i < n; i++) {
+        const { xPct, yPct } = crowdOffset(i, n);
+        expect(Math.hypot(xPct, yPct)).toBeLessThan(2);
+      }
     }
   });
 });

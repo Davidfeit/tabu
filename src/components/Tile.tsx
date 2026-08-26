@@ -4,7 +4,7 @@ import { cellFor, colorBarEdge, contentInset, labelRotation, type Side } from "@
 import type { Square } from "@/lib/types";
 import type { DeedState, GameState } from "@/engine/types";
 import { GroupIcon, SquareIcon } from "./GroupIcon";
-import { seatColor, Token } from "./Token";
+import { seatColor } from "./Token";
 
 /** פס הצבע, על הצלע הפונה למרכז הלוח. */
 const BAR_CLASS = {
@@ -97,16 +97,9 @@ export function Tile({ square, state }: { square: Square; state: GameState | nul
   const here = state?.players.filter((p) => p.pos === square.pos && !p.bankrupt) ?? [];
   const deed = state?.deeds[square.pos] ?? null;
   const edge = colorBarEdge(side);
-
-  const tokens = here.length > 0 && (
-    <div className="pointer-events-none absolute inset-0 z-20 flex flex-wrap
-                    items-center justify-center gap-[2px] p-[2px]">
-      {here.map((p) => (
-        <Token key={p.seat} token={p.token} seat={p.seat}
-               size={here.length > 3 ? 12 : 15} dimmed={p.inJail && square.pos === 10} />
-      ))}
-    </div>
-  );
+  // החיילים מרונדרים ב-TokenLayer, בשכבה מוחלטת מעל הלוח — אחרת אי אפשר
+  // להנפיש תנועה. כאן נשאר רק הבזק הנחיתה.
+  const landed = state !== null && state.players[state.currentSeat]?.pos === square.pos;
 
   if (isCorner && square.type === "corner") {
     return (
@@ -120,7 +113,6 @@ export function Tile({ square, state }: { square: Square; state: GameState | nul
         {square.subtitle && (
           <div className="text-[0.5rem] leading-tight text-neutral-500">{square.subtitle}</div>
         )}
-        {tokens}
       </div>
     );
   }
@@ -133,6 +125,7 @@ export function Tile({ square, state }: { square: Square; state: GameState | nul
   return (
     <div style={style} role="gridcell" aria-label={ariaLabel(square, state, here.map((p) => p.name))}
          className={`relative overflow-hidden rounded-sm border shadow-inner
+                     ${landed ? "tabu-landed" : ""}
                      ${deed?.mortgaged ? "border-black/25 bg-neutral-300" : "border-black/25 bg-parchment"}`}>
       {g && (
         <div className={`absolute ${BAR_CLASS[edge]} flex items-center justify-center border-black/30`}
@@ -181,8 +174,6 @@ export function Tile({ square, state }: { square: Square; state: GameState | nul
           )}
         </Label>
       </div>
-
-      {tokens}
     </div>
   );
 }

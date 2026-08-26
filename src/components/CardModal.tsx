@@ -20,7 +20,7 @@ export function CardModal() {
   return (
     <div dir="rtl" role="dialog" aria-modal="true" aria-label={style.label}
          className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 p-6">
-      <div className="w-full max-w-sm overflow-hidden rounded-xl bg-parchment shadow-2xl">
+      <div className="tabu-pop w-full max-w-sm overflow-hidden rounded-xl bg-parchment shadow-2xl">
         <div className="px-4 py-2.5 text-center font-logo text-lg text-white"
              style={{ backgroundColor: style.bg }}>
           {style.label}

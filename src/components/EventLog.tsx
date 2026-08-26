@@ -14,7 +14,7 @@ export function EventLog({ events, state }: { events: GameEvent[]; state: GameSt
         <div className="text-parchment/35">המשחק מתחיל…</div>
       )}
       {shown.map((e) => (
-        <div key={e.seq} className="flex gap-1.5">
+        <div key={e.seq} className="tabu-log-in flex gap-1.5">
           <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
                 style={{ backgroundColor: e.seat === null ? "#666" : seatColor(e.seat) }}
                 aria-hidden="true" />
