@@ -1,0 +1,52 @@
+/**
+ * אישורי TURN.
+ *
+ * ~10–20% מהחיבורים לא מצליחים P2P וזקוקים לממסר. בישראל להניח את הקצה
+ * העליון — הסלולר עושה שימוש כבד ב-CGNAT. Cloudflare TURN נותן 1,000GB
+ * חינם בחודש ויש לו PoP בתל אביב.
+ *
+ * המפתח לעולם לא מגיע לדפדפן: האישורים מונפקים כאן, עם TTL של שלוש שעות.
+ */
+import { createClient } from "jsr:@supabase/supabase-js@2";
+
+const CORS = {
+  "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") ?? "*",
+  "Access-Control-Allow-Headers": "authorization, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+const json = (b: unknown, status = 200) =>
+  new Response(JSON.stringify(b), {
+    status, headers: { ...CORS, "content-type": "application/json" },
+  });
+
+const admin = createClient(
+  Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+  { auth: { persistSession: false } },
+);
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
+
+  // רק משתמש מזוהה. אחרת זהו ממסר חינמי לכל מי שמוצא את הכתובת.
+  const auth = req.headers.get("authorization");
+  if (!auth?.startsWith("Bearer ")) return json({ error: "UNAUTHENTICATED" }, 401);
+  const { data, error } = await admin.auth.getUser(auth.slice(7));
+  if (error || !data.user) return json({ error: "UNAUTHENTICATED" }, 401);
+
+  const keyId = Deno.env.get("TURN_KEY_ID");
+  const token = Deno.env.get("TURN_KEY_API_TOKEN");
+  // בלי TURN עדיין עובד לרוב המשתמשים — רק לא למי שמאחורי symmetric NAT.
+  if (!keyId || !token) return json({ iceServers: [] });
+
+  const res = await fetch(
+    `https://rtc.live.cloudflare.com/v1/turn/keys/${keyId}/credentials/generate-ice-servers`,
+    {
+      method: "POST",
+      headers: { authorization: `Bearer ${token}`, "content-type": "application/json" },
+      body: JSON.stringify({ ttl: 10_800 }),
+    },
+  );
+  if (!res.ok) return json({ iceServers: [] });
+  return json(await res.json());
+});
