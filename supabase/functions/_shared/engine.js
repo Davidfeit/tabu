@@ -416,18 +416,18 @@ function emit(s, events, type, seat, payload = {}) {
 function credit(s, seat, amount) {
   player(s, seat).cash += amount;
 }
-function charge(s, events, seat, amount, creditorSeat, reason) {
+function charge(s, events, seat, amount, creditorSeat, reason, meta = {}) {
   if (amount <= 0) return;
   const p = player(s, seat);
   if (p.cash >= amount) {
     p.cash -= amount;
     if (creditorSeat !== null) credit(s, creditorSeat, amount);
     else if (s.settings.eilatJackpot) s.pot += amount;
-    emit(s, events, "pay", seat, { amount, to: creditorSeat, reason });
+    emit(s, events, "pay", seat, { amount, to: creditorSeat, reason, ...meta });
     return;
   }
   if (liquidValue(s, seat) < amount) {
-    emit(s, events, "cannot_pay", seat, { amount, to: creditorSeat, reason });
+    emit(s, events, "cannot_pay", seat, { amount, to: creditorSeat, reason, ...meta });
     bankrupt(s, events, seat, creditorSeat);
     return;
   }
@@ -435,10 +435,12 @@ function charge(s, events, seat, amount, creditorSeat, reason) {
     debtorSeat: seat,
     creditorSeat,
     amount,
-    deadline: s.turnDeadline === null ? null : s.turnDeadline + 6e4
+    deadline: s.turnDeadline === null ? null : s.turnDeadline + 6e4,
+    reason,
+    meta
   };
   s.phase = "debt";
-  emit(s, events, "debt_opened", seat, { amount, to: creditorSeat, reason });
+  emit(s, events, "debt_opened", seat, { amount, to: creditorSeat, reason, ...meta });
 }
 function collectFromEach(s, events, seat, amount, reason) {
   for (const other of activePlayers(s)) {
@@ -477,7 +479,7 @@ function bankrupt(s, events, seat, creditorSeat) {
       s.deeds[pos].owner = creditorSeat;
       if (s.deeds[pos].mortgaged) {
         const fee = Math.round(deedAt(pos).mortgage * BOARD.meta.unmortgageInterest);
-        charge(s, events, creditorSeat, fee, null, "mortgage_transfer_fee");
+        charge(s, events, creditorSeat, fee, null, "mortgage_transfer_fee", { pos });
       }
     }
     player(s, creditorSeat).getOutCards += p.getOutCards;
@@ -583,7 +585,7 @@ function settle(s, events, now) {
   if (a.bidderSeat !== null && a.bid !== null) {
     s.deeds[a.pos].owner = a.bidderSeat;
     s.deeds[a.pos].mortgaged = false;
-    charge(s, events, a.bidderSeat, a.bid, null, "auction");
+    charge(s, events, a.bidderSeat, a.bid, null, "auction", { pos: a.pos });
     emit(s, events, "auction_won", a.bidderSeat, { pos: a.pos, amount: a.bid });
   } else {
     emit(s, events, "auction_unsold", null, { pos: a.pos });
@@ -749,14 +751,14 @@ function resolveLanding(s, events, seat, diceSum, forced) {
     const rent = rentFor(s, p.pos, diceSum, forced);
     if (rent > 0) {
       emit(s, events, "rent_due", seat, { pos: p.pos, amount: rent, to: d.owner });
-      charge(s, events, seat, rent, d.owner, "rent");
+      charge(s, events, seat, rent, d.owner, "rent", { pos: p.pos });
     }
     if (s.phase !== "debt" && s.phase !== "finished") s.phase = "awaiting_end";
     return;
   }
   switch (sq.type) {
     case "tax":
-      charge(s, events, seat, sq.amount, null, "tax");
+      charge(s, events, seat, sq.amount, null, "tax", { pos: p.pos });
       break;
     case "card":
       drawCard(s, events, seat, sq.deck);
@@ -818,7 +820,7 @@ function applyCard(s, events, seat) {
         if (d.hotel) total += Math.abs(Number(e.perHotel));
         else total += d.houses * Math.abs(Number(e.perHouse));
       }
-      if (total > 0) charge(s, events, seat, total, null, "card_repairs");
+      if (total > 0) charge(s, events, seat, total, null, "card_repairs", {});
       break;
     }
     case "keep_out_of_jail":
@@ -910,7 +912,7 @@ function settleDebtIfPossible(s, events) {
     events,
     "debt_settled",
     debt.debtorSeat,
-    { amount: debt.amount, to: debt.creditorSeat }
+    { amount: debt.amount, to: debt.creditorSeat, reason: debt.reason, ...debt.meta }
   );
   s.debt = null;
   resumeAfterDebt(s, events);
@@ -982,7 +984,8 @@ function executeTrade(s, events, offer) {
         offer.toSeat,
         Math.round(deedAt(pos).mortgage * fee),
         null,
-        "mortgage_transfer_fee"
+        "mortgage_transfer_fee",
+        { pos }
       );
     }
   }
@@ -995,7 +998,8 @@ function executeTrade(s, events, offer) {
         offer.fromSeat,
         Math.round(deedAt(pos).mortgage * fee),
         null,
-        "mortgage_transfer_fee"
+        "mortgage_transfer_fee",
+        { pos }
       );
     }
   }
@@ -1232,7 +1236,7 @@ function doRoll(s, events, ctx) {
     }
     emit(s, events, "jail_term_ended", seat, {});
     s.pendingMove = sum;
-    charge(s, events, seat, BOARD.meta.jailFine, null, "jail_fine");
+    charge(s, events, seat, BOARD.meta.jailFine, null, "jail_fine", { pos: JAIL_POS });
     if (phaseOf(s) === "debt" || phaseOf(s) === "finished") return;
     s.pendingMove = null;
     p.inJail = false;

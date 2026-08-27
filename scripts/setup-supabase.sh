@@ -3,19 +3,74 @@
 # מקים את כל צד השרת של טאבו בפרויקט Supabase חדש.
 #
 #   1. צרו פרויקט חינמי ב-supabase.com, אזור eu-central-1 (פרנקפורט)
-#   2. Settings → Database → Connection string → URI  (החליפו [YOUR-PASSWORD])
+#   2. Settings → Database → Connection string → URI, והחליפו את הסיסמה
 #   3. הריצו:
 #
-#        export PGURL='postgres://postgres:...@db.xxx.supabase.co:5432/postgres'
-#        export PROJECT_REF='xxxxxxxxxxxx'      # מתוך אותה כתובת
-#        scripts/setup-supabase.sh
+#        export PGURL='postgresql://postgres:הסיסמה@db.xxx.supabase.co:5432/postgres'
+#        npm run setup:supabase
+#
+#   PROJECT_REF נגזר מהכתובת אוטומטית.
 #
 # הסקריפט אידמפוטנטי — בטוח להריץ שוב.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-: "${PGURL:?חסר PGURL — כתובת החיבור לבסיס הנתונים}"
-: "${PROJECT_REF:?חסר PROJECT_REF — מזהה הפרויקט ב-Supabase}"
+# ── אימות קלט ────────────────────────────────────────────────────────────
+# בלי הבדיקות האלה, placeholder שנשאר במקומו מגיע עד כשל DNS עמום.
+
+die() { printf '\n\033[31m✗ %s\033[0m\n' "$1" >&2; shift; for l in "$@"; do printf '   %s\n' "$l" >&2; done; exit 1; }
+
+if [[ -z "${PGURL:-}" ]]; then
+  die "חסר PGURL — כתובת החיבור לבסיס הנתונים" \
+      "" \
+      "1. צרו פרויקט ב-supabase.com (אזור eu-central-1, פרנקפורט)" \
+      "2. Project Settings → Database → Connection string → URI" \
+      "3. החליפו [YOUR-PASSWORD] בסיסמה שבחרתם ביצירת הפרויקט" \
+      "" \
+      "   export PGURL='postgresql://postgres:הסיסמה@db.abcdefgh.supabase.co:5432/postgres'"
+fi
+
+if [[ "$PGURL" == *"["*"]"* ]]; then
+  die "PGURL עדיין מכיל placeholder בסוגריים מרובעים" \
+      "" \
+      "קיבלתי: $PGURL" \
+      "" \
+      "צריך להחליף את מה שבסוגריים בערכים האמיתיים מלוח הבקרה של Supabase." \
+      "[YOUR-PASSWORD] או [PASSWORD] = הסיסמה שבחרתם ביצירת הפרויקט." \
+      "[REF] = מזהה הפרויקט, המחרוזת באורך ~20 תווים בכתובת." \
+      "אם שכחתם את הסיסמה: Settings → Database → Reset database password."
+fi
+
+# מזהה הפרויקט נגזר מהכתובת, כדי שלא יהיה עוד משתנה להדביק.
+if [[ -z "${PROJECT_REF:-}" ]]; then
+  if [[ "$PGURL" =~ db\.([a-z0-9]+)\.supabase\.co ]]; then
+    PROJECT_REF="${BASH_REMATCH[1]}"
+  elif [[ "$PGURL" =~ postgres\.([a-z0-9]+)[:@] ]]; then
+    # מחרוזת מה-pooler: postgres.<ref>:<password>@aws-0-<region>.pooler...
+    # הסיסמה יושבת בין המזהה ל-@, ולכן צריך גם ":" ולא רק "@".
+    PROJECT_REF="${BASH_REMATCH[1]}"
+  else
+    die "לא הצלחתי לגזור את PROJECT_REF מ-PGURL" \
+        "" \
+        "הגדירו אותו ידנית:  export PROJECT_REF='abcdefgh...'"
+  fi
+  printf '   מזהה פרויקט: %s\n' "$PROJECT_REF"
+fi
+
+if ! command -v psql >/dev/null 2>&1; then
+  die "psql לא מותקן" "" "ב-macOS:  brew install libpq && brew link --force libpq"
+fi
+
+printf '\n→ בודק חיבור\n'
+if ! psql "$PGURL" -tAc 'select 1' >/dev/null 2>&1; then
+  die "אין חיבור לבסיס הנתונים" \
+      "" \
+      "בדקו:" \
+      "• הסיסמה נכונה (Settings → Database → Reset database password)" \
+      "• הפרויקט לא במצב Paused (פרויקט חינמי נכבה אחרי ~שבוע חוסר פעילות)" \
+      "• אם אין לכם IPv6, השתמשו במחרוזת ה-Session pooler במקום ב-Direct connection"
+fi
+printf '   מחובר\n'
 
 step() { printf '\n\033[1m→ %s\033[0m\n' "$1"; }
 
