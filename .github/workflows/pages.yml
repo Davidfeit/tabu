@@ -1,0 +1,57 @@
+name: פריסה ל-GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# נדרש כדי ש-deploy-pages יוכל לפרסם
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# פריסה אחת בכל רגע; לא מבטלים ריצה שכבר באוויר
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22          # supabase-js דורש WebSocket מובנה
+          cache: npm
+      - run: npm ci
+
+      - name: בנייה
+        env:
+          # Pages מגיש מתוך /<repo>/, ולכן כל הנכסים חייבים להיות יחסיים
+          # אליו. בלי זה העמוד נטען ריק בלי שום שגיאה גלויה.
+          VITE_BASE: /${{ github.event.repository.name }}/
+          # אם המשתנים לא הוגדרו, המשחק המקוון פשוט כבוי והמקומי עובד.
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: npm run build
+
+      # SPA על Pages: כל נתיב שאינו קובץ מקבל 404, ולכן 404.html זהה
+      # ל-index.html מחזיר את האפליקציה במקום שגיאה.
+      - run: cp dist/index.html dist/404.html
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

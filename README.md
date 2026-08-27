@@ -27,7 +27,19 @@ npm run db:test      # בדיקות SQL מול Postgres מקומי
 קריאות רשת חוץ מהפונטים, וכל המנוע רץ בדפדפן. `npm run build:single`
 אורז אותו לקובץ HTML יחיד שאפשר לפתוח ישר מהדיסק או לשלוח למישהו.
 
-**להעלאה לאוויר:** [`docs/deploy.md`](docs/deploy.md) — פרויקט Vercel
+## העלאה לאוויר
+
+שני מסלולים, ושניהם מוכנים בריפו:
+
+| | מה צריך | מתאים כש… |
+|---|---|---|
+| **Vercel** | יבוא הריפו → Deploy | הריפו פרטי |
+| **GitHub Pages** | Settings → Pages → Source: GitHub Actions | הריפו ציבורי (או מנוי בתשלום) |
+
+בשני המקרים המצלמה עובדת: שניהם מגישים ב-https, בעמוד עליון.
+`.github/workflows/pages.yml` כבר מטפל בנתיב הבסיס ובניתוב SPA.
+
+**פירוט מלא:** [`docs/deploy.md`](docs/deploy.md) — פרויקט Vercel
 עצמאי (Root Directory = `tabu`), ולוידאו בין אנשים
 `npm run setup:supabase` שמחיל סכימה, מריץ את הבדיקה החוסמת ופורס את
 ה-Edge Functions.

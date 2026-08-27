@@ -9,32 +9,36 @@
 
 ## חלק א' — האתר
 
-### אפשרות 1: פרויקט Vercel עצמאי (מומלץ)
+### אפשרות 1: Vercel
 
-המשחק נשאר מופרד לגמרי מפלטפורמת עינית, ומקבל כתובת משלו.
+עובד גם כשהריפו פרטי.
 
-1. [vercel.com/new](https://vercel.com/new) → יבוא של `Davidfeit/einit-platform`
-2. **Root Directory: `tabu`** ← זה הצעד היחיד שקל לפספס
-3. Framework מזוהה אוטומטית (Vite). `tabu/vercel.json` כבר מגדיר הכל,
-   כולל את כותרת `Permissions-Policy` שמתירה מצלמה.
-4. Deploy
+1. [vercel.com/new](https://vercel.com/new) → יבוא של `Davidfeit/tabu`
+2. Deploy
 
-זהו. הכתובת תהיה משהו כמו `https://tabu.vercel.app`.
+זה הכל. אין Root Directory להגדיר — שורש הריפו *הוא* המשחק. Vite מזוהה
+אוטומטית, ו-`vercel.json` כבר מגדיר את `Permissions-Policy` שמתירה
+מצלמה. הכתובת תהיה משהו כמו `https://tabu.vercel.app`.
 
-### אפשרות 2: תת-נתיב בפלטפורמה הקיימת
+### אפשרות 2: GitHub Pages
 
-בלי שום קליק בלוח הבקרה — המשחק נבנה יחד עם `web/` ומוגש מ-
-`https://einit-platform.vercel.app/tabu/`. דורש שינוי ב-`vercel.json`
-בשורש (ראה `docs/deploy-subpath.md`).
+חינם, ובלי חשבון נוסף — **אבל רק אם הריפו ציבורי** (או שיש מנוי בתשלום).
 
-חיסרון: המשחק חי על אותו דומיין כמו הכלים העסקיים.
+Settings → Pages → Source: **GitHub Actions**.
+
+`.github/workflows/pages.yml` כבר עושה את השאר: בונה עם
+`VITE_BASE=/tabu/`, מייצר `404.html` לניתוב SPA, ופורס. הכתובת תהיה
+`https://davidfeit.github.io/tabu/`.
+
+> נתיב הבסיס הוא הפרט שקל לפספס: Pages מגיש מתוך `/<repo>/`, ובלי
+> `VITE_BASE` הנכסים נטענים מהשורש והעמוד יוצא **ריק בלי שום שגיאה
+> גלויה**.
 
 ### מה *לא* עובד
 
-- **GitHub Pages** — הריפו פרטי, וזה דורש מנוי בתשלום.
 - **פתיחת הקובץ מהדיסק** (`file://`) — לא הקשר מאובטח, אין מצלמה.
 - **תצוגה מוטמעת במסגרת** — Permissions Policy חוסמת מצלמה.
-  האפליקציה מזהה זאת ואומרת זאת במפורש.
+  האפליקציה מזהה זאת ואומרת זאת במפורש, עם שורת אבחון.
 
 ---
 
