@@ -24,4 +24,10 @@ language sql stable as $$
 $$;
 
 grant usage on schema public to anon, authenticated, service_role;
+
+-- ON ALL TABLES חל רק על מה שקיים ברגע ההרצה, והקובץ הזה רץ *לפני*
+-- 001_schema.sql. על בסיס נתונים טרי הוא לא היה מעניק כלום, ובדיקות ה-RLS
+-- נפלו על "permission denied" — ורק הרצה שנייה עברה, כי אז הטבלאות כבר
+-- היו שם. הרשאות ברירת המחדל מכסות גם את מה שייווצר בהמשך.
+alter default privileges in schema public grant select on tables to anon, authenticated;
 grant select on all tables in schema public to anon, authenticated;

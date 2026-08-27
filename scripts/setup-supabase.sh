@@ -191,44 +191,78 @@ step() { printf '\n\033[1m→ %s\033[0m\n' "$1"; }
 step "מחיל סכימה"
 # 000_local_bootstrap.sql מדלגים עליו בכוונה: התפקידים ו-auth.uid()
 # כבר קיימים ב-Supabase, והרצתו שם תיצור כפילויות.
-for f in db/001_schema.sql db/002_commit_move.sql db/003_rls.sql; do
+for f in db/001_schema.sql db/002_commit_move.sql db/003_rls.sql \
+         db/004_realtime_partitions.sql; do
   echo "   $f"
   psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "$f"
 done
 
-step "בודק את ההנחה הנושאת: שידור בטרנזקציה שבוטלה"
-# כל הארכיטקטורה נשענת על כך ש-realtime.send אטומי עם הטרנזקציה, ותיעוד
-# Supabase לא אומר זאת במפורש. אם זה לא מתקיים, שידור יכול להצליח בזמן
-# שהמהלך נכשל, וכל הלקוחות ייתקעו על מצב שאינו קיים.
-psql "$PGURL" -v ON_ERROR_STOP=1 -q <<'SQL'
-do $$
-declare n_before bigint; n_after bigint;
-begin
-  if to_regclass('realtime.messages') is null then
-    raise notice 'אין realtime.messages — מדלג על הבדיקה';
-    return;
-  end if;
-  select count(*) into n_before from realtime.messages;
-  begin
-    perform public.tabu_broadcast('room:00000000-0000-0000-0000-000000000000',
-                                  'probe', '{"probe":true}'::jsonb);
-    raise exception 'rollback-probe';
-  exception when others then
-    if sqlerrm <> 'rollback-probe' then raise; end if;
-  end;
-  select count(*) into n_after from realtime.messages;
-  if n_after > n_before then
-    raise warning 'שידור שרד ביטול טרנזקציה — ראה docs/deploy.md §2';
-  else
-    raise notice 'הבדיקה עברה: שידור מבוטל יחד עם הטרנזקציה';
-  end if;
-end $$;
-SQL
+step "בודק שהשידור מה-DB אכן מגיע ליעד"
+# שתי הנחות נושאות, ואף אחת מהן לא מתועדת אצל Supabase:
+#
+#   א. realtime.send באמת מכניסה שורה. היא עוטפת את ההכנסה ב-EXCEPTION
+#      WHEN OTHERS ומחזירה WARNING, ולכן שידור אבוד לא מייצר שום שגיאה
+#      אצל הקורא — commit_move תצליח והלקוחות פשוט לא יעודכנו.
+#   ב. השידור אטומי עם הטרנזקציה. אם לא, שידור יכול לשרוד מהלך שנכשל,
+#      וכל הלקוחות ייתקעו על מצב שלא קיים.
+#
+# בקרה חיובית לפני בדיקת הביטול — בלעדיה "לא נוספה שורה" נראה כמו הצלחה.
+# -q חיוני: בלעדיו psql מדפיס גם את תגי הפקודות ("CREATE TABLE", "DO"),
+# והתוצאה מגיעה לכאן דבוקה אליהם.
+PROBE="$(psql "$PGURL" -q -v ON_ERROR_STOP=1 -tA -f db/probe_broadcast.sql \
+         | tail -n1 | tr -d '[:space:]')"
+
+case "$PROBE" in
+  ok)
+    printf '   השידור נשמר, ומתבטל יחד עם הטרנזקציה\n' ;;
+  no_realtime)
+    printf '   אין סכימת realtime — מדלג (סביבה מקומית)\n' ;;
+  not_stored)
+    cat >&2 <<'WARN'
+
+   ⚠ שידור מה-DB לא נשמר בכלל.
+
+   realtime.send בולעת שגיאות הכנסה ומחזירה WARNING, ולכן זה לא מייצר
+   שגיאה בשום מקום — המהלכים ייכתבו, והלקוחות פשוט לא יתעדכנו.
+   הסיבה כמעט תמיד: אין מחיצה ל-realtime.messages לתאריך הנוכחי.
+
+   db/004_realtime_partitions.sql מנסה ליצור אותן, ואם הוא לא הצליח
+   (אין בעלות על הטבלה) שירות ה-Realtime יוצר אותן בעצמו ברגע
+   שהלקוח הראשון מתחבר. הריצו את הסקריפט שוב אחרי החיבור הראשון —
+   אם השורה הזו חוזרת, פתחו תקלה מול Supabase.
+
+WARN
+    ;;
+  survived_rollback)
+    cat >&2 <<'WARN'
+
+   ⚠ שידור שרד ביטול טרנזקציה — ראו docs/deploy.md §2.
+   השידור אינו אטומי עם המהלך, ולקוח עלול לקבל מצב שלא התחייב.
+
+WARN
+    ;;
+  *)
+    printf '   תוצאה לא מזוהה מהבדיקה: %s\n' "$PROBE" >&2 ;;
+esac
 
 step "פורס Edge Functions"
+# הקיבוץ מריץ esbuild מ-node_modules. שכפול טרי של המאגר לא מתקין אותו,
+# והכשל שם ("Cannot find package 'esbuild'") לא מרמז על התלויות.
+if [[ ! -d node_modules/esbuild ]]; then
+  printf '   מתקין תלויות (npm install)\n'
+  npm install --no-audit --no-fund
+fi
 npm run build:engine
-npx --yes supabase@latest functions deploy play --project-ref "$PROJECT_REF"
-npx --yes supabase@latest functions deploy ice  --project-ref "$PROJECT_REF"
+
+# פריסה דורשת הזדהות מול Supabase, שהיא נפרדת לגמרי מהחיבור לבסיס הנתונים.
+# בלי הבדיקה הזו הסקריפט מגיע עד לכאן ונופל על JSON של LegacyPlatformAuthRequiredError.
+SUPA=(npx --yes supabase@latest)
+if [[ -z "${SUPABASE_ACCESS_TOKEN:-}" ]] && ! "${SUPA[@]}" projects list >/dev/null 2>&1; then
+  printf '   דרושה הזדהות מול Supabase — נפתח דפדפן\n'
+  "${SUPA[@]}" login
+fi
+"${SUPA[@]}" functions deploy play --project-ref "$PROJECT_REF"
+"${SUPA[@]}" functions deploy ice  --project-ref "$PROJECT_REF"
 
 step "נותר לכם ידנית (פעם אחת, בלוח הבקרה של Supabase)"
 cat <<'MANUAL'

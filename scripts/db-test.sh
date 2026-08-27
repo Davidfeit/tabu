@@ -20,6 +20,7 @@ echo "→ מחיל סכימה"
 "${PSQL[@]}" -f db/001_schema.sql
 "${PSQL[@]}" -f db/002_commit_move.sql
 "${PSQL[@]}" -f db/003_rls.sql
+"${PSQL[@]}" -f db/004_realtime_partitions.sql
 
 echo "→ בדיקות שכבת ההתחייבות"
 "${PSQL[@]}" -f db/test/commit_move.sql
