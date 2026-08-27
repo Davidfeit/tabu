@@ -59,7 +59,15 @@ export async function signIn(): Promise<string> {
   const { data: existing } = await sb.auth.getSession();
   if (existing.session) return existing.session.user.id;
   const { data, error } = await sb.auth.signInAnonymously();
-  if (error || !data.user) throw new Error("ההתחברות נכשלה");
+  if (error || !data.user) {
+    // הסיבה השכיחה היא מתג שלא הופעל בלוח הבקרה, וההודעה של Supabase אומרת
+    // זאת במפורש. "ההתחברות נכשלה" לבדה הסתירה בדיוק את מה שצריך לתקן.
+    const raw = error?.message ?? "לא התקבל משתמש";
+    if (/anonymous.*disabled|anonymous_provider_disabled/i.test(raw)) {
+      throw new Error("AUTH_ANON_DISABLED");
+    }
+    throw new Error(`AUTH_FAILED: ${raw}`);
+  }
   return data.user.id;
 }
 
@@ -68,8 +76,17 @@ async function call<T>(op: string, body: Record<string, unknown> = {}): Promise<
   const { data, error } = await sb.functions.invoke("play", { body: { op, ...body } });
   if (error) {
     // FunctionsHttpError עוטף את גוף התשובה; הקוד המכונתי חשוב יותר מהסטטוס.
-    const detail = await (error as { context?: Response }).context?.json?.().catch(() => null);
-    throw new Error(detail?.error ?? "NETWORK");
+    const ctx = (error as { context?: Response }).context;
+    const detail = await ctx?.json?.().catch(() => null);
+    if (detail?.error) throw new Error(detail.error);
+
+    // בלי גוף תשובה אין מה לפענח, ואז הסטטוס הוא כל מה שיש. הבחנה חשובה:
+    // כשל רשת/CORS מגיע בלי סטטוס בכלל — וזה בדיוק מה שקורה כשחסר
+    // ALLOWED_ORIGIN בסודות של ה-Edge Function, כי הדפדפן חוסם את התשובה.
+    if (typeof ctx?.status === "number") {
+      throw new Error(`HTTP_${ctx.status}: ${error.message}`);
+    }
+    throw new Error(`NETWORK: ${error.message}`);
   }
   if (data && data.ok === false) throw new Error(data.error ?? "UNKNOWN");
   return data as T;

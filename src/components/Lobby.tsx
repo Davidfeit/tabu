@@ -19,8 +19,32 @@ const JOIN_ERRORS: Record<string, string> = {
   NO_ROOM: "לא נמצא חדר עם הקוד הזה",
   ROOM_FULL: "החדר מלא",
   ALREADY_STARTED: "המשחק בחדר הזה כבר התחיל",
-  NETWORK: "אין חיבור לשרת",
+  AUTH_ANON_DISABLED:
+    "התחברות אנונימית כבויה בפרויקט Supabase. " +
+    "הפעילו אותה ב-Authentication → Providers → Anonymous sign-ins.",
 };
+
+/**
+ * מה להציג לשגיאה שאין לה תרגום מוכן.
+ *
+ * "משהו השתבש" הוא מבוי סתום: הוא נכון תמיד ולכן לא עוזר אף פעם. שתי
+ * התקלות שקורות בהתקנה חדשה — מתג התחברות אנונימית ו-ALLOWED_ORIGIN חסר —
+ * שתיהן נראות זהות מבחוץ, ולכן הקוד הגולמי מוצג מתחת להודעה.
+ */
+export function explain(raw: string): { text: string; hint?: string; raw?: string } {
+  if (JOIN_ERRORS[raw]) return { text: JOIN_ERRORS[raw]! };
+  if (raw.startsWith("NETWORK")) {
+    return {
+      text: "השרת לא ענה.",
+      hint: "אם זו התקנה חדשה: חסר ALLOWED_ORIGIN בסודות של ה-Edge Functions " +
+            "ב-Supabase, וצריך שיהיה בו בדיוק כתובת האתר הזה.",
+      raw,
+    };
+  }
+  if (raw.startsWith("AUTH_FAILED")) return { text: "ההתחברות נכשלה.", raw };
+  if (raw.startsWith("HTTP_")) return { text: "השרת החזיר שגיאה.", raw };
+  return { text: "משהו השתבש. נסו שוב.", raw };
+}
 
 export function Lobby({ onJoined, onBack }: {
   onJoined: (room: JoinedRoom) => void;
@@ -30,7 +54,7 @@ export function Lobby({ onJoined, onBack }: {
   const [tokenIdx, setTokenIdx] = useState(0);
   const [code, setCode] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState<ReturnType<typeof explain> | null>(null);
 
   const token = TOKENS[tokenIdx]!.key;
   const ready = name.trim().length > 0;
@@ -39,8 +63,7 @@ export function Lobby({ onJoined, onBack }: {
     setBusy(true); setError(null);
     try { onJoined(await fn()); }
     catch (e) {
-      const key = (e as Error).message;
-      setError(JOIN_ERRORS[key] ?? "משהו השתבש. נסו שוב.");
+      setError(explain((e as Error).message));
     }
     finally { setBusy(false); }
   }
@@ -114,8 +137,16 @@ export function Lobby({ onJoined, onBack }: {
       </section>
 
       {error && (
-        <p role="alert" className="rounded-md bg-red-500/15 px-3 py-2 text-center
-                                   text-[0.8rem] text-red-200">{error}</p>
+        <div role="alert" className="space-y-1.5 rounded-md bg-red-500/15 px-3 py-2
+                                     text-center text-[0.8rem] text-red-200">
+          <p>{error.text}</p>
+          {error.hint && <p className="text-red-200/70">{error.hint}</p>}
+          {error.raw && (
+            <p dir="ltr" className="font-mono text-[0.68rem] text-red-200/45">
+              {error.raw}
+            </p>
+          )}
+        </div>
       )}
 
       <div className="text-center">
