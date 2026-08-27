@@ -13,6 +13,7 @@
     "db:test": "scripts/db-test.sh",
     "build:single": "npm run build && node scripts/build-single-file.mjs",
     "setup:supabase": "scripts/setup-supabase.sh",
+    "fix:realtime": "scripts/wake-realtime.sh",
     "fix:realtime-partitions": "scripts/realtime-partitions-fallback.sh"
   },
   "dependencies": {
