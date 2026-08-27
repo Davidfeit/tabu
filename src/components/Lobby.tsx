@@ -43,6 +43,12 @@ export function explain(raw: string): { text: string; hint?: string; raw?: strin
   }
   if (raw.startsWith("AUTH_FAILED")) return { text: "ההתחברות נכשלה.", raw };
   if (raw.startsWith("HTTP_")) return { text: "השרת החזיר שגיאה.", raw };
+  if (raw === "SERVER_ERROR" || raw.startsWith("SERVER_ERROR")) {
+    return { text: "שגיאה בשרת. הפרטים ביומן ה-Edge Functions ב-Supabase.", raw };
+  }
+  if (raw === "ROOM_CREATE_FAILED") {
+    return { text: "יצירת החדר נכשלה בבסיס הנתונים.", raw };
+  }
   return { text: "משהו השתבש. נסו שוב.", raw };
 }
 

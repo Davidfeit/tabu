@@ -176,7 +176,21 @@ async function play(userId: string, roomId: string, body: Record<string, unknown
 
 // ── ניתוב ────────────────────────────────────────────────────────────────
 
+// שגיאה שלא נתפסת מוחזרת על ידי סביבת הריצה, בלי כותרות ה-CORS שלנו —
+// ואז הדפדפן חוסם את התשובה, ו-supabase-js מדווח "Failed to send a request".
+// כלומר כל תקלה בשרת נראית ללקוח כמו נפילת רשת. העטיפה הזו מחזירה שגיאה
+// אמיתית עם הכותרות, כדי שיהיה מה לקרוא.
 Deno.serve(async (req) => {
+  try {
+    return await handle(req);
+  } catch (e) {
+    console.error("unhandled", e);
+    const detail = e instanceof Error ? e.message : String(e);
+    return json({ ok: false, error: "SERVER_ERROR", detail }, 500);
+  }
+});
+
+async function handle(req: Request): Promise<Response> {
   if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
   if (req.method !== "POST") return json({ ok: false, error: "METHOD" }, 405);
 
@@ -197,4 +211,4 @@ Deno.serve(async (req) => {
     case "play":   return play(userId, roomId, body);
     default:       return json({ ok: false, error: "UNKNOWN_OP" }, 400);
   }
-});
+}
