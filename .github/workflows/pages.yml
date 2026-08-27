@@ -1,8 +1,10 @@
 name: פריסה ל-GitHub Pages
 
+# ידני בלבד. Pages לא מופעל בריפו פרטי, ולכן configure-pages נכשל בכל
+# דחיפה ומייצר התראה על כל commit. האתר מתארח ב-Vercel; זה נשאר כאן
+# למקרה שהריפו יהפוך לציבורי — ואז מפעילים Settings → Pages → GitHub
+# Actions, ומחזירים את הטריגר על push.
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 # נדרש כדי ש-deploy-pages יוכל לפרסם

@@ -6,7 +6,11 @@ on:
   pull_request:
 
 jobs:
-  דפדפן:
+  # מזהה ה-job חייב להיות ASCII — GitHub דורש [A-Za-z0-9_-].
+  # מזהה בעברית מכשיל את הריצה בשנייה אפס, לפני שנוצר ולו job אחד,
+  # ולכן זה נראה כמו כשל אמיתי אבל שום בדיקה לא רצה.
+  browser:
+    name: דפדפן
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,7 +28,8 @@ jobs:
       - run: npm run test
       - run: npm run build
 
-  בסיס-נתונים:
+  database:
+    name: בסיס נתונים
     runs-on: ubuntu-latest
     services:
       postgres:
