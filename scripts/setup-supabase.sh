@@ -7,7 +7,8 @@
 #      (ולא Direct connection: למארח הישיר יש רשומת IPv6 בלבד, ולרוב הרשתות
 #       הביתיות בישראל אין IPv6. גם לא Transaction pooler בפורט 6543 — מצב
 #       transaction שובר DDL.) החליפו את הסיסמה בכתובת.
-#   3. הריצו:
+#   3. הריצו  npm run setup:supabase  — הסקריפט יבקש את המחרוזת ויקרא אותה
+#      בלי להציג אותה. אפשר גם להגדיר מראש, למשל ב-CI:
 #
 #        export PGURL='postgresql://postgres.xxx:הסיסמה@aws-0-eu-central-1.pooler.supabase.com:5432/postgres'
 #        npm run setup:supabase
@@ -22,6 +23,35 @@ cd "$(dirname "$0")/.."
 # בלי הבדיקות האלה, placeholder שנשאר במקומו מגיע עד כשל DNS עמום.
 
 die() { printf '\n\033[31m✗ %s\033[0m\n' "$1" >&2; shift; for l in "$@"; do printf '   %s\n' "$l" >&2; done; exit 1; }
+
+# אם לא הוגדר PGURL ויש טרמינל, פשוט מבקשים אותו. הדבקה של מחרוזת ארוכה
+# לשורת הפקודה נשברת לשורות ומתפרשת כפקודה; קריאה כאן חסינה לשתי התקלות.
+if [[ -z "${PGURL:-}" && -t 0 ]]; then
+  cat <<'ASK'
+
+   דרוש חיבור לבסיס הנתונים של Supabase.
+
+   Project Settings → Database → Connection string → לשונית Session pooler
+   (לא Direct connection — למארח שלו יש רשומת IPv6 בלבד)
+
+   החליפו [YOUR-PASSWORD] בסיסמה, והדביקו כאן את המחרוזת המלאה.
+   היא לא תוצג על המסך.
+
+ASK
+  printf '   מחרוזת חיבור: '
+  IFS= read -rs PGURL || true
+  printf '\n'
+fi
+
+# מנקים את מה שהודבק: רווחים ושורות שנשברו באמצע ההדבקה, גרשיים עוטפים,
+# ו-"export PGURL=" שהועתק יחד עם הערך. בכתובת תקינה אין רווחים בכלל.
+if [[ -n "${PGURL:-}" ]]; then
+  PGURL="$(printf '%s' "$PGURL" | tr -d '[:space:]')"
+  PGURL="${PGURL#export}"
+  PGURL="${PGURL#PGURL=}"
+  PGURL="${PGURL#\'}"; PGURL="${PGURL%\'}"
+  PGURL="${PGURL#\"}"; PGURL="${PGURL%\"}"
+fi
 
 if [[ -z "${PGURL:-}" ]]; then
   die "חסר PGURL — כתובת החיבור לבסיס הנתונים" \
@@ -134,11 +164,16 @@ if ! PG_ERR="$(psql "$PGURL" -tAc 'select 1' 2>&1 >/dev/null)"; then
     *"could not translate host name"*|*"Name or service not known"*|*"nodename nor servname"*)
       hint=("שם המארח לא נפתר — ודאו שהכתובת הועתקה במלואה ושהפרויקט עדיין קיים.") ;;
     *"Network is unreachable"*|*"No route to host"*|*"timeout expired"*|*"Connection timed out"*|*"Operation timed out"*)
-      hint=("הכתובת נפתרה אבל אין מסלול אליה."
-            "זה בדיוק התסמין של מארח IPv6-only מרשת בלי IPv6 — או של פורט $PG_PORT חסום."
-            ""
-            "פתרון: Settings → Database → Connection string → לשונית Session pooler"
-            "   postgresql://postgres.$PROJECT_REF:הסיסמה@aws-0-<אזור>.pooler.supabase.com:5432/postgres") ;;
+      if [[ "$PG_HOST" == *pooler.supabase.com ]]; then
+        # ל-pooler יש IPv4, ולכן חוסר מסלול אליו הוא כבר לא שאלה של IPv6.
+        hint=("הכתובת נפתרה אבל החיבור לא נענה."
+              "למארח ה-pooler יש IPv4, ולכן זו כנראה חסימה של פורט $PG_PORT היוצא"
+              "ברשת שלכם — נפוץ ברשתות משרדיות וב-VPN. נסו מרשת אחרת, למשל"
+              "שיתוף אינטרנט מהטלפון. ובדקו שהפרויקט לא במצב Paused.")
+      else
+        hint=("הכתובת נפתרה אבל אין מסלול אליה."
+              "זה בדיוק התסמין של מארח IPv6-only מרשת בלי IPv6 — או של פורט $PG_PORT חסום.")
+      fi ;;
     *"Connection refused"*)
       hint=("השרת דחה את החיבור בפורט $PG_PORT."
             "אם זו מחרוזת Direct connection — נסו את ה-Session pooler.") ;;
