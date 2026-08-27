@@ -56,13 +56,23 @@ Settings → Pages → Source: **GitHub Actions**.
 
 ```bash
 cd tabu
-export PGURL='postgres://postgres:[PASSWORD]@db.[REF].supabase.co:5432/postgres'
-export PROJECT_REF='[REF]'
 npm run setup:supabase
 ```
 
+הסקריפט שואל בעצמו את מה שהוא צריך. אין מה לייצא מראש.
+
+**מחרוזת החיבור:** Settings → Database → Connection string → לשונית
+**Session pooler**. לא Direct connection — למארח שלו יש רשומת IPv6 בלבד,
+ולרוב הרשתות הביתיות בישראל אין IPv6, אז הוא ייתקע בטיים-אאוט שקט. גם לא
+Transaction pooler בפורט 6543, שמצב ה-transaction שלו שובר DDL.
+
+**אסימון גישה:** רק אם החשבון שמחובר ל-CLI אינו בעל הפרויקט. התחברות
+מחדש בדפדפן לרוב תחזיר את אותו חשבון, ולכן הסקריפט מבקש אסימון אישי
+מ-[Account → Access Tokens](https://supabase.com/dashboard/account/tokens)
+ומוודא מיד שהוא באמת פותח את הפרויקט.
+
 הסקריפט מחיל את הסכימה, מריץ את **הבדיקה החוסמת** (ראה למטה), ופורס את
-שתי ה-Edge Functions.
+שתי ה-Edge Functions. הוא אידמפוטנטי — בטוח להריץ שוב.
 
 ### 3. ארבעה מתגים בלוח הבקרה
 
@@ -83,6 +93,26 @@ VITE_SUPABASE_ANON_KEY = eyJhbGciOi...
 ב-Vercel: Settings → Environment Variables, ואז Redeploy.
 
 מרגע זה כפתור "משחק אונליין עם וידאו" נדלק.
+
+### 5. אם השידורים לא מגיעים
+
+`npm run setup:supabase` מדפיס **"שידור מה-DB לא נשמר בכלל"** אם זה קורה,
+ולא צריך לנחש: `realtime.send` עוטפת את ההכנסה ב-`EXCEPTION WHEN OTHERS`
+ומחזירה `WARNING` בלבד, כך ששידור אבוד אינו מייצר שגיאה בשום מקום.
+המהלכים נכתבים, המצב נשמר, ואף לקוח לא מתעדכן.
+
+הסיבה היא `realtime.messages` בלי מחיצה לתאריך הנוכחי. שירות ה-Realtime
+יוצר אותן בעצמו, אבל הוא לא רץ לפרויקט שאיש מעולם לא התחבר אליו:
+
+```bash
+npm run fix:realtime
+```
+
+מחבר לקוח אחד, ואז מריץ שוב את הבדיקה ואומר אם זה הספיק. בדרך כלל כן.
+
+רק אם לא — `npm run fix:realtime-partitions` מצרף מחיצות ידנית. זו
+**עקיפה**: היא עלולה להתנגש בתחזוקה של Supabase, וההסבר והביטול נמצאים
+ב-`db/005_attach_partitions_fallback.sql`.
 
 ---
 
