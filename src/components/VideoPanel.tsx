@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { MediaErrorKind } from "@/net/media";
+import { diagnosisLine, type MediaErrorKind } from "@/net/media";
 import type { PeerState } from "@/net/mesh";
 import { BroadcastTransport, type SignalTransport } from "@/net/transport";
 import { useGame } from "@/ui/GameContext";
@@ -11,7 +11,9 @@ const MEDIA_ERRORS: Record<MediaErrorKind, string> = {
   denied: "הגישה למצלמה נדחתה. אפשר לשנות זאת בהגדרות האתר בדפדפן.",
   no_device: "לא נמצאה מצלמה מחוברת.",
   in_use: "המצלמה תפוסה בידי תוכנה אחרת — נסו לסגור זום או טימס.",
-  unsupported: "הדפדפן הזה לא תומך בשיחת וידאו. נסו כרום, ספארי או פיירפוקס.",
+  // המקרה הנפוץ באמת: העמוד מוצג בתוך מסגרת שאינה מתירה מצלמה.
+  blocked_embed: "העמוד מוצג בתוך מסגרת שחוסמת גישה למצלמה — זו הגבלה של "
+    + "המסגרת, לא של הדפדפן. פתחו את המשחק בחלון נפרד, או הריצו אותו מקומית.",
   constraints: "המצלמה לא תומכת בהגדרות הנדרשות.",
   unknown: "לא הצלחנו להפעיל את המצלמה.",
 };
@@ -75,6 +77,39 @@ function Tile({ label, color, stream, mirrored, active, hint }: {
  *
  * במשחק מקוון התעבורה מוחלפת ב-Supabase Realtime, וכל שחקן מקבל משבצת.
  */
+/**
+ * מוצא מהמסגרת.
+ *
+ * מסגרת מבודדת חוסמת גם window.open, ולכן הכפתור לבדו אינו מספיק: אם
+ * הוא נחסם, מציגים את הכתובת להעתקה במקום להשאיר לחיצה שלא עשתה כלום.
+ */
+function EscapeFrame() {
+  const [blocked, setBlocked] = useState(false);
+  const url = typeof location === "undefined" ? "" : location.href;
+
+  if (blocked) {
+    return (
+      <div className="space-y-1">
+        <p className="text-[0.6rem] text-parchment/50">פתחו את הכתובת בחלון חדש:</p>
+        <input readOnly value={url} onFocus={(e) => e.currentTarget.select()}
+               aria-label="כתובת המשחק"
+               dir="ltr"
+               className="w-full rounded bg-black/50 px-2 py-1 text-center text-[0.6rem]
+                          text-parchment/80 ring-1 ring-white/10" />
+      </div>
+    );
+  }
+  return (
+    <Button className="!px-2 !py-0.5 !text-[0.66rem]"
+            onClick={() => {
+              const w = window.open(url, "_blank", "noopener");
+              if (!w) setBlocked(true);
+            }}>
+      פתיחה בחלון נפרד
+    </Button>
+  );
+}
+
 export function LocalVideo() {
   const { state } = useGame();
   const [on, setOn] = useState(false);
@@ -140,10 +175,19 @@ export function LocalVideo() {
       </div>
 
       {mesh.error && (
-        <p role="alert" className="max-w-[22rem] text-center text-[0.64rem]
-                                   leading-snug text-amber-200/85">
-          {MEDIA_ERRORS[mesh.error]}
-        </p>
+        <div role="alert" className="max-w-[24rem] space-y-1.5 text-center">
+          <p className="text-[0.66rem] leading-snug text-amber-200/85">
+            {MEDIA_ERRORS[mesh.error]}
+          </p>
+          {mesh.diagnosis?.embedded && <EscapeFrame />}
+          {mesh.diagnosis && (
+            // שורת האבחון מוצגת בכוונה: ההודעה הקודמת האשימה את הדפדפן
+            // בלי בסיס, וזה מה שנמדד בפועל.
+            <p className="text-[0.55rem] text-parchment/25" dir="rtl">
+              {diagnosisLine(mesh.diagnosis)}
+            </p>
+          )}
+        </div>
       )}
       {!mesh.error && mesh.peers.length === 0 && (
         <p className="text-[0.6rem] text-parchment/25">

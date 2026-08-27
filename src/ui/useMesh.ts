@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  acquireLocalStream, classifyMediaError, mediaSupported, releaseLocalStream,
-  type MediaErrorKind,
+  acquireLocalStream, classifyMediaError, diagnoseMedia, releaseLocalStream,
+  type MediaDiagnosis, type MediaErrorKind,
 } from "@/net/media";
 import { PeerMesh, type PeerState } from "@/net/mesh";
 import type { SignalTransport } from "@/net/transport";
@@ -10,6 +10,8 @@ export interface MeshStatus {
   local: MediaStream | null;
   peers: PeerState[];
   error: MediaErrorKind | null;
+  /** מה נמדד בפועל כשאי אפשר להפעיל מצלמה. */
+  diagnosis: MediaDiagnosis | null;
   ready: boolean;
 }
 
@@ -32,11 +34,19 @@ export function useMesh(
   const [peers, setPeers] = useState<PeerState[]>([]);
   const [discovered, setDiscovered] = useState<string[]>([]);
   const [error, setError] = useState<MediaErrorKind | null>(null);
+  const [diagnosis, setDiagnosis] = useState<MediaDiagnosis | null>(null);
   const mesh = useRef<PeerMesh | null>(null);
 
   useEffect(() => {
     if (!transport) return;
-    if (!mediaSupported()) { setError("unsupported"); return; }
+    // אבחון לפני הניסיון: אם הסביבה חוסמת, עדיף לומר *מה* חוסם מאשר
+    // לבקש הרשאה שתיכשל בלי הסבר.
+    const d = diagnoseMedia();
+    setDiagnosis(d);
+    if (d.block !== "ok") {
+      setError(d.block === "embedded" ? "blocked_embed" : "unknown");
+      return;
+    }
 
     let cancelled = false;
     let unsubscribe: (() => void) | undefined;
@@ -47,7 +57,7 @@ export function useMesh(
       try {
         stream = await acquireLocalStream();
       } catch (e) {
-        if (!cancelled) setError(classifyMediaError(e));
+        if (!cancelled) { setError(classifyMediaError(e)); setDiagnosis(diagnoseMedia()); }
         return;
       }
       if (cancelled) return;
@@ -87,5 +97,5 @@ export function useMesh(
 
   useEffect(() => () => { releaseLocalStream(); }, []);
 
-  return { local, peers, error, ready: local !== null };
+  return { local, peers, error, diagnosis, ready: local !== null };
 }

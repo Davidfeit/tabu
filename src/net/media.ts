@@ -28,30 +28,86 @@ export const CAPTURE: MediaStreamConstraints = {
 export const MAX_BITRATE = 150_000;
 
 export type MediaErrorKind =
-  | "denied" | "no_device" | "in_use" | "unsupported" | "constraints" | "unknown";
+  | "denied" | "no_device" | "in_use" | "constraints" | "unknown"
+  /** נחסם ע"י מדיניות הרשאות — עמוד מוטמע במסגרת בלי allow="camera". */
+  | "blocked_embed";
 
 /** קודי שגיאה מכונתיים. הנוסח העברי חי ב-UI, כמו בכל השאר. */
 export function classifyMediaError(err: unknown): MediaErrorKind {
   const name = (err as { name?: string })?.name ?? "";
   switch (name) {
-    case "NotAllowedError": case "SecurityError": return "denied";
+    case "NotAllowedError": return "denied";
+    // ב-iframe עם מקור אטום, getUserMedia זורק SecurityError ולא
+    // NotAllowedError — זו חסימת מדיניות, לא סירוב של המשתמש.
+    case "SecurityError": return "blocked_embed";
     case "NotFoundError": case "DevicesNotFoundError": return "no_device";
     // נפוץ מאוד בווינדוס: זום או טימס מחזיקים את המצלמה.
     case "NotReadableError": case "TrackStartError": return "in_use";
     case "OverconstrainedError": case "ConstraintNotSatisfiedError": return "constraints";
-    case "TypeError": return "unsupported";
     default: return "unknown";
   }
 }
 
+export type MediaBlock = "ok" | "no_webrtc" | "insecure" | "embedded" | "no_api";
+
+export interface MediaDiagnosis {
+  block: MediaBlock;
+  embedded: boolean;
+  secure: boolean;
+  /** תוצאת Permissions Policy, או null אם הדפדפן לא חושף אותה. */
+  policy: boolean | null;
+  hasApi: boolean;
+  hasRtc: boolean;
+}
+
 /**
- * דפדפן שמסוגל בכלל ל-WebRTC.
- * getUserMedia זמין רק בהקשר מאובטח (https או localhost).
+ * למה אי אפשר להפעיל מצלמה — בדיוק.
+ *
+ * ── למה לא סתם "הדפדפן לא נתמך" ──
+ * זו הייתה ההודעה הקודמת, והיא הופיעה בכרום עדכני. היא גם האשימה את
+ * הגורם הלא נכון וגם לא הובילה לשום פעולה. הסיבה האמיתית הייתה שהעמוד
+ * רץ בתוך מסגרת עם מקור אטום: שם navigator.mediaDevices דווקא קיים
+ * וההקשר מאובטח, אבל Permissions Policy חוסם, ו-getUserMedia זורק
+ * SecurityError.
  */
+export function diagnoseMedia(): MediaDiagnosis {
+  const hasRtc = typeof RTCPeerConnection !== "undefined";
+  const hasApi = typeof navigator !== "undefined"
+    && !!navigator.mediaDevices?.getUserMedia;
+  const secure = typeof window === "undefined" ? false : window.isSecureContext !== false;
+  const embedded = typeof window !== "undefined" && window.self !== window.top;
+
+  let policy: boolean | null = null;
+  try {
+    const fp = (document as unknown as {
+      featurePolicy?: { allowsFeature: (f: string) => boolean };
+    }).featurePolicy;
+    policy = fp ? fp.allowsFeature("camera") : null;
+  } catch { policy = null; }
+
+  const block: MediaBlock =
+    !hasRtc ? "no_webrtc"
+    : !secure ? "insecure"
+    : policy === false ? "embedded"
+    : !hasApi ? "no_api"
+    : "ok";
+
+  return { block, embedded, secure, policy, hasApi, hasRtc };
+}
+
+/** שורת אבחון קצרה, לתמיכה. אומרת מה באמת נמדד ולא מה שוער. */
+export function diagnosisLine(d: MediaDiagnosis): string {
+  return [
+    `secure=${d.secure ? "כן" : "לא"}`,
+    `מוטמע=${d.embedded ? "כן" : "לא"}`,
+    `מדיניות=${d.policy === null ? "לא ידוע" : d.policy ? "מותר" : "חסום"}`,
+    `API=${d.hasApi ? "יש" : "אין"}`,
+    `WebRTC=${d.hasRtc ? "יש" : "אין"}`,
+  ].join(" · ");
+}
+
 export function mediaSupported(): boolean {
-  return typeof navigator !== "undefined"
-    && !!navigator.mediaDevices?.getUserMedia
-    && typeof RTCPeerConnection !== "undefined";
+  return diagnoseMedia().block === "ok";
 }
 
 let held: MediaStream | null = null;
