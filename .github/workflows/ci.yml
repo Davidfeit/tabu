@@ -1,0 +1,46 @@
+name: בדיקות
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  דפדפן:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22          # supabase-js דורש WebSocket מובנה
+          cache: npm
+      - run: npm ci
+      - run: npm run build:engine
+      # החבילה חייבת להיות מסונכרנת עם המקור: אחרת הדפדפן יעבוד
+      # והשרת יקרוס, וזה יתגלה רק בפרודקשן.
+      - name: חבילת המנוע מסונכרנת
+        run: git diff --exit-code supabase/functions/_shared/engine.js
+      - run: npm run typecheck
+      - run: npm run test
+      - run: npm run build
+
+  בסיס-נתונים:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready --health-interval 10s
+          --health-timeout 5s --health-retries 5
+        ports: ['5432:5432']
+    steps:
+      - uses: actions/checkout@v4
+      - name: בדיקות SQL — מרוץ, אידמפוטנטיות ו-RLS
+        env:
+          PGHOST: localhost
+          PGPORT: '5432'
+          PGUSER: postgres
+          PGPASSWORD: postgres
+        run: ./scripts/db-test.sh
