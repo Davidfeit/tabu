@@ -24,18 +24,16 @@ export type SignalMessage =
 export const signalTopic = (playerId: string): string => `sig:${playerId}`;
 
 /**
- * מי "מנומס" בזוג — צד אחד חייב לוותר כששני הצדדים מציעים בו-זמנית (glare).
- * ב-15 חיבורים במקביל זה קורה, ולכן הכרעה דטרמיניסטית ולא הגרלה: השוואת
- * מזהים נותנת לשני הצדדים את אותה תשובה בלי סיבוב תקשורת נוסף.
+ * מי "מנומס" בזוג.
+ *
+ * ב-perfect negotiation אין "יוזם": שני הצדדים מציעים ברגע שנוספים
+ * מסלולים, וההתנגשות (glare) היא ודאות ולא תקלה נדירה. הצד המנומס נסוג,
+ * הלא-מנומס מתעלם. ההכרעה דטרמיניסטית ולא מוגרלת — השוואת מזהים נותנת
+ * לשני הצדדים את אותה תשובה בלי סיבוב תקשורת נוסף.
  */
 export function isPolite(myId: string, peerId: string): boolean {
   if (myId === peerId) throw new Error("אי אפשר להתחבר לעצמך");
   return myId < peerId;
-}
-
-/** מי יוזם את ההצעה בזוג — הצד הלא-מנומס, כדי שלא שניהם ייזמו. */
-export function isInitiator(myId: string, peerId: string): boolean {
-  return !isPolite(myId, peerId);
 }
 
 /**

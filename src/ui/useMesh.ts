@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { acquireLocalStream, classifyMediaError, mediaSupported,
-         releaseLocalStream, type MediaErrorKind } from "@/net/media";
+import {
+  acquireLocalStream, classifyMediaError, mediaSupported, releaseLocalStream,
+  type MediaErrorKind,
+} from "@/net/media";
 import { PeerMesh, type PeerState } from "@/net/mesh";
-import { signalTopic, type SignalMessage } from "@/net/signaling";
-import { iceServers, supabase } from "@/net/supabase";
+import type { SignalTransport } from "@/net/transport";
 
 export interface MeshStatus {
   local: MediaStream | null;
@@ -13,25 +14,33 @@ export interface MeshStatus {
 }
 
 /**
- * מרים את רשת הווידאו לחדר.
+ * מרים את רשת הווידאו.
  *
- * הסיגנלינג עובר בערוץ פרטי *לכל שחקן* ולא בשידור לחדר: הודעה לעמית אחד
- * עולה מסירה אחת במקום חמש, וזה ההבדל בין ~1,050 משחקים בחודש בשכבה
- * החינמית לבין ~26,000. ראה src/net/signaling.ts.
+ * לא יודע דרך מה הסיגנלינג עובר: `transport` מספק אותו. אותו קוד רץ מול
+ * Supabase Realtime בפרודקשן ומול BroadcastChannel בין כרטיסיות בפיתוח,
+ * וכך אפשר לראות שהחיבור עובד בלי להעמיד תשתית.
+ *
+ * `peerIds` הוא null כשרשימת העמיתים מגיעה מהתעבורה עצמה (presence),
+ * ומערך כשהיא מגיעה ממצב המשחק.
  */
-export function useMesh(selfId: string, peerIds: string[], enabled: boolean): MeshStatus {
+export function useMesh(
+  selfId: string,
+  peerIds: string[] | null,
+  transport: SignalTransport | null,
+): MeshStatus {
   const [local, setLocal] = useState<MediaStream | null>(null);
   const [peers, setPeers] = useState<PeerState[]>([]);
+  const [discovered, setDiscovered] = useState<string[]>([]);
   const [error, setError] = useState<MediaErrorKind | null>(null);
   const mesh = useRef<PeerMesh | null>(null);
-  const key = peerIds.slice().sort().join(",");
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!transport) return;
     if (!mediaSupported()) { setError("unsupported"); return; }
 
     let cancelled = false;
-    let channel: ReturnType<ReturnType<typeof supabase>["channel"]> | null = null;
+    let unsubscribe: (() => void) | undefined;
+    let unpresence: (() => void) | undefined;
 
     (async () => {
       let stream: MediaStream;
@@ -43,41 +52,37 @@ export function useMesh(selfId: string, peerIds: string[], enabled: boolean): Me
       }
       if (cancelled) return;
       setLocal(stream);
+      setError(null);
 
-      const servers = await iceServers();
-      if (cancelled) return;
-
-      const sb = supabase();
       const m = new PeerMesh({
-        selfId, localStream: stream, iceServers: servers,
-        send: (peerId, message) => {
-          void sb.channel(signalTopic(peerId)).send({
-            type: "broadcast", event: "signal", payload: message,
-          });
-        },
+        selfId, localStream: stream,
+        // STUN בלבד מספיק בין כרטיסיות ובאותה רשת. TURN נוסף בפרודקשן.
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+        send: (peerId, message) => transport.send(peerId, message),
         onPeersChanged: setPeers,
       });
       mesh.current = m;
 
-      channel = sb.channel(signalTopic(selfId), { config: { private: true } })
-        .on("broadcast", { event: "signal" }, ({ payload }) => {
-          void m.handle(payload as SignalMessage);
-        })
-        .subscribe();
+      unsubscribe = transport.subscribe(selfId, (msg) => void m.handle(msg));
+      if (peerIds === null) unpresence = transport.presence(selfId, setDiscovered);
     })();
 
     return () => {
       cancelled = true;
+      unsubscribe?.();
+      unpresence?.();
       mesh.current?.close();
       mesh.current = null;
-      if (channel) void supabase().removeChannel(channel);
+      setPeers([]);
     };
-  }, [selfId, enabled]);
+  }, [selfId, transport, peerIds === null]);
 
-  // יישור קבוצת החיבורים מול השחקנים בחדר, בלי להרים את הזרם מחדש.
+  // יישור קבוצת החיבורים, בלי להרים את הזרם מחדש.
+  const wanted = peerIds ?? discovered;
+  const key = wanted.slice().sort().join(",");
   useEffect(() => {
     if (!mesh.current) return;
-    void mesh.current.sync(key ? key.split(",") : []);
+    mesh.current.sync(key ? key.split(",") : []);
   }, [key, local]);
 
   useEffect(() => () => { releaseLocalStream(); }, []);

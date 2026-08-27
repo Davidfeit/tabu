@@ -4,9 +4,10 @@ import { liquidValue } from "@/engine/selectors";
 import { useGame } from "@/ui/GameContext";
 import { useCountdown } from "@/ui/useCountdown";
 import { BankCard } from "./BankCard";
+import { LocalVideo } from "./VideoPanel";
 import { Button } from "./Button";
 import { Dice } from "./Dice";
-import { seatColor, Token } from "./Token";
+import { seatColor } from "./Token";
 
 /**
  * מרכז הלוח — הריבוע הפנימי 9×9.
@@ -15,69 +16,29 @@ import { seatColor, Token } from "./Token";
  * תחתון גוזל גובה מהלוח, ובמסך רגיל זה בדיוק המימד שחסר. כאן זה שטח
  * שממילא פנוי, וזה גם המקום שהעין נמצאת בו.
  */
-export function CenterPanel({ videoTiles }: { videoTiles?: React.ReactNode }) {
+export function CenterPanel({ videoTiles, onTrade }: {
+  videoTiles?: React.ReactNode;
+  onTrade?: () => void;
+}) {
   const { state } = useGame();
   return (
     <div dir="rtl"
          className="relative flex h-full w-full flex-col items-center justify-center gap-5
                     rounded-md bg-felt-dark/45 p-[3%] text-center ring-1 ring-white/10">
       <div className="flex min-h-0 w-full items-center justify-center overflow-hidden">
-        {videoTiles ?? <LocalSeats />}
+        {videoTiles ?? <LocalVideo />}
       </div>
 
       <div className="flex shrink-0 flex-col items-center gap-2">
         <Dice dice={state.dice} size={38} />
         <TurnBar />
-        <Actions />
+        <Actions onTrade={onTrade} />
       </div>
 
       {/* הבנק — עוגן גלוי לשטרות המעופפים */}
       <div className="absolute bottom-[4%]">
         <BankCard />
       </div>
-    </div>
-  );
-}
-
-/**
- * משחק מקומי: אין וידאו, אבל המשבצות מצוירות באותה צורה ובאותו גודל.
- *
- * זה לא קישוט — זה בדיוק השטח שבו יישבו המשתתפים במשחק מקוון, וכך רואים
- * מראש כמה מקום זה תופס. וזו גם הסיבה שה-mesh הישיר עובד: כל המשבצות
- * קטנות ובאותו גודל, ולכן אין צורך ב-simulcast.
- */
-function LocalSeats() {
-  const { state } = useGame();
-  const active = state.players.filter((p) => !p.bankrupt);
-  const cols = Math.min(active.length, 3);
-
-  return (
-    <div className="flex w-full flex-col items-center gap-3">
-      <div className="font-logo text-3xl tracking-tight text-parchment/80 drop-shadow">
-        טאבו
-      </div>
-      <div className="grid gap-2"
-           style={{ gridTemplateColumns: `repeat(${cols}, minmax(0,1fr))` }}>
-        {active.map((p) => (
-          <div key={p.seat}
-               className={`relative flex aspect-[4/3] w-[7.5rem] flex-col items-center
-                           justify-center gap-1.5 rounded-md border bg-black/25
-                           transition-colors
-                           ${p.seat === state.currentSeat
-                             ? "border-amber-400/75 ring-1 ring-amber-400/35"
-                             : "border-dashed border-white/12"}`}>
-            <Token token={p.token} seat={p.seat} size={30} />
-            <span className="max-w-full truncate px-1 text-[0.66rem] font-medium"
-                  style={{ color: seatColor(p.seat), unicodeBidi: "plaintext" }}>
-              {p.name}
-            </span>
-          </div>
-        ))}
-      </div>
-      <p className="max-w-[20rem] text-[0.62rem] leading-snug text-parchment/25">
-        במשחק מקוון, כאן רואים זה את זה בווידאו — ישירות בין המחשבים,
-        בלי שרת באמצע.
-      </p>
     </div>
   );
 }
@@ -107,14 +68,20 @@ function TurnBar() {
   );
 }
 
-function Actions() {
-  const { state, dispatch, canControl } = useGame();
+function Actions({ onTrade }: { onTrade?: () => void }) {
+  const { state, dispatch, canControl, mySeat } = useGame();
   const p = state.players[state.currentSeat]!;
   const mine = canControl(state.currentSeat);
   const sq = squareAt(p.pos);
   const price = "price" in sq ? sq.price : 0;
 
   if (state.debt) return <DebtActions />;
+
+  // סחר מותר בכל עת חוץ ממכרז וגיוס כספים — כולל כשזה לא תורך.
+  const proposer = mySeat ?? state.currentSeat;
+  const canTrade = onTrade && state.phase !== "auction" && state.phase !== "finished"
+    && !state.trade && state.players.filter((q) => !q.bankrupt).length > 1
+    && !state.players[proposer]!.bankrupt;
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-1.5">
@@ -157,6 +124,8 @@ function Actions() {
             ? "גלגל שוב" : "סיים תור"}
         </Button>
       )}
+
+      {canTrade && <Button onClick={onTrade}>הצע עסקה</Button>}
     </div>
   );
 }

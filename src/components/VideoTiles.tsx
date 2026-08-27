@@ -1,8 +1,8 @@
-import { useEffect, useRef } from "react";
 import type { PeerState } from "@/net/mesh";
 import type { MediaErrorKind } from "@/net/media";
 import type { GameState } from "@/engine/types";
 import { seatColor, Token } from "./Token";
+import { VideoFrame } from "./VideoPanel";
 
 const MEDIA_ERRORS: Record<MediaErrorKind, string> = {
   denied: "הגישה למצלמה נדחתה. אפשר לשנות זאת בהגדרות האתר בדפדפן.",
@@ -12,31 +12,6 @@ const MEDIA_ERRORS: Record<MediaErrorKind, string> = {
   constraints: "המצלמה לא תומכת בהגדרות הנדרשות.",
   unknown: "לא הצלחנו להפעיל את המצלמה.",
 };
-
-function Video({ stream, muted }: { stream: MediaStream | null; muted: boolean }) {
-  const ref = useRef<HTMLVideoElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el || !stream) return;
-    el.srcObject = stream;
-    // ספארי חוסם הפעלה קולית עד למחוות משתמש; כישלון כאן אינו חריג.
-    void el.play().catch(() => {});
-    return () => { el.srcObject = null; };
-  }, [stream]);
-
-  return (
-    <video
-      ref={ref}
-      // playsinline חובה — בלעדיו ספארי כופה מסך מלא.
-      playsInline
-      autoPlay
-      muted={muted}
-      className="h-full w-full object-cover"
-      // מראה רק את התצוגה העצמית. לעולם לא את המשתתפים האחרים.
-      style={muted ? { transform: "scaleX(-1)" } : undefined}
-    />
-  );
-}
 
 export function VideoTiles({
   state, mySeat, local, peers, error,
@@ -66,7 +41,7 @@ export function VideoTiles({
                                ? "border-amber-400/80 ring-1 ring-amber-400/40"
                                : "border-white/10"}`}>
               {live ? (
-                <Video stream={stream} muted={isMe} />
+                <VideoFrame stream={stream} mirrored={isMe} />
               ) : (
                 <div className="flex h-full w-full flex-col items-center justify-center gap-1">
                   <Token token={p.token} seat={p.seat} size={24} />

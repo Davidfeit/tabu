@@ -1,5 +1,5 @@
 import { capSender, MAX_BITRATE } from "./media";
-import { IceBatcher, isInitiator, isPolite, type SignalMessage } from "./signaling";
+import { IceBatcher, isPolite, type SignalMessage } from "./signaling";
 
 /**
  * רשת WebRTC מלאה בין 2–6 שחקנים.
@@ -54,7 +54,7 @@ export class PeerMesh {
   }
 
   /** מיישר את קבוצת החיבורים מול רשימת השחקנים הנוכחית בחדר. */
-  async sync(peerIds: string[]): Promise<void> {
+  sync(peerIds: string[]): void {
     if (this.closed) return;
     const wanted = new Set(peerIds.filter((id) => id !== this.opts.selfId));
 
@@ -62,12 +62,12 @@ export class PeerMesh {
       if (!wanted.has(id)) this.drop(id);
     }
     for (const id of wanted) {
-      if (!this.peers.has(id)) await this.connect(id);
+      if (!this.peers.has(id)) this.connect(id);
     }
     this.emit();
   }
 
-  private async connect(peerId: string): Promise<void> {
+  private connect(peerId: string): void {
     const pc = new RTCPeerConnection({ iceServers: this.opts.iceServers });
     const peer: Peer = {
       pc, polite: isPolite(this.opts.selfId, peerId),
@@ -106,19 +106,19 @@ export class PeerMesh {
       this.emit();
     };
 
-    // רק צד אחד יוזם, אחרת שני הצדדים מציעים תמיד.
-    if (isInitiator(this.opts.selfId, peerId)) {
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      this.opts.send(peerId, { kind: "offer", from: this.opts.selfId, sdp: offer.sdp! });
-    }
+    // ── אין יצירת הצעה ידנית כאן, בכוונה ──
+    // הוספת המסלולים למעלה מפעילה negotiationneeded בעצמה. גרסה קודמת
+    // יצרה בנוסף הצעה ידנית לצד ה"יוזם", ושתי ההצעות התנגשו:
+    // "the order of m-lines in subsequent offer doesn't match".
+    // בדפוס perfect negotiation אין יוזם — שני הצדדים מציעים, והנימוס
+    // הוא שמכריע את ההתנגשות.
   }
 
   /** הודעת סיגנלינג נכנסת מעמית. */
   async handle(message: SignalMessage): Promise<void> {
     if (this.closed) return;
     const peerId = message.from;
-    if (!this.peers.has(peerId)) await this.connect(peerId);
+    if (!this.peers.has(peerId)) this.connect(peerId);
     const peer = this.peers.get(peerId);
     if (!peer) return;
     const { pc } = peer;

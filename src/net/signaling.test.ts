@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
-import { estimateSignalMessages, IceBatcher, isInitiator, isPolite, signalTopic } from "./signaling";
+import { estimateSignalMessages, IceBatcher, isPolite, signalTopic } from "./signaling";
 
 describe("נימוס דטרמיניסטי", () => {
   it("שני הצדדים מגיעים לאותה מסקנה, בלי סיבוב תקשורת", () => {
@@ -7,19 +7,15 @@ describe("נימוס דטרמיניסטי", () => {
     expect(isPolite("b", "a")).toBe(false);
   });
 
-  it("בדיוק צד אחד יוזם בכל זוג", () => {
+  it("בדיוק צד אחד מנומס בכל זוג", () => {
+    // זה מה שמכריע glare. אין "יוזם": שני הצדדים מציעים, והמנומס נסוג.
     const ids = ["p1", "p2", "p3", "p4", "p5", "p6"];
     for (const a of ids) {
       for (const b of ids) {
         if (a === b) continue;
-        expect(isInitiator(a, b)).not.toBe(isInitiator(b, a));
         expect(isPolite(a, b)).not.toBe(isPolite(b, a));
       }
     }
-  });
-
-  it("היוזם הוא תמיד הצד הלא-מנומס", () => {
-    expect(isInitiator("a", "b")).toBe(!isPolite("a", "b"));
   });
 
   it("דוחה חיבור לעצמך", () => {
