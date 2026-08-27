@@ -3,10 +3,13 @@
 # מקים את כל צד השרת של טאבו בפרויקט Supabase חדש.
 #
 #   1. צרו פרויקט חינמי ב-supabase.com, אזור eu-central-1 (פרנקפורט)
-#   2. Settings → Database → Connection string → URI, והחליפו את הסיסמה
+#   2. Settings → Database → Connection string → לשונית **Session pooler**
+#      (ולא Direct connection: למארח הישיר יש רשומת IPv6 בלבד, ולרוב הרשתות
+#       הביתיות בישראל אין IPv6. גם לא Transaction pooler בפורט 6543 — מצב
+#       transaction שובר DDL.) החליפו את הסיסמה בכתובת.
 #   3. הריצו:
 #
-#        export PGURL='postgresql://postgres:הסיסמה@db.xxx.supabase.co:5432/postgres'
+#        export PGURL='postgresql://postgres.xxx:הסיסמה@aws-0-eu-central-1.pooler.supabase.com:5432/postgres'
 #        npm run setup:supabase
 #
 #   PROJECT_REF נגזר מהכתובת אוטומטית.
@@ -49,6 +52,14 @@ if [[ -z "${PROJECT_REF:-}" ]]; then
     # מחרוזת מה-pooler: postgres.<ref>:<password>@aws-0-<region>.pooler...
     # הסיסמה יושבת בין המזהה ל-@, ולכן צריך גם ":" ולא רק "@".
     PROJECT_REF="${BASH_REMATCH[1]}"
+  elif [[ "$PGURL" == *pooler.supabase.com* ]]; then
+    # מארח pooler עם שם המשתמש "postgres" — סימן שערכו את המחרוזת ידנית.
+    die "מחרוזת ה-pooler חסרה את מזהה הפרויקט בשם המשתמש" \
+        "" \
+        "ב-Session pooler שם המשתמש הוא postgres.<ref>, לא postgres —" \
+        "ה-pooler מזהה לפיו לאיזה פרויקט לנתב." \
+        "" \
+        "העתיקו את המחרוזת המלאה מלשונית Session pooler בלי לערוך אותה."
   else
     die "לא הצלחתי לגזור את PROJECT_REF מ-PGURL" \
         "" \
@@ -61,14 +72,82 @@ if ! command -v psql >/dev/null 2>&1; then
   die "psql לא מותקן" "" "ב-macOS:  brew install libpq && brew link --force libpq"
 fi
 
-printf '\n→ בודק חיבור\n'
-if ! psql "$PGURL" -tAc 'select 1' >/dev/null 2>&1; then
-  die "אין חיבור לבסיס הנתונים" \
+# מפרקים את הכתובת כדי שהאבחון יוכל להצביע על מה בדיוק נכשל.
+# הסיסמה לא נקראת ולא מודפסת בשום שלב.
+PG_USER="$(printf '%s' "$PGURL" | sed -E 's#^postgres(ql)?://([^:@/]+).*#\2#')"
+PG_HOSTPORT="$(printf '%s' "$PGURL" | sed -E 's#^[^@]*@##; s#[/?].*##')"
+PG_HOST="${PG_HOSTPORT%%:*}"
+PG_PORT="${PG_HOSTPORT##*:}"
+if [[ "$PG_PORT" == "$PG_HOST" ]]; then PG_PORT=5432; fi
+
+printf '\n→ בודק חיבור אל %s:%s בתור %s\n' "$PG_HOST" "$PG_PORT" "$PG_USER"
+
+# תקלה נפוצה: לוקחים את מארח ה-pooler אבל משאירים את שם המשתמש "postgres".
+# ה-pooler מזהה את הפרויקט לפי שם המשתמש, ולכן הוא חייב להיות postgres.<ref>.
+if [[ "$PG_HOST" == *pooler.supabase.com && "$PG_USER" != postgres.* ]]; then
+  die "שם המשתמש לא מתאים למחרוזת ה-pooler" \
       "" \
-      "בדקו:" \
-      "• הסיסמה נכונה (Settings → Database → Reset database password)" \
-      "• הפרויקט לא במצב Paused (פרויקט חינמי נכבה אחרי ~שבוע חוסר פעילות)" \
-      "• אם אין לכם IPv6, השתמשו במחרוזת ה-Session pooler במקום ב-Direct connection"
+      "המארח הוא $PG_HOST, אבל שם המשתמש הוא \"$PG_USER\"." \
+      "ה-pooler מזהה את הפרויקט לפי שם המשתמש, ולכן הוא חייב להיות:" \
+      "" \
+      "   postgres.$PROJECT_REF" \
+      "" \
+      "העתיקו את המחרוזת המלאה מלשונית Session pooler בלי לערוך אותה."
+fi
+
+# ולהפך: פורט 6543 הוא transaction mode, ששובר DDL וטרנזקציות מרובות-משפטים.
+if [[ "$PG_HOST" == *pooler.supabase.com && "$PG_PORT" == 6543 ]]; then
+  die "זו מחרוזת ה-Transaction pooler (פורט 6543)" \
+      "" \
+      "הסקריפט מריץ DDL וטרנזקציות מרובות-משפטים, ומצב transaction שובר אותן." \
+      "קחו את המחרוזת מלשונית Session pooler — אותו מארח, פורט 5432."
+fi
+
+export PGCONNECT_TIMEOUT="${PGCONNECT_TIMEOUT:-10}"
+if ! PG_ERR="$(psql "$PGURL" -tAc 'select 1' 2>&1 >/dev/null)"; then
+  # psql משקף את הכתובת בחלק מהשגיאות — מסתירים את הסיסמה לפני ההדפסה.
+  PG_ERR="$(printf '%s' "$PG_ERR" | sed -E 's#(postgres(ql)?://[^:]+:)[^@]*@#\1***@#g')"
+  # לפעמים psql נכשל בפענוח שם ומדפיס כותרת ריקה בלי סיבה. אל תציגו "psql: error:" לבד.
+  PG_ERR_BODY="${PG_ERR//psql: error:/}"
+  if [[ -z "${PG_ERR_BODY//[[:space:]]/}" ]]; then
+    PG_ERR="(psql לא פירט — כמעט תמיד כשל בפענוח שם המארח או חוסר מסלול אליו)"
+  fi
+
+  # מארח ה-Direct connection של Supabase הוא IPv6 בלבד. ברשת ביתית ישראלית
+  # טיפוסית אין IPv6, ולכן כל כשל עליו מוביל לאותה עצה.
+  direct_hint=()
+  if [[ "$PG_HOST" == db.*.supabase.co ]]; then
+    direct_hint=(""
+      "שימו לב: $PG_HOST הוא מארח Direct connection, ול-Supabase יש עליו"
+      "רשומת IPv6 בלבד. ברוב הרשתות הביתיות בישראל אין IPv6, ולכן הוא לא יעבוד."
+      ""
+      "קחו במקומו: Settings → Database → Connection string → לשונית Session pooler"
+      "   postgresql://postgres.$PROJECT_REF:הסיסמה@aws-0-<אזור>.pooler.supabase.com:5432/postgres")
+  fi
+
+  hint=()
+  case "$PG_ERR" in
+    *"password authentication failed"*|*"Tenant or user not found"*)
+      hint=("הסיסמה או שם המשתמש שגויים."
+            "איפוס: Settings → Database → Reset database password."
+            "אם יש בסיסמה אחד מהתווים @ : / ? # %, היא חייבת להיות מקודדת-URL בתוך הכתובת.") ;;
+    *"could not translate host name"*|*"Name or service not known"*|*"nodename nor servname"*)
+      hint=("שם המארח לא נפתר — ודאו שהכתובת הועתקה במלואה ושהפרויקט עדיין קיים.") ;;
+    *"Network is unreachable"*|*"No route to host"*|*"timeout expired"*|*"Connection timed out"*|*"Operation timed out"*)
+      hint=("הכתובת נפתרה אבל אין מסלול אליה."
+            "זה בדיוק התסמין של מארח IPv6-only מרשת בלי IPv6 — או של פורט $PG_PORT חסום."
+            ""
+            "פתרון: Settings → Database → Connection string → לשונית Session pooler"
+            "   postgresql://postgres.$PROJECT_REF:הסיסמה@aws-0-<אזור>.pooler.supabase.com:5432/postgres") ;;
+    *"Connection refused"*)
+      hint=("השרת דחה את החיבור בפורט $PG_PORT."
+            "אם זו מחרוזת Direct connection — נסו את ה-Session pooler.") ;;
+    *)
+      hint=("• הפרויקט לא במצב Paused (פרויקט חינמי נכבה אחרי ~שבוע חוסר פעילות)"
+            "• הסיסמה נכונה (Settings → Database → Reset database password)"
+            "• אם אין לכם IPv6, השתמשו במחרוזת ה-Session pooler") ;;
+  esac
+  die "אין חיבור לבסיס הנתונים" "" "psql החזיר:" "   $PG_ERR" "" "${hint[@]}" "${direct_hint[@]}"
 fi
 printf '   מחובר\n'
 
