@@ -1,0 +1,32 @@
+import { describe, expect, it } from "vitest";
+
+// הפונקציה עצמה, לא שכפול שלה: בדיקה שמעתיקה את הלוגיקה מאמתת את ההעתק.
+import { describeConfig as problem } from "./supabase";
+
+const REAL_URL = "https://bqpbiqfarsaayuscspzv.supabase.co";
+const REAL_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiJ9.sig-part_1";
+
+describe("אבחון הגדרת Supabase", () => {
+  it("ערכים אמיתיים עוברים", () => expect(problem(REAL_URL, REAL_KEY)).toBeNull());
+  it("סיומת נטייה בכתובת מותרת", () =>
+    expect(problem(REAL_URL + "/", REAL_KEY)).toBeNull());
+  it("רווחים מההדבקה לא פוסלים", () =>
+    expect(problem(` ${REAL_URL} `, ` ${REAL_KEY}\n`)).toBeNull());
+
+  it("בנייה ישנה — שניהם חסרים", () =>
+    expect(problem(undefined, undefined)).toBe("שני המשתנים לא הגיעו לבנייה"));
+  it("שגיאת כתיב בשם — רק אחד חסר", () =>
+    expect(problem(REAL_URL, undefined)).toMatch(/ANON_KEY לא הגיע/));
+  it("מחרוזת ריקה נחשבת חסרה", () =>
+    expect(problem("", REAL_KEY)).toMatch(/URL לא הגיע/));
+
+  // ה-placeholders ש-Vercel שאבה מ-.env.example: שניהם לא ריקים, ולכן
+  // בדיקת "קיים" לבדה הייתה מאשרת אותם והחיבור היה נכשל בזמן ריצה.
+  it("placeholder של כתובת נפסל", () =>
+    expect(problem("https://xxxxxxxxxxxx.supabase.co", REAL_KEY))
+      .toMatch(/אינו כתובת פרויקט תקינה/));
+  it("placeholder של מפתח נפסל", () =>
+    expect(problem(REAL_URL, "eyJhbGciOi...")).toMatch(/אינו JWT תקין/));
+  it("כתובת של פרויקט אחר לגמרי נפסלת", () =>
+    expect(problem("https://example.com", REAL_KEY)).toMatch(/אינו כתובת/));
+});

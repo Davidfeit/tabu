@@ -3,8 +3,39 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
+/**
+ * מה בדיוק לא בסדר בהגדרה, אם משהו.
+ *
+ * Vite מטמיע את המשתנים בזמן הבנייה, ולכן "הגדרתי אותם" ו"הם בבנייה" הם
+ * שתי טענות שונות: שמירה בלוח הבקרה בלי בנייה מחדש לא משנה כלום. ההודעה
+ * הישנה אמרה רק "דורש הגדרת Supabase", וזה חסר תועלת למי שכבר הגדיר.
+ * כאן נאמר מי משני המשתנים הגיע, כדי להבחין בין בנייה ישנה (שניהם חסרים)
+ * לבין שגיאת כתיב בשם אחד מהם (רק אחד חסר).
+ */
+export function describeConfig(
+  url: string | undefined, anonKey: string | undefined,
+): string | null {
+  const missing: string[] = [];
+  if (!url) missing.push("VITE_SUPABASE_URL");
+  if (!anonKey) missing.push("VITE_SUPABASE_ANON_KEY");
+  if (missing.length === 2) return "שני המשתנים לא הגיעו לבנייה";
+  if (missing.length === 1) return `${missing[0]} לא הגיע לבנייה`;
+
+  // ערכי ה-placeholder מ-.env.example נראים תקינים אבל מצביעים לשומקום.
+  if (!/^https:\/\/[a-z0-9]{20}\.supabase\.co\/?$/.test(url!.trim())) {
+    return `VITE_SUPABASE_URL אינו כתובת פרויקט תקינה: ${url}`;
+  }
+  if (!/^ey[\w-]+\.[\w-]+\.[\w-]+$/.test(anonKey!.trim())) {
+    return "VITE_SUPABASE_ANON_KEY אינו JWT תקין (מפתח anon מתחיל ב-ey)";
+  }
+  return null;
+}
+
+/** מה חסם את המצב המקוון, או null אם הכל תקין. מוצג למשתמש. */
+export const CONFIG_PROBLEM = describeConfig(url, anonKey);
+
 /** האם הוגדרה תשתית מקוונת. בלעדיה האפליקציה עובדת במצב מקומי בלבד. */
-export const ONLINE_ENABLED = Boolean(url && anonKey);
+export const ONLINE_ENABLED = CONFIG_PROBLEM === null;
 
 let client: SupabaseClient | null = null;
 

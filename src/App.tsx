@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SeatSpec } from "@/engine/setup";
 import type { GameState, Settings } from "@/engine/types";
-import { ONLINE_ENABLED, supabase } from "@/net/supabase";
+import { CONFIG_PROBLEM, ONLINE_ENABLED, supabase } from "@/net/supabase";
 import { SupabaseTransport } from "@/net/transport";
 import { LocalGameProvider, useGame } from "@/ui/GameContext";
 import { RemoteGameProvider } from "@/ui/RemoteGameProvider";
@@ -170,10 +170,14 @@ function Home({ onLocal, onOnline }: { onLocal: () => void; onOnline: () => void
         <Button className="!py-2.5" onClick={onLocal}>משחק מקומי על מסך אחד</Button>
       </div>
       {!ONLINE_ENABLED && (
-        <p className="text-[0.7rem] leading-relaxed text-parchment/35">
-          משחק אונליין דורש הגדרת Supabase.
-          ראו <code className="text-parchment/50">.env.example</code>.
-        </p>
+        <div className="space-y-1 text-[0.7rem] leading-relaxed text-parchment/35">
+          <p>משחק אונליין דורש הגדרת Supabase.</p>
+          <p className="font-mono text-parchment/55" dir="ltr">{CONFIG_PROBLEM}</p>
+          <p>
+            הערכים מוטמעים בזמן הבנייה — אחרי שינוי בלוח הבקרה צריך
+            פריסה מחדש. ראו <code className="text-parchment/50">docs/deploy.md</code>.
+          </p>
+        </div>
       )}
     </div>
   );
