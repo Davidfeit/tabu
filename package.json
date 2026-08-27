@@ -11,7 +11,8 @@
     "typecheck": "tsc -b --noEmit",
     "build:engine": "node scripts/build-engine-bundle.mjs",
     "db:test": "scripts/db-test.sh",
-    "build:single": "npm run build && node scripts/build-single-file.mjs"
+    "build:single": "npm run build && node scripts/build-single-file.mjs",
+    "setup:supabase": "scripts/setup-supabase.sh"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",

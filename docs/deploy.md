@@ -1,111 +1,134 @@
-# פריסה
+# העלאה לאוויר
 
-שני שירותים, שניהם בשכבה חינמית: **Supabase** (בסיס נתונים, הזדהות,
-Realtime, Edge Functions) ו**כל אחסון סטטי** לחזית (Vercel, Netlify,
-Cloudflare Pages). אופציונלי: **Cloudflare TURN**.
+שתי החלטות: **איפה מארחים את האתר**, ו**האם רוצים וידאו בין אנשים**.
 
-בקנה מידה של חדרים פרטיים בין חברים העלות היא **₪0**.
+התשובה השנייה קובעת את הראשונה יותר משנדמה — מצלמה עובדת רק ב-https,
+בעמוד עליון (לא בתוך מסגרת מוטמעת).
 
 ---
 
-## 1. Supabase
+## חלק א' — האתר
 
-צרו פרויקט חדש באזור **eu-central-1 (פרנקפורט)** — הקרוב ביותר לישראל, ~50–65ms.
+### אפשרות 1: פרויקט Vercel עצמאי (מומלץ)
 
-### הסכימה
+המשחק נשאר מופרד לגמרי מפלטפורמת עינית, ומקבל כתובת משלו.
+
+1. [vercel.com/new](https://vercel.com/new) → יבוא של `Davidfeit/einit-platform`
+2. **Root Directory: `tabu`** ← זה הצעד היחיד שקל לפספס
+3. Framework מזוהה אוטומטית (Vite). `tabu/vercel.json` כבר מגדיר הכל,
+   כולל את כותרת `Permissions-Policy` שמתירה מצלמה.
+4. Deploy
+
+זהו. הכתובת תהיה משהו כמו `https://tabu.vercel.app`.
+
+### אפשרות 2: תת-נתיב בפלטפורמה הקיימת
+
+בלי שום קליק בלוח הבקרה — המשחק נבנה יחד עם `web/` ומוגש מ-
+`https://einit-platform.vercel.app/tabu/`. דורש שינוי ב-`vercel.json`
+בשורש (ראה `docs/deploy-subpath.md`).
+
+חיסרון: המשחק חי על אותו דומיין כמו הכלים העסקיים.
+
+### מה *לא* עובד
+
+- **GitHub Pages** — הריפו פרטי, וזה דורש מנוי בתשלום.
+- **פתיחת הקובץ מהדיסק** (`file://`) — לא הקשר מאובטח, אין מצלמה.
+- **תצוגה מוטמעת במסגרת** — Permissions Policy חוסמת מצלמה.
+  האפליקציה מזהה זאת ואומרת זאת במפורש.
+
+---
+
+## חלק ב' — וידאו בין אנשים
+
+בלי צד שרת, האתר נותן משחק מקומי מלא ומצלמה שלכם. **וידאו בין
+מכשירים דורש ערוץ סיגנלינג**, וזה מה ש-Supabase נותן.
+
+### 1. פרויקט Supabase
+
+[supabase.com](https://supabase.com) → פרויקט חדש, אזור
+**eu-central-1 (פרנקפורט)** — הקרוב ביותר לישראל, ~50–65ms.
+
+### 2. פקודה אחת
 
 ```bash
+cd tabu
 export PGURL='postgres://postgres:[PASSWORD]@db.[REF].supabase.co:5432/postgres'
-psql "$PGURL" -v ON_ERROR_STOP=1 -f db/001_schema.sql
-psql "$PGURL" -v ON_ERROR_STOP=1 -f db/002_commit_move.sql
-psql "$PGURL" -v ON_ERROR_STOP=1 -f db/003_rls.sql
+export PROJECT_REF='[REF]'
+npm run setup:supabase
 ```
 
-> **אל תריצו את `db/000_local_bootstrap.sql`** — הוא מייצר מקומית את התפקידים
-> ואת `auth.uid()` ש-Supabase כבר מספקת.
+הסקריפט מחיל את הסכימה, מריץ את **הבדיקה החוסמת** (ראה למטה), ופורס את
+שתי ה-Edge Functions.
 
-### הזדהות אנונימית
+### 3. ארבעה מתגים בלוח הבקרה
 
-Authentication → Providers → **Anonymous Sign-ins: enabled**.
-זה כל מה שנדרש: חדרים פרטיים בלינק, בלי מיילים ובלי סיסמאות.
-
-### Realtime
-
-Realtime Settings → **בטלו את "Allow public access"**.
-`db/003_rls.sql` כבר יצר את המדיניות על `realtime.messages` שמאפשרת לקרוא
-שידורים רק לחברי החדר.
-
-### Edge Functions
-
-```bash
-npm run build:engine        # חובה — מקבץ את המנוע ל-Deno
-npx supabase functions deploy play
-npx supabase functions deploy ice
-```
-
-Secrets (Edge Functions → Secrets):
-
-| שם | ערך |
+| איפה | מה |
 |---|---|
-| `ALLOWED_ORIGIN` | כתובת האתר, למשל `https://tabu.example.com` |
-| `TURN_KEY_ID` | מ-Cloudflare, אופציונלי |
-| `TURN_KEY_API_TOKEN` | מ-Cloudflare, אופציונלי |
+| Authentication → Providers | **Anonymous sign-ins: הפעילו** |
+| Realtime → Settings | **"Allow public access": כבו** |
+| Edge Functions → Secrets | `ALLOWED_ORIGIN` = כתובת האתר |
+| Settings → API | העתיקו `URL` ו-`anon key` |
 
-`SUPABASE_URL` ו-`SUPABASE_SERVICE_ROLE_KEY` מוזרקות אוטומטית.
+### 4. שני משתני סביבה בפרויקט האתר
+
+```
+VITE_SUPABASE_URL      = https://[REF].supabase.co
+VITE_SUPABASE_ANON_KEY = eyJhbGciOi...
+```
+
+ב-Vercel: Settings → Environment Variables, ואז Redeploy.
+
+מרגע זה כפתור "משחק אונליין עם וידאו" נדלק.
 
 ---
 
-## 2. ⚠️ בדיקה חוסמת לפני שמשחקים באמת
+## הבדיקה החוסמת
 
 כל הארכיטקטורה נשענת על הנחה **שהתיעוד של Supabase לא אומר במפורש**:
 ש-`realtime.send()` בתוך טרנזקציה הוא אטומי איתה. אם ההנחה שגויה, שידור
-יכול להצליח בזמן שהמהלך נכשל — וכל הלקוחות ייתקעו על מצב שאינו קיים.
+יכול להצליח בזמן שהמהלך נכשל — וכל הלקוחות ייתקעו על מצב שלא קיים.
 
-הריצו זאת ב-SQL Editor, כשלקוח מנוי לערוץ `room:...`:
+`npm run setup:supabase` מריץ אותה אוטומטית ומדפיס אזהרה אם היא נכשלה.
+להרצה ידנית ב-SQL Editor:
 
 ```sql
 begin;
 select public.tabu_broadcast('room:00000000-0000-0000-0000-000000000000',
-                             'move', '{"probe":true}'::jsonb);
+                             'probe', '{"probe":true}'::jsonb);
 rollback;
 ```
 
-**אף לקוח לא אמור לקבל דבר.** אם כן — יש להוציא את השידור מ-`commit_move`
-ולהעביר אותו לקריאה נפרדת ב-Edge Function *אחרי* התחייבות מוצלחת, ולקבל
-את הפער האפשרי בין השניים (הלקוחות מתקנים אותו ממילא ברענון לפי גרסה).
+**אף לקוח מנוי לא אמור לקבל דבר.** אם כן — יש להוציא את השידור
+מ-`commit_move` ולקרוא לו מה-Edge Function *אחרי* התחייבות מוצלחת.
+הלקוחות מתקנים פער כזה ממילא ברענון לפי גרסה, אז המחיר הוא עיכוב ולא
+שגיאה.
 
 ---
 
-## 3. החזית
+## TURN — למי שמאחורי NAT סימטרי
 
-```bash
-npm ci && npm run build      # מייצר dist/
-```
+בלי TURN, כ-10–20% מהחיבורים ייכשלו, ובישראל להניח את הקצה העליון בגלל
+CGNAT בסלולר. Cloudflare Realtime TURN: **1,000GB חינם בחודש**,
+‎$0.05/GB אחר כך, ו-PoP בתל אביב.
 
-משתני סביבה: `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`.
-
-האתר סטטי לגמרי. כל אחסון סטטי מתאים; אין צורך ב-SSR.
-
----
-
-## 4. TURN (אופציונלי, ומומלץ)
-
-בלי TURN, כ-10–20% מהחיבורים ייכשלו — ובישראל להניח את הקצה העליון בגלל
-CGNAT בסלולר. Cloudflare Realtime TURN: **1,000GB חינם בחודש**, ‎$0.05/GB
-אחר כך, ו-PoP בתל אביב.
-
-Cloudflare Dashboard → Realtime → TURN → צרו מפתח, והזינו את `TURN_KEY_ID`
-ו-`TURN_KEY_API_TOKEN` ב-Secrets.
+Dashboard → Realtime → TURN → מפתח חדש, ואז ב-Supabase Secrets:
+`TURN_KEY_ID` ו-`TURN_KEY_API_TOKEN`.
 
 > תועדו תקריות של ניתוב שגוי של תעבורת בזק/HOT ל-PoP אירופי. כדאי למדוד
 > RTT אמיתי מהספקים הישראליים לפני שמניחים קרבה לתל אביב.
 
 ---
 
-## 5. שכבה חינמית — מה כדאי לדעת
+## עלות
 
-- **פרויקט Supabase חינמי נכבה אחרי ~שבוע חוסר פעילות.** פינג יומי פותר
-  (למשל GitHub Action שקורא `/rest/v1/`).
-- 200 חיבורי Realtime במקביל ו-2M הודעות בחודש. בגישת הערוץ-פר-שחקן
-  (ראה `src/net/signaling.ts`) זה ~26,000 הקמות חדר.
-- משחק שלם הוא ~2,800 הודעות שידור, כלומר ~700 משחקים בחודש בחינם.
+| | חינם | מתי מתחילים לשלם |
+|---|---|---|
+| Vercel Hobby | ✅ | לא, בקנה מידה הזה |
+| Supabase Free | ✅ | 200 חיבורים במקביל, 2M הודעות בחודש |
+| Cloudflare TURN | ✅ | מעל 1,000GB בחודש |
+
+**פרויקט Supabase חינמי נכבה אחרי ~שבוע חוסר פעילות.** פינג יומי פותר —
+למשל GitHub Action שקורא ל-`/rest/v1/`.
+
+בגישת הערוץ-פר-שחקן (ראה `src/net/signaling.ts`), 2M ההודעות מספיקות
+ל-~26,000 הקמות חדר בחודש. משחק שלם הוא ~2,800 הודעות שידור.

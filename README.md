@@ -27,7 +27,10 @@ npm run db:test      # בדיקות SQL מול Postgres מקומי
 קריאות רשת חוץ מהפונטים, וכל המנוע רץ בדפדפן. `npm run build:single`
 אורז אותו לקובץ HTML יחיד שאפשר לפתוח ישר מהדיסק או לשלוח למישהו.
 
-למשחק אונליין עם וידאו ראו [`docs/deploy.md`](docs/deploy.md).
+**להעלאה לאוויר:** [`docs/deploy.md`](docs/deploy.md) — פרויקט Vercel
+עצמאי (Root Directory = `tabu`), ולוידאו בין אנשים
+`npm run setup:supabase` שמחיל סכימה, מריץ את הבדיקה החוסמת ופורס את
+ה-Edge Functions.
 
 ---
 
