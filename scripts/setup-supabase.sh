@@ -108,18 +108,56 @@ if [[ -z "${SUPABASE_ACCESS_TOKEN:-}" ]] && ! "${SUPA[@]}" projects list >/dev/n
 fi
 # ההזדהות יכולה להצליח ובכל זאת להיות של חשבון אחר, ואז הפריסה נופלת על
 # 403 גנרי שלא מזכיר את הפרויקט. עדיף לשאול מראש מה החשבון הזה בכלל רואה.
-if ! PROJ="$("${SUPA[@]}" projects list 2>&1)" || [[ "$PROJ" != *"$PROJECT_REF"* ]]; then
-  die "החשבון שמחובר ל-CLI לא רואה את הפרויקט $PROJECT_REF" \
+sees_project() { "${SUPA[@]}" projects list 2>&1 | grep -q "$PROJECT_REF"; }
+
+if ! sees_project; then
+  printf '\n   החשבון שמחובר ל-CLI לא רואה את הפרויקט %s.\n' "$PROJECT_REF" >&2
+  printf '   מה שהוא כן רואה:\n\n' >&2
+  "${SUPA[@]}" projects list 2>&1 | sed 's/^/      /' >&2
+
+  # התחברות מחדש בדפדפן תיתן את אותו חשבון, כי הדפדפן כבר מזוהה איתו.
+  # אסימון אישי חותך את זה: הוא נוצר מתוך החשבון הנכון ולא תלוי בסשן.
+  if [[ -t 0 ]]; then
+    cat >&2 <<ASK
+
+   כנראה יצרתם את הפרויקט בחשבון Supabase אחר.
+
+   התחברות מחדש בדפדפן לרוב תחזיר את אותו חשבון, כי הדפדפן כבר מחובר
+   אליו. הדרך הישירה היא אסימון אישי מתוך החשבון הנכון:
+
+   1. פתחו את הפרויקט ב-supabase.com/dashboard/project/$PROJECT_REF
+      (אם אתם לא רואים אותו — אתם מחוברים בדפדפן לחשבון הלא נכון)
+   2. Account → Access Tokens → Generate new token
+   3. הדביקו כאן. ריק = דילוג על הפריסה.
+
+ASK
+    printf '   אסימון (sbp_...): ' >&2
+    IFS= read -rs TOKEN || true
+    printf '\n' >&2
+    TOKEN="$(printf '%s' "$TOKEN" | tr -d '[:space:]')"
+
+    if [[ -n "$TOKEN" ]]; then
+      [[ "$TOKEN" == sbp_* ]] || die "אסימון אישי של Supabase מתחיל ב-sbp_" \
+          "" "התקבלו ${#TOKEN} תווים שלא מתחילים כך."
+      export SUPABASE_ACCESS_TOKEN="$TOKEN"
+      sees_project || die "גם עם האסימון הזה הפרויקט $PROJECT_REF לא נראה" \
+          "" \
+          "האסימון תקף, אבל הוא של חשבון שאינו חבר בארגון של הפרויקט." \
+          "צרו אותו מתוך החשבון שאיתו נכנסתם ל-$PROJECT_REF בדפדפן."
+      printf '   הפרויקט נראה. ממשיך.\n' >&2
+    fi
+  fi
+fi
+
+if ! sees_project; then
+  die "אין גישה לפרויקט $PROJECT_REF, מדלג על הפריסה" \
       "" \
-      "זה מסביר את ה-403: ההזדהות תקפה, אבל היא של חשבון אחר —" \
-      "או של Personal Access Token עם הרשאות חלקיות." \
+      "כל השאר כבר מוכן — רק שתי הפונקציות לא נפרסו." \
+      "אפשר לפרוס אותן ידנית מלוח הבקרה:" \
+      "Edge Functions → Deploy a new function, והקוד ב-supabase/functions/." \
       "" \
-      "מה שהחשבון הנוכחי רואה:" \
-      "$PROJ" \
-      "" \
-      "תיקון:  unset SUPABASE_ACCESS_TOKEN" \
-      "        npx supabase logout && npx supabase login" \
-      "והתחברו עם החשבון שבבעלותו הפרויקט."
+      "או להריץ שוב עם אסימון של החשבון הנכון:" \
+      "   SUPABASE_ACCESS_TOKEN='sbp_...' npm run setup:supabase"
 fi
 
 # ה-CLI מחזיר 403 גנרי גם כשהחשבון נכון אבל התפקיד בארגון לא מרשה פריסה,
