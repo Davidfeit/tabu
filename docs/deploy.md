@@ -90,7 +90,18 @@ VITE_SUPABASE_URL      = https://[REF].supabase.co
 VITE_SUPABASE_ANON_KEY = eyJhbGciOi...
 ```
 
-ב-Vercel: Settings → Environment Variables, ואז Redeploy.
+ב-Vercel: Settings → Environment Variables, ואז Redeploy — Vite מטמיע את
+הערכים **בזמן הבנייה**, ולכן שמירה בלוח הבקרה בלי בנייה מחדש לא משנה כלום.
+
+חלופה שמוציאה את לוח הבקרה מהמשוואה: קובץ `.env.production` מקובע בריפו.
+שני הערכים ציבוריים ממילא — מפתח ה-anon מוטמע בחבילת ה-JS שכל דפדפן
+מוריד, ומה שמגן על הנתונים הוא ה-RLS, לא סודיות המפתח.
+`npm run check:env` בודק את הקובץ לפני דחיפה.
+
+> **קדימות:** משתנה סביבה אמיתי גובר על `.env.production` (נבדק: בנייה עם
+> שניהם קיבלה את ערך משתנה הסביבה). כלומר ערך שגוי שנשאר בלוח הבקרה —
+> למשל ה-placeholders מ-`.env.example` ש-Vercel מציעה אוטומטית — ידרוס
+> קובץ תקין. מסך הבית אומר מה נמדד בפועל, כך שזה מתגלה מיד.
 
 מרגע זה כפתור "משחק אונליין עם וידאו" נדלק.
 
