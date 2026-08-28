@@ -1,3 +1,4 @@
+import { roomChannel, type RealtimeLike, type RoomChannelHandle } from "./roomChannel";
 import type { SignalMessage } from "./signaling";
 
 /**
@@ -103,15 +104,6 @@ export class BroadcastTransport implements SignalTransport {
   }
 }
 
-interface RealtimeLike {
-  channel: (name: string, opts?: unknown) => {
-    on: (t: string, f: unknown, cb: (p: { payload: unknown }) => void) => unknown;
-    send: (m: unknown) => Promise<unknown>;
-    subscribe: () => unknown;
-  };
-  removeChannel: (ch: unknown) => unknown;
-}
-
 /**
  * סיגנלינג דרך Supabase Realtime.
  *
@@ -131,7 +123,7 @@ interface RealtimeLike {
  * בעשרות בודדות לכל חיבור — ובתמורה אין מסלול שני שצריך להוכיח את עצמו.
  */
 export class RoomTransport implements SignalTransport {
-  private ch: ReturnType<RealtimeLike["channel"]> | null = null;
+  private handle: RoomChannelHandle | null = null;
 
   constructor(
     private readonly sb: RealtimeLike,
@@ -154,15 +146,17 @@ export class RoomTransport implements SignalTransport {
   }
 
   subscribe(selfId: string, onMessage: (m: SignalMessage) => void): () => void {
-    const ch = this.sb.channel(`room:${this.roomId}`, { config: { private: true } });
-    ch.on("broadcast", { event: "signal" }, ({ payload }) => {
+    // ידית מונה, ולא ערוץ פרטי: מצב המשחק מאזין לאותו נושא, ו-supabase-js
+    // מחזיר לשנינו את אותו אובייקט. ניתוק ישיר כאן היה מנתק גם אותו.
+    const h = roomChannel(this.sb, this.roomId);
+    h.on("signal", (payload) => {
       const p = payload as { to?: string; message?: SignalMessage } | undefined;
       // השידור מגיע לכל חברי החדר; הנמען מסונן כאן.
       if (p?.to === selfId && p.message) onMessage(p.message);
     });
-    ch.subscribe();
-    this.ch = ch;
-    return () => { this.sb.removeChannel(ch); this.ch = null; };
+    void h.join();
+    this.handle = h;
+    return () => { h.release(); if (this.handle === h) this.handle = null; };
   }
 
   /** ברשת, רשימת העמיתים מגיעה ממצב המשחק ולא מ-presence. */
@@ -171,6 +165,7 @@ export class RoomTransport implements SignalTransport {
   }
 
   close(): void {
-    if (this.ch) { this.sb.removeChannel(this.ch); this.ch = null; }
+    this.handle?.release();
+    this.handle = null;
   }
 }

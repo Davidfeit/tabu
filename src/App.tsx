@@ -149,7 +149,8 @@ function OnlineGame({ room, initial, version, onLeave }: {
         <div role="alert" dir="rtl"
              className="absolute inset-x-0 top-0 z-50 bg-amber-500/90 px-3 py-2 text-center
                         text-[0.82rem] font-medium text-neutral-900">
-          {stale} — הריצו <code className="font-mono">npm run setup:supabase</code>.
+          {stale} — הריצו <code className="font-mono">git pull &amp;&amp; npm run setup:supabase</code>,
+          ואז <code className="font-mono">npm run check:server</code> כדי לוודא שזה תפס.
           המשחק עובד; הווידאו וההצטרפות באמצע לא.
         </div>
       )}

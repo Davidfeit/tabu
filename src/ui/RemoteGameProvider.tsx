@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { RealtimeChannel } from "@supabase/supabase-js";
 import { reduce } from "@/engine/reduce";
 import type { Action, GameEvent, GameState } from "@/engine/types";
 import { errorText } from "@/lib/messages";
+import { roomChannel, type RealtimeLike } from "@/net/roomChannel";
 import { api, supabase } from "@/net/supabase";
 import { GameCtx, type GameClient } from "./GameContext";
 
@@ -34,7 +34,6 @@ export function RemoteGameProvider({
   const [events, setEvents] = useState<GameEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const version = useRef(initialVersion);
-  const channel = useRef<RealtimeChannel | null>(null);
 
   const reload = useCallback(async () => {
     const sb = supabase();
@@ -46,35 +45,30 @@ export function RemoteGameProvider({
 
   useEffect(() => {
     const sb = supabase();
-    let cancelled = false;
 
-    (async () => {
-      // חובה לפני הרשמה לערוץ פרטי: ההרשאות מחושבות מ-RLS בזמן ההצטרפות.
-      await sb.realtime.setAuth();
-      if (cancelled) return;
-
-      const ch = sb.channel(`room:${roomId}`, { config: { private: true } })
-        .on("broadcast", { event: "move" }, ({ payload }) => {
-          const incoming = Number(payload?.version ?? 0);
-          if (incoming <= version.current) return;          // כבר ראינו
-          if (incoming > version.current + 1) { void reload(); return; }  // פער — נטען מחדש
-          version.current = incoming;
-          const batch = (payload?.events ?? []) as GameEvent[];
-          if (batch.length) setEvents((log) => [...batch.reverse(), ...log].slice(0, MAX_LOG));
-          void reload();
-        })
-        .subscribe();
-      channel.current = ch;
-    })();
+    // ידית מונה ולא ערוץ ישיר: סיגנלינג הווידאו מאזין לאותו נושא, ו-
+    // supabase-js מחזיר לשנינו את אותו אובייקט ערוץ. ניתוק ישיר כאן היה
+    // מנתק גם את הווידאו, ולהפך.
+    const h = roomChannel(sb.realtime as unknown as RealtimeLike, roomId);
+    h.on("move", (payload) => {
+      const p = payload as { version?: number; events?: GameEvent[] } | undefined;
+      const incoming = Number(p?.version ?? 0);
+      if (incoming <= version.current) return;          // כבר ראינו
+      if (incoming > version.current + 1) { void reload(); return; }  // פער — נטען מחדש
+      version.current = incoming;
+      const batch = p?.events ?? [];
+      if (batch.length) setEvents((log) => [...batch.reverse(), ...log].slice(0, MAX_LOG));
+      void reload();
+    });
+    void h.join();
 
     // Presence ו-heartbeat לא מספיקים לנכונות: ה-heartbeat הוא 25 שניות,
     // וטאב שנסגר מזוהה רק אחרי 25–50. רענון תקופתי סוגר את הפער.
     const poll = setInterval(() => void reload(), 20_000);
 
     return () => {
-      cancelled = true;
       clearInterval(poll);
-      if (channel.current) void sb.removeChannel(channel.current);
+      h.release();
     };
   }, [roomId, reload]);
 

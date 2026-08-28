@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { _resetRoomChannels } from "./roomChannel";
 import { BroadcastTransport, RoomTransport } from "./transport";
 import type { SignalMessage } from "./signaling";
 
@@ -100,6 +101,9 @@ describe("תעבורה בין כרטיסיות", () => {
 });
 
 describe("RoomTransport — סיגנלינג על ערוץ החדר", () => {
+  // ערוץ החדר משותף בין צרכנים, ולכן הוא נשמר במפה ברמת המודול.
+  beforeEach(_resetRoomChannels);
+
   function fake() {
     const opened: { topic: string; opts?: { config?: { private?: boolean } } }[] = [];
     const handlers: ((m: { payload: unknown }) => void)[] = [];

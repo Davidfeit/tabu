@@ -290,9 +290,6 @@ async function handle(req: Request): Promise<Response> {
   }
   if (req.method !== "POST") return json({ ok: false, error: "METHOD" }, 405);
 
-  const userId = await callerId(req);
-  if (!userId) return json({ ok: false, error: "UNAUTHENTICATED" }, 401);
-
   let body: Record<string, unknown>;
   try { body = await req.json(); }
   catch { return json({ ok: false, error: "BAD_JSON" }, 400); }
@@ -300,10 +297,15 @@ async function handle(req: Request): Promise<Response> {
   const op = String(body.op ?? "");
   const roomId = String(body.roomId ?? "");
 
+  // שאלת גרסה, לא פעולת משחק: נענית לפני ההזדהות בכוונה. אחרת שרת ישן
+  // ושרת חדש עונים אותו 401 לבודק חיצוני, ואי אפשר להבדיל ביניהם —
+  // וזו בדיוק ההבחנה שבגללה הפעולה קיימת. אין כאן שום מידע פרטי.
+  if (op === "ops") return json({ ok: true, ops: OPS });
+
+  const userId = await callerId(req);
+  if (!userId) return json({ ok: false, error: "UNAUTHENTICATED" }, 401);
+
   switch (op) {
-    // מאפשר ללקוח לדעת אם הפונקציה שנפרסה מכירה את הפעולות שהוא צריך.
-    // פונקציה ישנה תחזיר UNKNOWN_OP — וזו כשלעצמה התשובה.
-    case "ops":    return json({ ok: true, ops: OPS });
     case "create": return createRoom(userId, body);
     case "join":   return joinRoom(userId, body);
     case "start":  return startGame(userId, roomId);

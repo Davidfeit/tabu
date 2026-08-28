@@ -195,6 +195,42 @@ deploy_fn() {
 deploy_fn play
 deploy_fn ice
 
+# ── האם הפריסה באמת תפסה? ────────────────────────────────────────────────
+# "הרצתי את הסקריפט והכל ירוק, והאתר עדיין מתנהג כמו מול שרת ישן" קרה
+# בפועל, ולקח ימים לאתר. הפקודה מסתיימת בהצלחה, ולכן הצלחה שלה אינה
+# עדות. העדות היחידה היא לשאול את הפונקציה החיה מה היא מכירה.
+step "מוודא שהפריסה תפסה"
+CHECK_URL="${VITE_SUPABASE_URL:-https://$PROJECT_REF.supabase.co}"
+CHECK_KEY="${VITE_SUPABASE_ANON_KEY:-}"
+if [[ -z "$CHECK_KEY" && -f .env.production ]]; then
+  CHECK_KEY="$(sed -n 's/^VITE_SUPABASE_ANON_KEY=//p' .env.production | head -1)"
+fi
+if [[ -z "$CHECK_KEY" ]]; then
+  # שער ה-Edge Functions דורש JWT תקין עוד לפני הקוד שלנו, ולכן גם
+  # שאלת גרסה צריכה את מפתח ה-anon. הוא ממילא ציבורי, וה-CLI כבר מזוהה.
+  CHECK_KEY="$("${SUPA[@]}" projects api-keys --project-ref "$PROJECT_REF" -o json 2>/dev/null \
+    | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
+        try{const a=JSON.parse(s);const k=a.find(x=>(x.name??x.key_name)==="anon");
+        process.stdout.write(k?.api_key??k?.apiKey??"");}catch{}})' || true)"
+fi
+
+if [[ -n "$CHECK_KEY" ]]; then
+  VITE_SUPABASE_URL="$CHECK_URL" VITE_SUPABASE_ANON_KEY="$CHECK_KEY" \
+    node scripts/check-server.mjs \
+    || die "הפריסה הסתיימה, אבל השרת עדיין מחזיר גרסה ישנה" \
+        "" \
+        "הפקודה supabase functions deploy סיימה בהצלחה — ולמרות זאת" \
+        "הפונקציה שעונה בכתובת היא לא זו שנפרסה עכשיו." \
+        "" \
+        "כמעט תמיד אחד משניים:" \
+        "• הקוד כאן ישן. git status ו-git pull, ואז שוב." \
+        "• יש שני פרויקטי Supabase, והאתר פונה לאחר. השוו את" \
+        "  VITE_SUPABASE_URL באתר מול https://$PROJECT_REF.supabase.co"
+else
+  printf '   \033[33m⚠ אין מפתח anon כאן, ולכן לא ניתן לוודא מרחוק.\033[0m\n' >&2
+  printf '     אחרי שתגדירו .env.production הריצו: npm run check:server\n' >&2
+fi
+
 step "נותר לכם ידנית (פעם אחת, בלוח הבקרה של Supabase)"
 cat <<'MANUAL'
    • Authentication → Providers → Anonymous sign-ins: הפעילו
