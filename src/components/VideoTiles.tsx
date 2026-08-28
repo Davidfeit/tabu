@@ -45,7 +45,6 @@ export function VideoTiles({
           const isMe = p.seat === mySeat;
           const peer = byUser.get(p.userId);
           const stream = isMe ? local : peer?.stream ?? null;
-          const connecting = !isMe && peer !== undefined && peer.connection !== "connected";
           return (
             <SeatTile key={seat}
                       name={p.name + (isMe ? " (את/ה)" : "")}
@@ -55,7 +54,7 @@ export function VideoTiles({
                       mirrored={isMe}
                       dimmed={p.bankrupt}
                       active={p.seat === state.currentSeat && !p.bankrupt}
-                      hint={connecting ? "מתחבר…" : undefined} />
+                      hint={isMe ? undefined : peerHint(peer)} />
           );
         })}
       </div>
@@ -69,6 +68,24 @@ export function VideoTiles({
       )}
     </div>
   );
+}
+
+/**
+ * מה קרה לחיבור של העמית הזה.
+ *
+ * "מתחבר…" לבדו לא הבחין בין שלושה מצבים שונים לגמרי: עמית שלא נוצר לו
+ * חיבור בכלל (סיגנלינג חסום), חיבור שמנסה ונכשל (NAT בלי ממסר), וחיבור
+ * מוצלח שפשוט לא הביא מסלול וידאו. בלי ההבחנה הזו כל תקלה נראתה זהה.
+ */
+export function peerHint(peer: PeerState | undefined): string | undefined {
+  if (!peer) return "אין חיבור — הסיגנלינג לא הגיע";
+  switch (peer.connection) {
+    case "connected":    return "מחובר, בלי וידאו";
+    case "failed":       return "החיבור נכשל — כנראה נדרש ממסר";
+    case "disconnected": return "החיבור נותק";
+    case "closed":       return "החיבור נסגר";
+    default:             return "מתחבר…";
+  }
 }
 
 export function SeatTile({ name, seat, token, stream, mirrored, active, dimmed, hint }: {

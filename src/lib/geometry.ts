@@ -225,12 +225,21 @@ export function standFor(pos: number, indexInCell: number, total: number): Point
   if (row === 1) return { xPct: c.xPct + spread, yPct: c.yPct + half.yPct + h };
   if (row === GRID) return { xPct: c.xPct + spread, yPct: c.yPct - half.yPct };
 
-  // עמודות: הפרישה אנכית, והגוף מוסט אופקית בחצי רוחב כדי לצאת מהמשבצת.
+  // עמודות: כפות הרגליים על הצלע הפנימית עצמה. הגוף יוצא ממנה פנימה
+  // בזכות הסיבוב (ראה standRotation), בדיוק כמו בשורה התחתונה.
   const dir = col === 1 ? 1 : -1;
-  return {
-    xPct: c.xPct + dir * (half.xPct + w / 2),
-    yPct: c.yPct + h / 2 + spread,
-  };
+  return { xPct: c.xPct + dir * half.xPct, yPct: c.yPct + spread };
+}
+
+/**
+ * סיבוב החייל, במעלות.
+ *
+ * החייל עומד ביחס למשבצת שלו, לא ביחס למסך. משבצות העמודות מסובבות —
+ * גם התוויות שלהן — וחייל זקוף על מסך נראה לידן שוכב. אותו סיבוב בדיוק
+ * כמו התווית, ולכן שניהם מסכימים על מה נחשב "למעלה" במשבצת הזו.
+ */
+export function standRotation(pos: number): number {
+  return labelRotation(cellFor(pos).side);
 }
 
 /**

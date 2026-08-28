@@ -12,6 +12,7 @@ import {
   labelRotation,
   pathBetween,
   standFor,
+  standRotation,
   tokenSize,
   travelArrowRotation,
 } from "./geometry";
@@ -217,8 +218,10 @@ describe("עמידה על המשבצת", () => {
       } else if (row === 1) {
         expect(f.yPct - h).toBeGreaterThanOrEqual(c.yPct + halfY - 1e-9); // מתחתיה
       } else {
+        // בעמודות כפות הרגליים על הצלע הפנימית עצמה, והגוף יוצא ממנה
+        // בזכות הסיבוב — ולכן נבדק המיקום ולא רוחב הגוף.
         const dx = Math.abs(f.xPct - c.xPct);
-        expect(dx - w / 2).toBeGreaterThanOrEqual(halfX - 1e-9);      // לצידה
+        expect(dx).toBeCloseTo(halfX, 10);
       }
     }
   });
@@ -246,6 +249,18 @@ describe("עמידה על המשבצת", () => {
     const xs = [0, 1, 2, 3].map((i) => standFor(5, i, 4).xPct);
     const span = xs[3]! - xs[0]! + w;
     expect(span).toBeLessThan(CELL * 1.6);
+  });
+
+  it("החייל מסובב כמו התווית של המשבצת שלו", () => {
+    // ביחס למשבצת, לא ביחס למסך: משבצות העמודות מסובבות וגם התוויות שלהן,
+    // וחייל זקוף על מסך נראה לידן שוכב.
+    for (let pos = 0; pos < SQUARE_COUNT; pos++) {
+      expect(standRotation(pos)).toBe(labelRotation(cellFor(pos).side));
+    }
+    expect(standRotation(5)).toBe(0);     // שורה תחתונה
+    expect(standRotation(15)).toBe(90);   // עמודה שמאלית
+    expect(standRotation(25)).toBe(0);    // שורה עליונה
+    expect(standRotation(35)).toBe(-90);  // עמודה ימנית
   });
 
   it("בעמודות הפרישה אנכית ולא אופקית", () => {

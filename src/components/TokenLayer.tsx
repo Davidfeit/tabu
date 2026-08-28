@@ -1,4 +1,4 @@
-import { standFor, tokenSize } from "@/lib/geometry";
+import { standFor, standRotation, tokenSize } from "@/lib/geometry";
 import { useMotion } from "@/ui/MotionContext";
 import { STEP_MS } from "@/ui/useTokenMotion";
 import type { GameState } from "@/engine/types";
@@ -35,6 +35,7 @@ export function TokenLayer({ state }: { state: GameState }) {
         const width = `${tokenSize(crowd.length).w}cqw`;
         // הנקודה היא כפות הרגליים, לא המרכז — ראה standFor.
         const { xPct, yPct } = standFor(pos, crowd.indexOf(p.seat), crowd.length);
+        const rot = standRotation(pos);
         const isTurn = p.seat === state.currentSeat;
 
         return (
@@ -50,6 +51,9 @@ export function TokenLayer({ state }: { state: GameState }) {
                  // בכל משבצת, וזה מה שנקרא קופצני.
                  transitionDuration: m?.walking ? `${STEP_MS}ms` : "260ms",
                  zIndex: isTurn ? 3 : 2,
+                 // הסיבוב סביב כפות הרגליים, לא סביב המרכז — אחרת החייל
+                 // היה נודד מהמשבצת שלו בכל סיבוב שאינו 0.
+                 ["--tabu-rot" as string]: `${rot}deg`,
                }}>
             <span className="tabu-token__inner block">
               <Token token={p.token} seat={p.seat} size={width}
