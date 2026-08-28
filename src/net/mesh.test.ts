@@ -41,7 +41,15 @@ class FakePC {
     return { getParameters: () => ({ encodings: [{}] }), setParameters: async () => {} };
   }
 
-  async setLocalDescription() {
+  async setLocalDescription(d?: { type: string }) {
+    if (d?.type === "rollback") {
+      if (this.signalingState !== "have-local-offer") {
+        throw new Error(`גלגול לאחור ב-${this.signalingState}`);
+      }
+      this.localDescription = null;
+      this.signalingState = "stable";
+      return;
+    }
     if (this.signalingState === "stable") {
       this.localDescription = { type: "offer", sdp: "local-offer" };
       this.signalingState = "have-local-offer";
@@ -108,14 +116,14 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 /** זוג רשתות שמדברות זו עם זו, עם שליטה על סדר המסירה. */
-function pair(opts: { deliver?: boolean } = {}) {
+function pair(opts: { deliver?: boolean; glareMs?: number } = {}) {
   const queue: { to: string; msg: SignalMessage }[] = [];
   const meshes: Record<string, PeerMesh> = {};
   const states: Record<string, PeerState[]> = { a: [], b: [] };
 
   const make = (id: string) => new PeerMesh({
     selfId: id, localStream: stream(), iceServers: [],
-    iceBatchMs: 0,
+    iceBatchMs: 0, glareMs: opts.glareMs ?? 20,
     send: (to, msg) => {
       queue.push({ to, msg });
       if (opts.deliver !== false) void flush();
@@ -204,5 +212,59 @@ describe("משא ומתן בין שני עמיתים", () => {
     expect(a.in.answer + b.in.answer).toBeGreaterThan(0);
     // ומה שהאבחון מציג הוא זה: תשובה שיצאה מול תשובה שנכנסה.
     expect(a.out.answer + b.out.answer).toBe(a.in.answer + b.in.answer);
+  });
+});
+
+describe("התנגשות שבה הצד השני לא עונה", () => {
+  it("הצד הלא-מנומס נסוג בעצמו ועונה, במקום להיתקע לנצח", async () => {
+    // בדיוק מה שנראה על המסך: שני הצדדים עם הצעה מקומית פתוחה, אף אחד
+    // לא ענה, והחיבור נשאר new. הדפוס הקלאסי מניח שהמנומס יענה — וכשהוא
+    // לא (גרסה ישנה, הודעה שאבדה), זה תקוע לתמיד.
+    const sent: { to: string; msg: SignalMessage }[] = [];
+    const states: PeerState[][] = [];
+    const mesh = new PeerMesh({
+      selfId: "d189", localStream: stream(), iceServers: [], iceBatchMs: 0, glareMs: 10,
+      send: (to, msg) => sent.push({ to, msg }),
+      onPeersChanged: (p) => states.push(p),
+    });
+
+    mesh.sync(["35eb"]);                       // "35eb" < "d189" → אני לא מנומס
+    await settle();
+    expect(sent.filter((m) => m.msg.kind === "offer")).toHaveLength(1);
+
+    await mesh.handle({ kind: "offer", from: "35eb", sdp: "his-offer" });
+    const ignored = states[states.length - 1]![0]!;
+    expect(ignored.in.offer).toBe(1);
+    expect(ignored.out.answer).toBe(0);        // התעלמנו, כמצופה
+
+    await new Promise((r) => setTimeout(r, 40));
+    await settle();
+
+    const after = states[states.length - 1]![0]!;
+    expect(after.out.answer).toBe(1);          // נסוגנו וענינו
+    expect(after.lastError).toBeNull();
+    expect(sent.some((m) => m.msg.kind === "answer")).toBe(true);
+  });
+
+  it("תשובה שהגיעה בזמן מבטלת את הנסיגה", async () => {
+    const sent: { to: string; msg: SignalMessage }[] = [];
+    const states: PeerState[][] = [];
+    const mesh = new PeerMesh({
+      selfId: "d189", localStream: stream(), iceServers: [], iceBatchMs: 0, glareMs: 10,
+      send: (to, msg) => sent.push({ to, msg }),
+      onPeersChanged: (p) => states.push(p),
+    });
+    mesh.sync(["35eb"]);
+    await settle();
+
+    await mesh.handle({ kind: "offer", from: "35eb", sdp: "his-offer" });
+    await mesh.handle({ kind: "answer", from: "35eb", sdp: "his-answer" });
+    await new Promise((r) => setTimeout(r, 40));
+    await settle();
+
+    const after = states[states.length - 1]![0]!;
+    expect(after.out.answer).toBe(0);          // אין צורך — התשובה הגיעה
+    expect(after.lastError).toBeNull();
+    expect(after.connection).toBe("connecting");
   });
 });

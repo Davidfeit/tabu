@@ -54,9 +54,14 @@ export function diagLines(d: DiagInput): string[] {
     // הבחנה שאי אפשר להסיק ממספרים: אין תנועה כי אין רשת, או אין תנועה
     // כי הצד השני לא הפעיל וידאו בכלל.
     for (const id of d.wanted) {
-      if (!online.includes(id)) {
-        lines.push(`${short(id)} לא מריץ וידאו — הוא לא אישר מצלמה, או שהוא במצב שלט בטלפון`);
-      }
+      if (online.includes(id)) continue;
+      // אסור להאשים אותו ב"לא מריץ וידאו" כשהודעות ממנו כבר הגיעו —
+      // אז הוא בבירור מריץ, ומה שחסר זו רק ההכרזה, כלומר גרסה ישנה אצלו.
+      const heard = d.peers.find((p) => p.id === id);
+      const talking = heard && heard.in.offer + heard.in.answer + heard.in.ice > 0;
+      lines.push(talking
+        ? `${short(id)} שולח אבל לא מכריז נוכחות — גרסה ישנה אצלו, שירענן`
+        : `${short(id)} לא מריץ וידאו — הוא לא אישר מצלמה, או שהוא במצב שלט בטלפון`);
     }
     lines.push(`סיגנלינג: נשלחו ${sent}${failed ? `, נכשלו ${failed}` : ""}` +
                ` · התקבלו ${received} (אליי ${forMe})`);

@@ -48,6 +48,8 @@ export interface MeshOptions {
   send: (peerId: string, message: SignalMessage) => void;
   onPeersChanged: (peers: PeerState[]) => void;
   iceBatchMs?: number;
+  /** כמה להמתין לתשובה לפני נסיגה מהתנגשות. לבדיקות. */
+  glareMs?: number;
 }
 
 interface Peer {
@@ -68,7 +70,21 @@ interface Peer {
    * הוא מסלול שלא ייבדק — כלומר חיבור שנכשל בלי סיבה נראית.
    */
   pendingIce: RTCIceCandidateInit[];
+  /**
+   * הצעה שהתעלמנו ממנה בהתנגשות, ומתי לחזור אליה.
+   *
+   * הדפוס אומר שהצד הלא-מנומס מתעלם והמנומס נסוג — וזה נכון *כל עוד*
+   * המנומס באמת עונה. אם הוא לא (גרסה ישנה, דפדפן שלא מגלגל לאחור,
+   * הודעה שאבדה) שני הצדדים נשארים עם הצעה מקומית פתוחה לנצח, ואין
+   * וידאו לאף אחד. אז שומרים, וממתינים רגע, ואם לא הגיעה תשובה —
+   * מגלגלים לאחור ועונים בעצמנו.
+   */
+  deferred: RTCSessionDescriptionInit | null;
+  glareTimer: ReturnType<typeof setTimeout> | null;
 }
+
+/** כמה להמתין לתשובה לפני שהצד הלא-מנומס נסוג בעצמו. */
+export const GLARE_MS = 2500;
 
 /** הודעת שגיאה קריאה, גם כשמה שנזרק אינו Error. */
 const errText = (e: unknown): string =>
@@ -107,6 +123,7 @@ export class PeerMesh {
       pc, polite: isPolite(this.opts.selfId, peerId),
       makingOffer: false, ignoreOffer: false, stream: null, relayed: false,
       in: noCount(), out: noCount(), lastError: null, pendingIce: [],
+      deferred: null, glareTimer: null,
     };
     this.peers.set(peerId, peer);
 
@@ -176,7 +193,12 @@ export class PeerMesh {
         // glare: שני הצדדים הציעו. המנומס נסוג, הלא-מנומס מתעלם.
         const collision = peer.makingOffer || pc.signalingState !== "stable";
         peer.ignoreOffer = !peer.polite && collision;
-        if (peer.ignoreOffer) { this.emit(); return; }
+        if (peer.ignoreOffer) {
+          peer.deferred = description;
+          this.armGlare(peerId, peer);
+          this.emit();
+          return;
+        }
         await pc.setRemoteDescription(description);
         await this.drainIce(peer);
         await pc.setLocalDescription();
@@ -186,6 +208,7 @@ export class PeerMesh {
         });
       } else {
         peer.in.answer++;
+        this.disarmGlare(peer);
         await pc.setRemoteDescription(description);
         await this.drainIce(peer);
       }
@@ -193,6 +216,50 @@ export class PeerMesh {
     } catch (e) {
       // חיבור בודד שנכשל לא מפיל את השאר — אבל הוא כן אומר למה.
       peer.lastError = `${message.kind}: ${errText(e)}`;
+    }
+    this.emit();
+  }
+
+  /**
+   * ההצעה נדחתה בהתנגשות — נותנים לצד השני רגע לענות, ואם לא, נסוגים.
+   *
+   * זה מה שהופך את המשא ומתן לעמיד: הוא כבר לא מניח שהצד השני מתנהג
+   * נכון, אלא רק שהוא מדבר.
+   */
+  private armGlare(peerId: string, peer: Peer): void {
+    if (peer.glareTimer) return;
+    peer.glareTimer = setTimeout(() => {
+      peer.glareTimer = null;
+      void this.resolveGlare(peerId, peer);
+    }, this.opts.glareMs ?? GLARE_MS);
+  }
+
+  private disarmGlare(peer: Peer): void {
+    if (peer.glareTimer) { clearTimeout(peer.glareTimer); peer.glareTimer = null; }
+    peer.deferred = null;
+  }
+
+  private async resolveGlare(peerId: string, peer: Peer): Promise<void> {
+    const offer = peer.deferred;
+    peer.deferred = null;
+    // תשובה הגיעה בינתיים, או שהחיבור כבר התקדם — אין מה לתקן.
+    if (!offer || this.closed || peer.pc.remoteDescription) return;
+
+    try {
+      // גלגול ההצעה המקומית לאחור מחזיר אותנו ל-stable, וממנו אפשר
+      // לקבל את ההצעה שלו ולענות עליה כרגיל.
+      await peer.pc.setLocalDescription({ type: "rollback" });
+      peer.ignoreOffer = false;
+      await peer.pc.setRemoteDescription(offer);
+      await this.drainIce(peer);
+      await peer.pc.setLocalDescription();
+      peer.out.answer++;
+      this.opts.send(peerId, {
+        kind: "answer", from: this.opts.selfId, sdp: peer.pc.localDescription!.sdp,
+      });
+      peer.lastError = null;
+    } catch (e) {
+      peer.lastError = `נסיגה מהתנגשות נכשלה: ${errText(e)}`;
     }
     this.emit();
   }
@@ -233,6 +300,7 @@ export class PeerMesh {
     peer.pc.onicecandidate = null;
     peer.pc.onnegotiationneeded = null;
     peer.pc.onconnectionstatechange = null;
+    this.disarmGlare(peer);
     peer.pc.close();
     this.peers.delete(peerId);
     this.batcher.flush(peerId);

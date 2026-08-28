@@ -93,3 +93,12 @@ describe("נוכחות בערוץ", () => {
     expect(l).not.toContain("לא מריץ וידאו");
   });
 });
+
+it("לא מאשים 'אין וידאו' את מי שהודעות ממנו כבר הגיעו", () => {
+  // הסתירה שהייתה על המסך: "רק אני בערוץ" ליד הצעה שהגיעה ממנו.
+  const l = diagLines({ selfId: "me00", wanted: ["you0"],
+    peers: [peer({ id: "you0", in: { offer: 1, answer: 0, ice: 1 } })],
+    stats: { sent: 2, failed: 0, received: 4, forMe: 2, online: ["me00"] } }).join("\n");
+  expect(l).toContain("לא מכריז נוכחות");
+  expect(l).not.toContain("לא מריץ וידאו");
+});
