@@ -34,7 +34,17 @@ export function diagLines(d: DiagInput): string[] {
 
   for (const p of d.peers) {
     const track = p.stream ? "יש מסלול וידאו" : "בלי מסלול";
-    lines.push(`${short(p.id)}: ${p.connection} · ${track}${p.relayed ? " · דרך ממסר" : ""}`);
+    lines.push(`${short(p.id)}: ${p.connection}/${p.signaling} · ${track}` +
+               `${p.relayed ? " · דרך ממסר" : ""} · ${p.polite ? "מנומס" : "לא מנומס"}`);
+    // הכיוונים בנפרד: "שלחתי הצעה ולא קיבלתי תשובה" ו"קיבלתי הצעה ולא
+    // עניתי" הן שתי תקלות הפוכות, ובלי הפירוט הן נראות אותו דבר.
+    lines.push(`   ↑ הצעה ${p.out.offer} תשובה ${p.out.answer} ICE ${p.out.ice}` +
+               ` · ↓ הצעה ${p.in.offer} תשובה ${p.in.answer} ICE ${p.in.ice}`);
+    if (p.lastError) lines.push(`   ✗ ${p.lastError}`);
+    // תיאור מרוחק שלא הוחל הוא הגבול המדויק בין סיגנלינג ל-ICE.
+    if (p.connection === "new" && p.in.offer + p.in.answer > 0 && !p.lastError) {
+      lines.push("   הגיע SDP ולא הוחל — המשא ומתן נעצר, לא ICE");
+    }
   }
 
   if (d.stats) {

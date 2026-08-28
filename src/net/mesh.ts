@@ -16,13 +16,30 @@ import { IceBatcher, isPolite, type SignalMessage } from "./signaling";
  * מגיעים לאותה מסקנה בלי סיבוב תקשורת נוסף.
  */
 
+/** ספירת הודעות סיגנלינג לפי סוג, לכיוון אחד. */
+export interface SignalCount { offer: number; answer: number; ice: number }
+
 export interface PeerState {
   id: string;
   stream: MediaStream | null;
   connection: RTCPeerConnectionState;
   /** האם החיבור נדרש לעבור דרך ממסר TURN. לניטור עלות. */
   relayed: boolean;
+  /** מצב המשא ומתן. "new" בחיבור פירושו שתיאור מרוחק לא הוחל. */
+  signaling: RTCSignalingState;
+  polite: boolean;
+  in: SignalCount;
+  out: SignalCount;
+  /**
+   * השגיאה האחרונה בטיפול בהודעה.
+   *
+   * חיבור בודד שנכשל באמת לא צריך להפיל את השאר, אבל הבליעה השקטה הפכה
+   * "ה-SDP נדחה" ל"ריבוע שחור" — בלי שום דרך להבדיל בינו לבין NAT.
+   */
+  lastError: string | null;
 }
+
+const noCount = (): SignalCount => ({ offer: 0, answer: 0, ice: 0 });
 
 export interface MeshOptions {
   selfId: string;
@@ -40,7 +57,22 @@ interface Peer {
   ignoreOffer: boolean;
   stream: MediaStream | null;
   relayed: boolean;
+  in: SignalCount;
+  out: SignalCount;
+  lastError: string | null;
+  /**
+   * מועמדי ICE שהגיעו לפני התיאור המרוחק.
+   *
+   * שני הצדדים שולחים במקביל, ואין שום הבטחה שההצעה תקדים את המועמדים.
+   * addIceCandidate לפני setRemoteDescription נכשל, וכל מועמד שנזרק כך
+   * הוא מסלול שלא ייבדק — כלומר חיבור שנכשל בלי סיבה נראית.
+   */
+  pendingIce: RTCIceCandidateInit[];
 }
+
+/** הודעת שגיאה קריאה, גם כשמה שנזרק אינו Error. */
+const errText = (e: unknown): string =>
+  e instanceof Error ? e.message : String(e);
 
 export class PeerMesh {
   private peers = new Map<string, Peer>();
@@ -49,6 +81,8 @@ export class PeerMesh {
 
   constructor(private readonly opts: MeshOptions) {
     this.batcher = new IceBatcher(opts.iceBatchMs ?? 200, (peerId, candidates) => {
+      const peer = this.peers.get(peerId);
+      if (peer) peer.out.ice++;
       opts.send(peerId, { kind: "ice", from: opts.selfId, candidates });
     });
   }
@@ -72,6 +106,7 @@ export class PeerMesh {
     const peer: Peer = {
       pc, polite: isPolite(this.opts.selfId, peerId),
       makingOffer: false, ignoreOffer: false, stream: null, relayed: false,
+      in: noCount(), out: noCount(), lastError: null, pendingIce: [],
     };
     this.peers.set(peerId, peer);
 
@@ -93,11 +128,12 @@ export class PeerMesh {
       try {
         peer.makingOffer = true;
         await pc.setLocalDescription();
+        peer.out.offer++;
         this.opts.send(peerId, {
           kind: "offer", from: this.opts.selfId, sdp: pc.localDescription!.sdp,
         });
-      } catch { /* יטופל ב-connectionstatechange */ }
-      finally { peer.makingOffer = false; }
+      } catch (e) { peer.lastError = `הצעה נכשלה: ${errText(e)}`; }
+      finally { peer.makingOffer = false; this.emit(); }
     };
 
     pc.onconnectionstatechange = () => {
@@ -125,32 +161,54 @@ export class PeerMesh {
 
     try {
       if (message.kind === "ice") {
-        for (const c of message.candidates) {
-          try { await pc.addIceCandidate(c); }
-          catch { if (!peer.ignoreOffer) throw new Error("ICE נדחה"); }
-        }
+        peer.in.ice++;
+        // בלי תיאור מרוחק אין למועמד למה להתייחס. שומרים ומחילים אחר כך.
+        if (!pc.remoteDescription) { peer.pendingIce.push(...message.candidates); }
+        else await this.addIce(peer, message.candidates);
+        this.emit();
         return;
       }
 
       const description = { type: message.kind, sdp: message.sdp } as RTCSessionDescriptionInit;
 
       if (message.kind === "offer") {
+        peer.in.offer++;
         // glare: שני הצדדים הציעו. המנומס נסוג, הלא-מנומס מתעלם.
         const collision = peer.makingOffer || pc.signalingState !== "stable";
         peer.ignoreOffer = !peer.polite && collision;
-        if (peer.ignoreOffer) return;
+        if (peer.ignoreOffer) { this.emit(); return; }
         await pc.setRemoteDescription(description);
+        await this.drainIce(peer);
         await pc.setLocalDescription();
+        peer.out.answer++;
         this.opts.send(peerId, {
           kind: "answer", from: this.opts.selfId, sdp: pc.localDescription!.sdp,
         });
       } else {
+        peer.in.answer++;
         await pc.setRemoteDescription(description);
+        await this.drainIce(peer);
       }
-    } catch {
-      /* חיבור בודד שנכשל לא מפיל את השאר */
+      peer.lastError = null;
+    } catch (e) {
+      // חיבור בודד שנכשל לא מפיל את השאר — אבל הוא כן אומר למה.
+      peer.lastError = `${message.kind}: ${errText(e)}`;
     }
     this.emit();
+  }
+
+  private async addIce(peer: Peer, candidates: RTCIceCandidateInit[]): Promise<void> {
+    for (const c of candidates) {
+      try { await peer.pc.addIceCandidate(c); }
+      catch (e) { if (!peer.ignoreOffer) peer.lastError = `ICE נדחה: ${errText(e)}`; }
+    }
+  }
+
+  private async drainIce(peer: Peer): Promise<void> {
+    if (!peer.pendingIce.length) return;
+    const queued = peer.pendingIce;
+    peer.pendingIce = [];
+    await this.addIce(peer, queued);
   }
 
   /** האם החיבור עובר דרך ממסר. המדד שקובע אם TURN מתחיל לעלות כסף. */
@@ -187,6 +245,8 @@ export class PeerMesh {
   snapshot(): PeerState[] {
     return [...this.peers.entries()].map(([id, p]) => ({
       id, stream: p.stream, connection: p.pc.connectionState, relayed: p.relayed,
+      signaling: p.pc.signalingState, polite: p.polite,
+      in: { ...p.in }, out: { ...p.out }, lastError: p.lastError,
     }));
   }
 

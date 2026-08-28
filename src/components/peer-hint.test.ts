@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
 import type { PeerState } from "@/net/mesh";
+import { fakePeer } from "@/net/peer-fixture";
 import { peerHint } from "./VideoTiles";
 
 const peer = (connection: RTCPeerConnectionState): PeerState =>
-  ({ id: "p", stream: null, connection, relayed: false });
+  fakePeer({ id: "p", connection });
 
 describe("סיבת היעדר וידאו", () => {
   // שלושת המצבים נראו זהים על המסך, ולכן כל תקלה נראתה כמו אותה תקלה.

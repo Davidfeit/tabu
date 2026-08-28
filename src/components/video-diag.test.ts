@@ -1,9 +1,6 @@
 import { describe, it, expect } from "vitest";
-import type { PeerState } from "@/net/mesh";
+import { fakePeer as peer } from "@/net/peer-fixture";
 import { diagLines, needsDiag } from "./videoDiag";
-
-const peer = (p: Partial<PeerState> & { id: string }): PeerState =>
-  ({ stream: null, connection: "new", relayed: false, ...p });
 
 describe("אבחון וידאו", () => {
   it("אומר כשאין בכלל מי להתחבר אליו", () => {
@@ -47,5 +44,36 @@ describe("אבחון וידאו", () => {
     const l = diagLines({ selfId: "me00", wanted: ["you0"], peers: [],
                           relayError: "הממסר נכשל: 500" });
     expect(l[l.length - 1]).toBe("הממסר נכשל: 500");
+  });
+});
+
+describe("פירוט לכל עמית", () => {
+  const base = { selfId: "me00", wanted: ["you0"] };
+
+  it("מפריד בין הכיוונים — מה יצא ומה נכנס", () => {
+    const l = diagLines({ ...base, peers: [peer({
+      id: "you0", out: { offer: 1, answer: 0, ice: 2 },
+      in: { offer: 1, answer: 0, ice: 1 } })] }).join("\n");
+    expect(l).toContain("↑ הצעה 1 תשובה 0 ICE 2");
+    expect(l).toContain("↓ הצעה 1 תשובה 0 ICE 1");
+  });
+
+  it("מציג את השגיאה שנבלעה בטיפול בהודעה", () => {
+    const l = diagLines({ ...base, peers: [peer({
+      id: "you0", lastError: "offer: Failed to set remote offer sdp" })] }).join("\n");
+    expect(l).toContain("Failed to set remote offer sdp");
+  });
+
+  it("SDP שהגיע והחיבור נשאר new — עוצר את החשד ב-ICE", () => {
+    const l = diagLines({ ...base, peers: [peer({
+      id: "you0", connection: "new", in: { offer: 1, answer: 0, ice: 1 } })] }).join("\n");
+    expect(l).toContain("המשא ומתן נעצר, לא ICE");
+  });
+
+  it("כשיש שגיאה מפורשת, לא מוסיפים ניחוש מעליה", () => {
+    const l = diagLines({ ...base, peers: [peer({
+      id: "you0", connection: "new", in: { offer: 1, answer: 0, ice: 0 },
+      lastError: "offer: boom" })] }).join("\n");
+    expect(l).not.toContain("המשא ומתן נעצר");
   });
 });

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PeerState } from "@/net/mesh";
+import { fakePeer } from "@/net/peer-fixture";
 import { meshPeers } from "@/ui/useMesh";
 
 /**
@@ -22,7 +23,7 @@ function pickStream(
 
 const stream = (tag: string) => ({ tag } as unknown as MediaStream);
 const peer = (id: string, s: MediaStream | null): PeerState =>
-  ({ id, stream: s, connection: "connected", relayed: false });
+  fakePeer({ id, stream: s, connection: "connected" });
 
 describe("שיוך זרמים למושבים במשחק מקוון", () => {
   const players = [
