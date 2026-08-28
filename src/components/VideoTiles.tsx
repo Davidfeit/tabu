@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { PeerState } from "@/net/mesh";
+import { videoInfo, type PeerState } from "@/net/mesh";
 import type { MediaErrorKind } from "@/net/media";
 import type { SignalStats } from "@/net/transport";
 import type { GameState } from "@/engine/types";
@@ -68,10 +68,8 @@ export function VideoTiles({
         })}
       </div>
 
-      {needsDiag({ wanted, peers }) && (
-        <VideoDiag selfId={selfId} wanted={wanted} peers={peers}
-                   stats={stats} relayError={relayError} />
-      )}
+      <VideoDiag selfId={selfId} wanted={wanted} peers={peers}
+                 stats={stats} relayError={relayError} />
 
       {error && (
         <p className="pointer-events-none absolute inset-x-[8%] bottom-[2%] rounded
@@ -150,8 +148,11 @@ export function EmptySeat() {
 /**
  * אבחון חי מתחת לחלונות.
  *
- * המונים משתנים מחוץ ל-React (הם נכתבים בתעבורה עצמה), ולכן רענון בשעון.
- * זה בסדר גמור: זו תצוגת אבחון שנעלמת ברגע שהווידאו זורם.
+ * המונים ומצב המסלולים משתנים מחוץ ל-React, ולכן רענון בשעון — וגם
+ * ההחלטה אם להציג בכלל מתקבלת כאן, על נתונים טריים. כשהיא התקבלה
+ * למעלה, על צילום המצב האחרון של ה-mesh, השורה נשארה תקועה על
+ * "לא זורמים פריימים" בזמן שהווידאו כבר זרם: אירוע ה-unmute יכול
+ * להקדים את ההאזנה לו, ואז אין מה שיעדכן.
  */
 function VideoDiag({ selfId, wanted, peers, stats, relayError }: {
   selfId: string; wanted: string[]; peers: PeerState[];
@@ -163,11 +164,15 @@ function VideoDiag({ selfId, wanted, peers, stats, relayError }: {
     return () => clearInterval(t);
   }, []);
 
+  // נקרא מהמסלולים עצמם עכשיו, ולא מצילום מצב ישן.
+  const live = peers.map((p) => ({ ...p, video: videoInfo(p.stream) }));
+  if (!needsDiag({ wanted, peers: live })) return null;
+
   return (
     <div dir="rtl" className="pointer-events-none absolute inset-x-0 bottom-0 space-y-0.5
                               bg-black/70 px-2 py-1 text-[0.6rem] leading-tight
                               text-amber-200/90">
-      {diagLines({ selfId, wanted, peers, stats, relayError }).map((l) => (
+      {diagLines({ selfId, wanted, peers: live, stats, relayError }).map((l) => (
         <div key={l} style={{ unicodeBidi: "plaintext" }}>{l}</div>
       ))}
     </div>
