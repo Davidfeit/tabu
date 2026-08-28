@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SeatSpec } from "@/engine/setup";
 import type { GameState, Settings } from "@/engine/types";
-import { api, CONFIG_PROBLEM, ONLINE_ENABLED, supabase } from "@/net/supabase";
+import { api, CONFIG_PROBLEM, ONLINE_ENABLED, staleServer, supabase } from "@/net/supabase";
 import { RoomTransport } from "@/net/transport";
 import { LocalGameProvider, useGame } from "@/ui/GameContext";
 import { RemoteGameProvider } from "@/ui/RemoteGameProvider";
@@ -124,10 +124,19 @@ function OnlineGame({ room, initial, version, onLeave }: {
   const [videoOn, setVideoOn] = useState<boolean | null>(null);
   const peerIds = initial.players.map((p) => p.userId).filter((id) => id !== room.userId);
   // התעבורה נוצרת רק אחרי אישור המצלמה, כדי לא לפתוח ערוצים לחינם.
+  const [relayError, setRelayError] = useState<string | null>(null);
+
+  // האתר נפרס בכל דחיפה; הפונקציות רק ב-setup:supabase. כששני החצאים
+  // מתפצלים, תקלת שרת נראית כמו תקלת רשת — ולכן נבדק במפורש.
+  const [stale, setStale] = useState<string | null>(null);
+  useEffect(() => {
+    void staleServer(["signal"]).then(setStale);
+  }, []);
   const transport = useMemo(
     () => (videoOn && !phone
       ? new RoomTransport(supabase().realtime as never, room.roomId,
-                          (to, message) => api.signal(room.roomId, to, message))
+                          (to, message) => api.signal(room.roomId, to, message),
+                          setRelayError)
       : null),
     [videoOn, phone, room.roomId]);
   const mesh = useMesh(room.userId, peerIds, transport);
@@ -136,6 +145,14 @@ function OnlineGame({ room, initial, version, onLeave }: {
     <RemoteGameProvider roomId={room.roomId} mySeat={room.seat}
                         initialState={initial} initialVersion={version}>
       <ErrorToast />
+      {stale && (
+        <div role="alert" dir="rtl"
+             className="absolute inset-x-0 top-0 z-50 bg-amber-500/90 px-3 py-2 text-center
+                        text-[0.82rem] font-medium text-neutral-900">
+          {stale} — הריצו <code className="font-mono">npm run setup:supabase</code>.
+          המשחק עובד; הווידאו וההצטרפות באמצע לא.
+        </div>
+      )}
       {phone ? (
         <PhoneController onLeave={onLeave} />
       ) : (
@@ -147,7 +164,7 @@ function OnlineGame({ room, initial, version, onLeave }: {
             onRestart={onLeave}
             videoTiles={videoOn ? (
               <VideoTilesBridge local={mesh.local} peers={mesh.peers} error={mesh.error}
-                                mySeat={room.seat} />
+                                relayError={relayError} mySeat={room.seat} />
             ) : undefined}
           />
         </>

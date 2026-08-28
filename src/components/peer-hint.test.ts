@@ -7,8 +7,21 @@ const peer = (connection: RTCPeerConnectionState): PeerState =>
 
 describe("סיבת היעדר וידאו", () => {
   // שלושת המצבים נראו זהים על המסך, ולכן כל תקלה נראתה כמו אותה תקלה.
-  it("אין עמית בכלל — הסיגנלינג לא הגיע", () => {
-    expect(peerHint(undefined)).toMatch(/סיגנלינג/);
+  it("אין עמית בכלל", () => {
+    expect(peerHint(undefined)).toMatch(/לא נוצר חיבור/);
+  });
+
+  // ההבחנה המכריעה: new פירושו שאף הודעת סיגנלינג לא הגיעה מהצד השני,
+  // ואילו connecting פירושו שההודעות עברו ו-ICE כבר מנסה. שני העולמות
+  // האלה נראו "מתחבר…" ולכן היו בלתי ניתנים להבחנה.
+  it("new = הסיגנלינג לא הגיע; connecting = הגיע ו-ICE מנסה", () => {
+    expect(peerHint(peer("new"))).toMatch(/הסיגנלינג לא הגיע/);
+    expect(peerHint(peer("connecting"))).toMatch(/ICE/);
+    expect(peerHint(peer("new"))).not.toBe(peerHint(peer("connecting")));
+  });
+
+  it("כשל ממסר גובר על מצב החיבור — הוא הסיבה, לא התסמין", () => {
+    expect(peerHint(peer("new"), "השרת ישן")).toBe("השרת ישן");
   });
 
   it("החיבור נכשל — חסר ממסר", () => {
@@ -19,10 +32,7 @@ describe("סיבת היעדר וידאו", () => {
     expect(peerHint(peer("connected"))).toMatch(/בלי וידאו/);
   });
 
-  it("בדרך", () => {
-    expect(peerHint(peer("connecting"))).toBe("מתחבר…");
-    expect(peerHint(peer("new"))).toBe("מתחבר…");
-  });
+
 
   it("כל מצב מקבל טקסט, בלי undefined שקט", () => {
     const all: RTCPeerConnectionState[] =

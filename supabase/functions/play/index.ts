@@ -23,6 +23,9 @@ const CORS = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+/** הפעולות שהגרסה הזו מכירה. הלקוח משווה מולה כדי לזהות שרת ישן. */
+const OPS = ["ops", "create", "join", "start", "play", "signal"] as const;
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
     status,
@@ -298,6 +301,9 @@ async function handle(req: Request): Promise<Response> {
   const roomId = String(body.roomId ?? "");
 
   switch (op) {
+    // מאפשר ללקוח לדעת אם הפונקציה שנפרסה מכירה את הפעולות שהוא צריך.
+    // פונקציה ישנה תחזיר UNKNOWN_OP — וזו כשלעצמה התשובה.
+    case "ops":    return json({ ok: true, ops: OPS });
     case "create": return createRoom(userId, body);
     case "join":   return joinRoom(userId, body);
     case "start":  return startGame(userId, roomId);

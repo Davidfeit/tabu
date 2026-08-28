@@ -26,13 +26,15 @@ export const VIDEO_SEATS = [0, 1, 2, 3];
  * מושב ריק נשאר ריק.
  */
 export function VideoTiles({
-  state, mySeat, local, peers, error,
+  state, mySeat, local, peers, error, relayError,
 }: {
   state: GameState;
   mySeat: number | null;
   local: MediaStream | null;
   peers: PeerState[];
   error: MediaErrorKind | null;
+  /** תקלה בממסר הסיגנלינג, אם הייתה. */
+  relayError?: string | null;
 }) {
   const byUser = new Map(peers.map((p) => [p.id, p]));
 
@@ -54,7 +56,7 @@ export function VideoTiles({
                       mirrored={isMe}
                       dimmed={p.bankrupt}
                       active={p.seat === state.currentSeat && !p.bankrupt}
-                      hint={isMe ? undefined : peerHint(peer)} />
+                      hint={isMe ? undefined : peerHint(peer, relayError)} />
           );
         })}
       </div>
@@ -77,14 +79,18 @@ export function VideoTiles({
  * חיבור בכלל (סיגנלינג חסום), חיבור שמנסה ונכשל (NAT בלי ממסר), וחיבור
  * מוצלח שפשוט לא הביא מסלול וידאו. בלי ההבחנה הזו כל תקלה נראתה זהה.
  */
-export function peerHint(peer: PeerState | undefined): string | undefined {
-  if (!peer) return "אין חיבור — הסיגנלינג לא הגיע";
+export function peerHint(peer: PeerState | undefined, relayError?: string | null): string | undefined {
+  if (relayError) return relayError;
+  if (!peer) return "לא נוצר חיבור לעמית";
   switch (peer.connection) {
     case "connected":    return "מחובר, בלי וידאו";
-    case "failed":       return "החיבור נכשל — כנראה נדרש ממסר";
+    case "failed":       return "ICE נכשל — נדרש ממסר TURN";
     case "disconnected": return "החיבור נותק";
     case "closed":       return "החיבור נסגר";
-    default:             return "מתחבר…";
+    // ההבחנה שחסרה: new = אף הודעת סיגנלינג לא הגיעה מהצד השני, ולכן אין
+    // עדיין תיאור מרוחק. connecting = ההודעות עברו ו-ICE באמת מנסה.
+    case "new":          return "ממתין לתשובה מהצד השני — הסיגנלינג לא הגיע";
+    default:             return "מתחבר… (ICE)";
   }
 }
 

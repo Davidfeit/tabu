@@ -104,7 +104,26 @@ export const api = {
     call<{ version: number; state: unknown }>("play", { roomId, action, idempotencyKey }),
   signal: (roomId: string, to: string, message: unknown) =>
     call<{ ok: true }>("signal", { roomId, to, message }),
+  ops: () => call<{ ops: string[] }>("ops"),
 };
+
+/**
+ * האם ה-Edge Function שנפרסה מכירה את הפעולות שהלקוח צריך.
+ *
+ * האתר נפרס אוטומטית בכל דחיפה, אבל הפונקציות נפרסות רק ב-setup:supabase.
+ * שני החצאים יכולים להתפצל בשקט, ואז תקלת שרת נראית כמו תקלת רשת.
+ */
+export async function staleServer(required: string[]): Promise<string | null> {
+  try {
+    const { ops } = await api.ops();
+    const missing = required.filter((op) => !ops.includes(op));
+    return missing.length ? `חסרות פעולות בשרת: ${missing.join(", ")}` : null;
+  } catch (e) {
+    const raw = e instanceof Error ? e.message : String(e);
+    if (raw === "UNKNOWN_OP") return "ה-Edge Function בשרת ישנה";
+    return null;   // תקלת רשת אמיתית — לא ענייננו כאן
+  }
+}
 
 /**
  * שרתי ICE.

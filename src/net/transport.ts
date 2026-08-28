@@ -137,11 +137,19 @@ export class RoomTransport implements SignalTransport {
     private readonly sb: RealtimeLike,
     private readonly roomId: string,
     private readonly relay: (to: string, message: SignalMessage) => Promise<unknown>,
+    /** מדווח על כישלון ממסר. בלעדיו כשל שרת נראה כמו NAT. */
+    private readonly onError?: (message: string) => void,
   ) {}
 
   send(peerId: string, message: SignalMessage): void {
-    void this.relay(peerId, message).catch(() => {
-      // כשל בודד אינו קטלני: perfect negotiation מתאושש, ו-ICE נשלח שוב.
+    void this.relay(peerId, message).catch((e: unknown) => {
+      // כשל בודד אינו קטלני — perfect negotiation מתאושש — אבל כשל *קבוע*
+      // (שרת ישן שלא מכיר את הפעולה) נראה בדיוק כמו בעיית רשת, ולכן הוא
+      // חייב לצוף.
+      const raw = e instanceof Error ? e.message : String(e);
+      this.onError?.(raw === "UNKNOWN_OP"
+        ? "ה-Edge Function בשרת ישנה — הריצו npm run setup:supabase"
+        : `ממסר הסיגנלינג נכשל: ${raw}`);
     });
   }
 
