@@ -22,14 +22,14 @@ describe("אבחון וידאו", () => {
   it("יצא ולא חזר — מצביע על השידור, לא על ICE", () => {
     const l = diagLines({ selfId: "me00", wanted: ["you0"],
                           peers: [peer({ id: "you0" })],
-                          stats: { sent: 6, failed: 0, received: 0, forMe: 0 } });
+                          stats: { sent: 6, failed: 0, received: 0, forMe: 0, online: ["me00", "you0"] } });
     expect(l.join(" ")).toContain("השידור מהשרת לא מגיע לערוץ");
   });
 
   it("חזר אבל לא אליי — מצביע על המזהים", () => {
     const l = diagLines({ selfId: "me00", wanted: ["you0"],
                           peers: [peer({ id: "you0" })],
-                          stats: { sent: 6, failed: 0, received: 4, forMe: 0 } });
+                          stats: { sent: 6, failed: 0, received: 4, forMe: 0, online: ["me00", "you0"] } });
     expect(l.join(" ")).toContain("המזהים לא תואמים");
   });
 
@@ -75,5 +75,21 @@ describe("פירוט לכל עמית", () => {
       id: "you0", connection: "new", in: { offer: 1, answer: 0, ice: 0 },
       lastError: "offer: boom" })] }).join("\n");
     expect(l).not.toContain("המשא ומתן נעצר");
+  });
+});
+
+describe("נוכחות בערוץ", () => {
+  it("אומרת במפורש כשהצד השני לא מריץ וידאו", () => {
+    const l = diagLines({ selfId: "me00", wanted: ["you0"], peers: [peer({ id: "you0" })],
+      stats: { sent: 2, failed: 0, received: 2, forMe: 0, online: ["me00"] } }).join("\n");
+    expect(l).toContain("בערוץ עם וידאו: רק אני");
+    expect(l).toContain("לא מריץ וידאו");
+  });
+
+  it("ולא מאשימה אותו כשהוא כן שם", () => {
+    const l = diagLines({ selfId: "me00", wanted: ["you0"], peers: [peer({ id: "you0" })],
+      stats: { sent: 2, failed: 0, received: 4, forMe: 2, online: ["me00", "you0"] } }).join("\n");
+    expect(l).toContain("בערוץ עם וידאו: you0");
+    expect(l).not.toContain("לא מריץ וידאו");
   });
 });

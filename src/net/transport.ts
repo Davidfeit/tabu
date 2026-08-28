@@ -18,6 +18,13 @@ export interface SignalStats {
   received: number;
   /** מתוכם, כאלה שממוענים אליי. */
   forMe: number;
+  /**
+   * מי מכריז על עצמו בערוץ עם וידאו פעיל.
+   *
+   * זו ההבחנה שאי אפשר להסיק ממנה מספרים: "לא מגיע ממנו כלום" יכול
+   * להיות תקלת רשת, או פשוט צד שני שלא מריץ וידאו בכלל.
+   */
+  online: string[];
 }
 
 export interface SignalTransport {
@@ -137,7 +144,7 @@ export class BroadcastTransport implements SignalTransport {
  */
 export class RoomTransport implements SignalTransport {
   private handle: RoomChannelHandle | null = null;
-  readonly stats: SignalStats = { sent: 0, failed: 0, received: 0, forMe: 0 };
+  readonly stats: SignalStats = { sent: 0, failed: 0, received: 0, forMe: 0, online: [] };
 
   constructor(
     private readonly sb: RealtimeLike,
@@ -171,6 +178,9 @@ export class RoomTransport implements SignalTransport {
       // השידור מגיע לכל חברי החדר; הנמען מסונן כאן.
       if (p?.to === selfId && p.message) { this.stats.forMe++; onMessage(p.message); }
     });
+    // נוכחות: מי עוד מריץ וידאו בחדר הזה ממש עכשיו.
+    h.onPresence((ids) => { this.stats.online = ids; });
+    h.announce({ id: selfId });
     void h.join();
     this.handle = h;
     return () => { h.release(); if (this.handle === h) this.handle = null; };

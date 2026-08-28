@@ -48,7 +48,16 @@ export function diagLines(d: DiagInput): string[] {
   }
 
   if (d.stats) {
-    const { sent, failed, received, forMe } = d.stats;
+    const { sent, failed, received, forMe, online } = d.stats;
+    const others = online.filter((id) => id !== d.selfId);
+    lines.push(`בערוץ עם וידאו: ${others.length ? others.map(short).join(", ") : "רק אני"}`);
+    // הבחנה שאי אפשר להסיק ממספרים: אין תנועה כי אין רשת, או אין תנועה
+    // כי הצד השני לא הפעיל וידאו בכלל.
+    for (const id of d.wanted) {
+      if (!online.includes(id)) {
+        lines.push(`${short(id)} לא מריץ וידאו — הוא לא אישר מצלמה, או שהוא במצב שלט בטלפון`);
+      }
+    }
     lines.push(`סיגנלינג: נשלחו ${sent}${failed ? `, נכשלו ${failed}` : ""}` +
                ` · התקבלו ${received} (אליי ${forMe})`);
     // ההבחנה החשובה: יצא ולא חזר כלום = הממסר או השידור; חזר אבל לא אליי

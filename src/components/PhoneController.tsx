@@ -69,6 +69,16 @@ export function PhoneController({ onLeave }: { onLeave: () => void }) {
       {/* משכון ובנייה — ההחלטות שאפשר לקבל גם כשזה לא תורך. */}
       <ManagePanel seat={seat} />
 
+      {/* מי שנכנס מהטלפון כדי *לשחק* מרחוק, ולא כדי לשבת מול המסך
+          המשותף, מקבל כאן מסך בלי וידאו ולא מבין למה. שורה אחת חוסכת
+          את זה, ומצביעה על הדרך החוצה. */}
+      <p className="rounded-lg bg-black/20 p-2.5 text-center text-[0.7rem]
+                    leading-relaxed text-parchment/35">
+        מצב שלט — הלוח והווידאו על המסך המשותף.
+        <br />
+        לשחק מהטלפון עם לוח ווידאו: הוסיפו <code>?controller=0</code> לכתובת.
+      </p>
+
       <button onClick={onLeave}
               className="mt-auto py-3 text-[0.8rem] text-parchment/35 underline-offset-4">
         יציאה מהמשחק

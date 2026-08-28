@@ -106,3 +106,49 @@ it("אחרי שחרור מלא, חדר חדש מקבל ערוץ חדש", async (
   expect(f.created).toEqual(["room:r5", "room:r5"]);
   b.release();
 });
+
+it("מכריז על עצמו רק אחרי שההצטרפות אושרה", async () => {
+  // track לפני SUBSCRIBED נבלע, והנוכחות נשארת ריקה בלי שום שגיאה.
+  const tracked: Record<string, unknown>[] = [];
+  let ack: ((s: string) => void) | undefined;
+  const sb: RealtimeLike = {
+    channel: () => ({
+      on: () => null,
+      subscribe: (cb?: (s: string) => void) => { ack = cb; return null; },
+      track: (p: Record<string, unknown>) => { tracked.push(p); return null; },
+      presenceState: () => ({}),
+    }),
+    removeChannel: () => null,
+    setAuth: async () => {},
+  };
+
+  const h = roomChannel(sb, "r6");
+  h.announce({ id: "me" });
+  await h.join();
+  expect(tracked).toHaveLength(0);      // עוד לא אושר
+  ack!("SUBSCRIBED");
+  expect(tracked).toEqual([{ id: "me" }]);
+  h.release();
+});
+
+it("אוסף מזהי נוכחות מכל הכניסות", () => {
+  const state = { k1: [{ id: "a" }], k2: [{ id: "b" }, { id: "a" }], k3: [{}] };
+  let seen: string[] = [];
+  let fire: (() => void) | undefined;
+  const sb: RealtimeLike = {
+    channel: () => ({
+      on: (_t: string, f: unknown, cb: (p: { payload: unknown }) => void) => {
+        if ((f as { event: string }).event === "sync") fire = () => cb({ payload: null });
+        return null;
+      },
+      subscribe: () => null,
+      presenceState: () => state,
+    }),
+    removeChannel: () => null,
+  };
+  const h = roomChannel(sb, "r7");
+  h.onPresence((ids) => { seen = ids; });
+  fire!();
+  expect(seen).toEqual(["a", "b"]);     // בלי כפילויות, בלי כניסה בלי id
+  h.release();
+});

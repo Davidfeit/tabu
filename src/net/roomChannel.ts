@@ -12,7 +12,10 @@
 
 export interface RawChannel {
   on: (type: string, filter: unknown, cb: (p: { payload: unknown }) => void) => unknown;
-  subscribe: () => unknown;
+  subscribe: (cb?: (status: string) => void) => unknown;
+  /** נוכחות: מי מחובר לערוץ עכשיו. */
+  track?: (payload: Record<string, unknown>) => unknown;
+  presenceState?: () => Record<string, Record<string, unknown>[]>;
 }
 
 export interface RealtimeLike {
@@ -26,6 +29,9 @@ interface Entry {
   ch: RawChannel;
   refs: number;
   joining: Promise<void> | null;
+  joined: boolean;
+  /** מה להכריז על עצמנו ברגע שההצטרפות מסתיימת. */
+  presence: Record<string, unknown> | null;
 }
 
 const open = new Map<string, Entry>();
@@ -35,14 +41,29 @@ export interface RoomChannelHandle {
   on(event: string, cb: (payload: unknown) => void): void;
   /** מצטרף בפועל. אידמפוטנטי — הצרכן השני לא מצטרף שוב. */
   join(): Promise<void>;
+  /** מכריז על עצמנו בערוץ. ניתן לקרוא לפני ההצטרפות. */
+  announce(payload: Record<string, unknown>): void;
+  /** מי מוכרז בערוץ עכשיו. */
+  onPresence(cb: (ids: string[]) => void): void;
   release(): void;
+}
+
+function presentIds(state: Record<string, Record<string, unknown>[]>): string[] {
+  const ids = new Set<string>();
+  for (const entries of Object.values(state)) {
+    for (const e of entries) if (typeof e.id === "string" && e.id) ids.add(e.id);
+  }
+  return [...ids];
 }
 
 export function roomChannel(sb: RealtimeLike, roomId: string): RoomChannelHandle {
   let entry = open.get(roomId);
   if (!entry) {
-    entry = { ch: sb.channel(`room:${roomId}`, { config: { private: true } }),
-              refs: 0, joining: null };
+    // presence מופעל מראש ולא לפי קיום מאזין: המאזין נוסף רק כשהווידאו
+    // עולה, כלומר לרוב אחרי ההצטרפות — ואז היה מאוחר מדי להפעיל אותו.
+    entry = { ch: sb.channel(`room:${roomId}`,
+                { config: { private: true, presence: { enabled: true } } }),
+              refs: 0, joining: null, joined: false, presence: null };
     open.set(roomId, entry);
   }
   const e = entry;
@@ -58,9 +79,22 @@ export function roomChannel(sb: RealtimeLike, roomId: string): RoomChannelHandle
     join() {
       e.joining ??= (async () => {
         await sb.setAuth?.();
-        e.ch.subscribe();
+        e.ch.subscribe((status?: string) => {
+          if (status !== "SUBSCRIBED") return;
+          e.joined = true;
+          if (e.presence) void e.ch.track?.(e.presence);
+        });
       })();
       return e.joining;
+    },
+    announce(payload) {
+      e.presence = { ...e.presence, ...payload };
+      if (e.joined) void e.ch.track?.(e.presence);
+    },
+    onPresence(cb) {
+      e.ch.on("presence", { event: "sync" }, () => {
+        if (live) cb(presentIds(e.ch.presenceState?.() ?? {}));
+      });
     },
     release() {
       if (!live) return;

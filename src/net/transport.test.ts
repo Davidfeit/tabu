@@ -130,7 +130,9 @@ describe("RoomTransport — סיגנלינג על ערוץ החדר", () => {
   it("מאזין לערוץ החדר, פרטי — אותו ערוץ שמצב המשחק כבר זורם עליו", () => {
     const { sb, opened } = fake();
     new RoomTransport(sb as never, "room-1", async () => {}).subscribe("me", () => {});
-    expect(opened).toEqual([{ topic: "room:room-1", opts: { config: { private: true } } }]);
+    expect(opened).toEqual([{ topic: "room:room-1",
+      // presence מופעל מראש: המאזין נוסף רק כשהווידאו עולה, ואז מאוחר מדי.
+      opts: { config: { private: true, presence: { enabled: true } } } }]);
   });
 
   it("מוסר רק הודעות שמיועדות לי", () => {
