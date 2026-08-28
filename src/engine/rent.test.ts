@@ -10,20 +10,20 @@ const DIMONA = 6;
 describe("שכר דירה — נכסים", () => {
   it("גובה שכ\"ד בסיס על שטר בודד", () => {
     const s = own(newGame(2), YERUHAM, 1);
-    expect(rentFor(s, YERUHAM, 7)).toBe(2_000);
+    expect(rentFor(s, YERUHAM, 7)).toBe(2);
   });
 
   it("מכפיל על קבוצה שלמה בלתי מבונה — המונופול", () => {
     let s = own(newGame(2), YERUHAM, 1);
     s = own(s, MITZPE, 1);
-    expect(rentFor(s, YERUHAM, 7)).toBe(4_000);
+    expect(rentFor(s, YERUHAM, 7)).toBe(4);
   });
 
   it("מבטל את ההכפלה אם שטר כלשהו בקבוצה משוכן", () => {
     let s = own(newGame(2), YERUHAM, 1);
     s = own(s, MITZPE, 1, { mortgaged: true });
     // ההכפלה דורשת את הקבוצה כולה לא משוכנת — גם על החבר שאינו משוכן
-    expect(rentFor(s, YERUHAM, 7)).toBe(2_000);
+    expect(rentFor(s, YERUHAM, 7)).toBe(2);
   });
 
   it("לא גובה כלום על שטר משוכן", () => {
@@ -38,13 +38,13 @@ describe("שכר דירה — נכסים", () => {
   it("משתמש בטבלת הבתים כשיש בנייה", () => {
     let s = own(newGame(2), YERUHAM, 1, { houses: 3 });
     s = own(s, MITZPE, 1);
-    expect(rentFor(s, YERUHAM, 7)).toBe(90_000);
+    expect(rentFor(s, YERUHAM, 7)).toBe(90);
   });
 
   it("משתמש בשורת המלון", () => {
     let s = own(newGame(2), YERUHAM, 1, { hotel: true });
     s = own(s, MITZPE, 1);
-    expect(rentFor(s, YERUHAM, 7)).toBe(250_000);
+    expect(rentFor(s, YERUHAM, 7)).toBe(250);
   });
 });
 
@@ -53,7 +53,7 @@ describe("שכר דירה — צמתי תחבורה", () => {
 
   it("גדל לפי מספר הצמתים בבעלות", () => {
     let s = newGame(2);
-    const expected = [20_000, 40_000, 80_000, 160_000];
+    const expected = [20, 40, 80, 160];
     for (let i = 0; i < 4; i++) {
       s = own(s, HUBS[i]!, 1);
       expect(rentFor(s, HUBS[0]!, 7)).toBe(expected[i]);
@@ -63,12 +63,12 @@ describe("שכר דירה — צמתי תחבורה", () => {
   it("לא סופר צמתים משוכנים למניין", () => {
     let s = own(newGame(2), HUBS[0]!, 1);
     s = own(s, HUBS[1]!, 1, { mortgaged: true });
-    expect(rentFor(s, HUBS[0]!, 7)).toBe(20_000);   // אחד בלבד נספר
+    expect(rentFor(s, HUBS[0]!, 7)).toBe(20);   // אחד בלבד נספר
   });
 
   it("מכפיל בהגעה דרך קלף הצומת", () => {
     const s = own(newGame(2), HUBS[0]!, 1);
-    expect(rentFor(s, HUBS[0]!, 7, "transport_double")).toBe(40_000);
+    expect(rentFor(s, HUBS[0]!, 7, "transport_double")).toBe(40);
   });
 });
 
@@ -77,18 +77,18 @@ describe("שכר דירה — תשתיות", () => {
 
   it("מכפיל את סכום הקוביות ב-5,000 כשמחזיקים אחת", () => {
     const s = own(newGame(2), POWER, 1);
-    expect(rentFor(s, POWER, 9)).toBe(45_000);
+    expect(rentFor(s, POWER, 9)).toBe(45);
   });
 
   it("מכפיל ב-12,000 כשמחזיקים את שתיהן", () => {
     let s = own(newGame(2), POWER, 1);
     s = own(s, WATER, 1);
-    expect(rentFor(s, POWER, 9)).toBe(108_000);
+    expect(rentFor(s, POWER, 9)).toBe(108);
   });
 
   it("כופה ×12,000 בהגעה דרך הקלף, גם עם תשתית אחת", () => {
     const s = own(newGame(2), POWER, 1);
-    expect(rentFor(s, POWER, 9, "utility_max")).toBe(108_000);
+    expect(rentFor(s, POWER, 9, "utility_max")).toBe(108);
   });
 });
 
@@ -99,8 +99,8 @@ describe("גביית שכר דירה בפועל", () => {
     const payerBefore = s.players[0]!.cash;
     s = act(s, { type: "roll" });          // 0 + 6 = 6 דימונה
     expect(s.players[0]!.pos).toBe(DIMONA);
-    expect(s.players[1]!.cash).toBe(ownerBefore + 5_000);
-    expect(s.players[0]!.cash).toBe(payerBefore - 5_000);
+    expect(s.players[1]!.cash).toBe(ownerBefore + 5);
+    expect(s.players[0]!.cash).toBe(payerBefore - 5);
   });
 
   it("לא גובה מהבעלים על נחיתה בנכס של עצמו", () => {
@@ -115,12 +115,12 @@ describe("גביית שכר דירה בפועל", () => {
     let s = own(place(withRoll(newGame(2), 3, 3), 0, 0), DIMONA, 1, { houses: 2 });
     s = own(s, 8, 1); s = own(s, 9, 1);
     s = own(s, 39, 0);
-    s = setCash(s, 0, 1_000);
+    s = setCash(s, 0, 1);
     s = act(s, { type: "roll" });
     expect(s.phase).toBe("debt");
     expect(s.debt!.debtorSeat).toBe(0);
     expect(s.debt!.creditorSeat).toBe(1);
-    expect(s.debt!.amount).toBe(75_000);
+    expect(s.debt!.amount).toBe(75);
   });
 
   it("קופצת ישר לפשיטת רגל כששווי המימוש נמוך מהחוב", () => {
@@ -128,7 +128,7 @@ describe("גביית שכר דירה בפועל", () => {
     let s = own(place(withRoll(newGame(2), 3, 3), 0, 0), DIMONA, 1, { hotel: true });
     s = own(s, 8, 1); s = own(s, 9, 1);
     s = own(s, 39, 0);
-    s = setCash(s, 0, 1_000);
+    s = setCash(s, 0, 1);
     s = act(s, { type: "roll" });
     expect(s.players[0]!.bankrupt).toBe(true);
     expect(s.phase).toBe("finished");

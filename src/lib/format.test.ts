@@ -27,17 +27,17 @@ describe("shekel", () => {
 });
 
 describe("shekelShort", () => {
-  it("מקצר מיליונים ואלפים עם גרש עברי", () => {
-    expect(shekelShort(1200000)).toBe("₪1.2 מ׳");
-    expect(shekelShort(250000)).toBe("₪250 א׳");
+  // הקיצור בוטל יחד עם שינוי קנה המידה: ₪1,500 הוצג "₪2 א׳", כלומר עיגול
+  // כלפי מעלה שמשנה את המשמעות. בטווח הסכומים של הלוח אין מה לקצר.
+  it("מחזיר את הסכום המלא, בלי קיצור", () => {
+    expect(shekelShort(1500)).toBe("₪1,500");
+    expect(shekelShort(250)).toBe("₪250");
+    expect(shekelShort(60)).toBe("₪60");
   });
 
-  it("משתמש בגרש U+05F3 ולא באפוסטרוף ASCII", () => {
-    expect(shekelShort(250000)).toContain("׳");
-    expect(shekelShort(250000)).not.toContain("'");
-  });
-
-  it("משאיר סכומים קטנים בצורה מלאה", () => {
-    expect(shekelShort(600)).toBe("₪600");
+  it("זהה ל-shekel", () => {
+    for (const n of [0, 1, 60, 420, 1500, -50]) {
+      expect(shekelShort(n)).toBe(shekel(n));
+    }
   });
 });

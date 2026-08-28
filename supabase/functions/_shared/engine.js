@@ -8,68 +8,68 @@ var board_default = {
     name: "\u05D8\u05D0\u05D1\u05D5",
     locale: "he-IL",
     currency: "ILS",
-    startingCash: 15e5,
-    passStartBonus: 2e5,
+    startingCash: 1500,
+    passStartBonus: 200,
     houseSupply: 32,
     hotelSupply: 12,
     mortgageRate: 0.5,
     unmortgageInterest: 0.1,
-    jailFine: 5e4,
+    jailFine: 50,
     maxJailTurns: 3,
     minPlayers: 2,
     maxPlayers: 6
   },
   groups: [
-    { key: "sand", name: "\u05E7\u05E6\u05D4 \u05D4\u05DE\u05D3\u05D1\u05E8", color: "#8C6239", textOn: "#ffffff", icon: "dune", houseCost: 4e4, size: 2 },
-    { key: "sky", name: "\u05E2\u05E8\u05D9 \u05D4\u05E4\u05D9\u05EA\u05D5\u05D7", color: "#7FC7E8", textOn: "#1a1a1a", icon: "wave", houseCost: 5e4, size: 3 },
-    { key: "rose", name: "\u05E4\u05E8\u05D9\u05E4\u05E8\u05D9\u05D4 \u05E6\u05E4\u05D5\u05E0\u05D9\u05EA", color: "#D9639B", textOn: "#ffffff", icon: "peak", houseCost: 6e4, size: 3 },
-    { key: "copper", name: "\u05D1\u05D9\u05E8\u05D5\u05EA \u05D0\u05D6\u05D5\u05E8\u05D9\u05D5\u05EA", color: "#E08A2E", textOn: "#1a1a1a", icon: "copper", houseCost: 75e3, size: 3 },
-    { key: "crimson", name: "\u05E2\u05E8\u05D9 \u05D7\u05D5\u05E3 \u05D5\u05E1\u05E4\u05E8", color: "#D0342C", textOn: "#ffffff", icon: "anemone", houseCost: 9e4, size: 3 },
-    { key: "olive", name: "\u05D4\u05DE\u05D8\u05E8\u05D5\u05E4\u05D5\u05DC\u05D9\u05DF \u05D4\u05DE\u05EA\u05E8\u05D7\u05D1", color: "#C9B037", textOn: "#1a1a1a", icon: "olive", houseCost: 11e4, size: 3 },
-    { key: "green", name: "\u05D8\u05D1\u05E2\u05EA \u05D4\u05E9\u05E8\u05D5\u05DF \u05D5\u05D2\u05D5\u05E9 \u05D3\u05DF", color: "#2E8B57", textOn: "#ffffff", icon: "cypress", houseCost: 13e4, size: 3 },
-    { key: "azure", name: "\u05D4\u05E6\u05DE\u05E8\u05EA", color: "#1F4E9C", textOn: "#ffffff", icon: "anchor", houseCost: 16e4, size: 2 }
+    { key: "sand", name: "\u05E7\u05E6\u05D4 \u05D4\u05DE\u05D3\u05D1\u05E8", color: "#8C6239", textOn: "#ffffff", icon: "dune", houseCost: 40, size: 2 },
+    { key: "sky", name: "\u05E2\u05E8\u05D9 \u05D4\u05E4\u05D9\u05EA\u05D5\u05D7", color: "#7FC7E8", textOn: "#1a1a1a", icon: "wave", houseCost: 50, size: 3 },
+    { key: "rose", name: "\u05E4\u05E8\u05D9\u05E4\u05E8\u05D9\u05D4 \u05E6\u05E4\u05D5\u05E0\u05D9\u05EA", color: "#D9639B", textOn: "#ffffff", icon: "peak", houseCost: 60, size: 3 },
+    { key: "copper", name: "\u05D1\u05D9\u05E8\u05D5\u05EA \u05D0\u05D6\u05D5\u05E8\u05D9\u05D5\u05EA", color: "#E08A2E", textOn: "#1a1a1a", icon: "copper", houseCost: 75, size: 3 },
+    { key: "crimson", name: "\u05E2\u05E8\u05D9 \u05D7\u05D5\u05E3 \u05D5\u05E1\u05E4\u05E8", color: "#D0342C", textOn: "#ffffff", icon: "anemone", houseCost: 90, size: 3 },
+    { key: "olive", name: "\u05D4\u05DE\u05D8\u05E8\u05D5\u05E4\u05D5\u05DC\u05D9\u05DF \u05D4\u05DE\u05EA\u05E8\u05D7\u05D1", color: "#C9B037", textOn: "#1a1a1a", icon: "olive", houseCost: 110, size: 3 },
+    { key: "green", name: "\u05D8\u05D1\u05E2\u05EA \u05D4\u05E9\u05E8\u05D5\u05DF \u05D5\u05D2\u05D5\u05E9 \u05D3\u05DF", color: "#2E8B57", textOn: "#ffffff", icon: "cypress", houseCost: 130, size: 3 },
+    { key: "azure", name: "\u05D4\u05E6\u05DE\u05E8\u05EA", color: "#1F4E9C", textOn: "#ffffff", icon: "anchor", houseCost: 160, size: 2 }
   ],
   board: [
-    { pos: 0, type: "corner", key: "start", name: "\u05D6\u05D9\u05E0\u05D5\u05E7", subtitle: "\u05E2\u05D1\u05E8\u05EA \u05D1\u05D6\u05D9\u05E0\u05D5\u05E7? \u05E7\u05D1\u05DC \u20AA200,000" },
-    { pos: 1, type: "property", group: "sand", name: "\u05D9\u05E8\u05D5\u05D7\u05DD", region: "\u05E0\u05D2\u05D1", price: 6e4, rent: [2e3, 1e4, 3e4, 9e4, 16e4, 25e4], mortgage: 3e4 },
+    { pos: 0, type: "corner", key: "start", name: "\u05D6\u05D9\u05E0\u05D5\u05E7", subtitle: "\u05E2\u05D1\u05E8\u05EA \u05D1\u05D6\u05D9\u05E0\u05D5\u05E7? \u05E7\u05D1\u05DC \u20AA200" },
+    { pos: 1, type: "property", group: "sand", name: "\u05D9\u05E8\u05D5\u05D7\u05DD", region: "\u05E0\u05D2\u05D1", price: 60, rent: [2, 10, 30, 90, 160, 250], mortgage: 30 },
     { pos: 2, type: "card", deck: "kupat_gemel", name: "\u05E7\u05D5\u05E4\u05EA \u05D2\u05DE\u05DC" },
-    { pos: 3, type: "property", group: "sand", name: "\u05DE\u05E6\u05E4\u05D4 \u05E8\u05DE\u05D5\u05DF", region: "\u05E0\u05D2\u05D1", price: 8e4, rent: [3e3, 15e3, 45e3, 14e4, 24e4, 38e4], mortgage: 4e4 },
-    { pos: 4, type: "tax", name: "\u05DE\u05E1 \u05D4\u05DB\u05E0\u05E1\u05D4", amount: 2e5 },
-    { pos: 5, type: "transport", name: "\u05EA\u05D7\u05E0\u05EA \u05D4\u05E8\u05DB\u05D1\u05EA \u05D4\u05DE\u05E8\u05DB\u05D6\u05D9\u05EA", price: 18e4, rent: [2e4, 4e4, 8e4, 16e4], mortgage: 9e4 },
-    { pos: 6, type: "property", group: "sky", name: "\u05D3\u05D9\u05DE\u05D5\u05E0\u05D4", region: "\u05E0\u05D2\u05D1", price: 9e4, rent: [5e3, 25e3, 75e3, 22e4, 35e4, 48e4], mortgage: 45e3 },
+    { pos: 3, type: "property", group: "sand", name: "\u05DE\u05E6\u05E4\u05D4 \u05E8\u05DE\u05D5\u05DF", region: "\u05E0\u05D2\u05D1", price: 80, rent: [3, 15, 45, 140, 240, 380], mortgage: 40 },
+    { pos: 4, type: "tax", name: "\u05DE\u05E1 \u05D4\u05DB\u05E0\u05E1\u05D4", amount: 200 },
+    { pos: 5, type: "transport", name: "\u05EA\u05D7\u05E0\u05EA \u05D4\u05E8\u05DB\u05D1\u05EA \u05D4\u05DE\u05E8\u05DB\u05D6\u05D9\u05EA", price: 180, rent: [20, 40, 80, 160], mortgage: 90 },
+    { pos: 6, type: "property", group: "sky", name: "\u05D3\u05D9\u05DE\u05D5\u05E0\u05D4", region: "\u05E0\u05D2\u05D1", price: 90, rent: [5, 25, 75, 220, 350, 480], mortgage: 45 },
     { pos: 7, type: "card", deck: "yad_hagoral", name: "\u05D9\u05D3 \u05D4\u05D2\u05D5\u05E8\u05DC" },
-    { pos: 8, type: "property", group: "sky", name: "\u05D0\u05D5\u05E4\u05E7\u05D9\u05DD", region: "\u05E0\u05D2\u05D1 \u05DE\u05E2\u05E8\u05D1\u05D9", price: 1e5, rent: [6e3, 3e4, 9e4, 27e4, 42e4, 57e4], mortgage: 5e4 },
-    { pos: 9, type: "property", group: "sky", name: "\u05E0\u05EA\u05D9\u05D1\u05D5\u05EA", region: "\u05E0\u05D2\u05D1 \u05DE\u05E2\u05E8\u05D1\u05D9", price: 12e4, rent: [7e3, 35e3, 1e5, 32e4, 49e4, 675e3], mortgage: 6e4 },
+    { pos: 8, type: "property", group: "sky", name: "\u05D0\u05D5\u05E4\u05E7\u05D9\u05DD", region: "\u05E0\u05D2\u05D1 \u05DE\u05E2\u05E8\u05D1\u05D9", price: 100, rent: [6, 30, 90, 270, 420, 570], mortgage: 50 },
+    { pos: 9, type: "property", group: "sky", name: "\u05E0\u05EA\u05D9\u05D1\u05D5\u05EA", region: "\u05E0\u05D2\u05D1 \u05DE\u05E2\u05E8\u05D1\u05D9", price: 120, rent: [7, 35, 100, 320, 490, 675], mortgage: 60 },
     { pos: 10, type: "corner", key: "jail", name: "\u05DE\u05E2\u05E6\u05E8 \u05D1\u05D9\u05EA", subtitle: "\u05D0\u05D5\u05E8\u05D7 \u05D1\u05DC\u05D1\u05D3" },
-    { pos: 11, type: "property", group: "rose", name: "\u05E7\u05E8\u05D9\u05EA \u05E9\u05DE\u05D5\u05E0\u05D4", region: "\u05D2\u05DC\u05D9\u05DC \u05E2\u05DC\u05D9\u05D5\u05DF", price: 13e4, rent: [8e3, 4e4, 12e4, 32e4, 48e4, 65e4], mortgage: 65e3 },
-    { pos: 12, type: "utility", name: "\u05EA\u05D7\u05E0\u05EA \u05D4\u05DB\u05D5\u05D7", price: 14e4, multipliers: [5e3, 12e3], mortgage: 7e4 },
-    { pos: 13, type: "property", group: "rose", name: "\u05D1\u05D9\u05EA \u05E9\u05D0\u05DF", region: "\u05E2\u05DE\u05E7\u05D9\u05DD", price: 14e4, rent: [9e3, 45e3, 14e4, 36e4, 54e4, 725e3], mortgage: 7e4 },
-    { pos: 14, type: "property", group: "rose", name: "\u05D8\u05D1\u05E8\u05D9\u05D4", region: "\u05DB\u05E0\u05E8\u05EA", price: 15e4, rent: [1e4, 5e4, 15e4, 4e5, 6e5, 8e5], mortgage: 75e3 },
-    { pos: 15, type: "transport", name: "\u05E0\u05DE\u05DC \u05D4\u05EA\u05E2\u05D5\u05E4\u05D4 \u05D4\u05D1\u05D9\u05E0\u05DC\u05D0\u05D5\u05DE\u05D9", price: 18e4, rent: [2e4, 4e4, 8e4, 16e4], mortgage: 9e4 },
-    { pos: 16, type: "property", group: "copper", name: "\u05DE\u05D2\u05D3\u05DC \u05D4\u05E2\u05DE\u05E7", region: "\u05E2\u05DE\u05E7 \u05D9\u05D6\u05E8\u05E2\u05D0\u05DC", price: 16e4, rent: [11e3, 55e3, 15e4, 42e4, 59e4, 775e3], mortgage: 8e4 },
+    { pos: 11, type: "property", group: "rose", name: "\u05E7\u05E8\u05D9\u05EA \u05E9\u05DE\u05D5\u05E0\u05D4", region: "\u05D2\u05DC\u05D9\u05DC \u05E2\u05DC\u05D9\u05D5\u05DF", price: 130, rent: [8, 40, 120, 320, 480, 650], mortgage: 65 },
+    { pos: 12, type: "utility", name: "\u05EA\u05D7\u05E0\u05EA \u05D4\u05DB\u05D5\u05D7", price: 140, multipliers: [5, 12], mortgage: 70 },
+    { pos: 13, type: "property", group: "rose", name: "\u05D1\u05D9\u05EA \u05E9\u05D0\u05DF", region: "\u05E2\u05DE\u05E7\u05D9\u05DD", price: 140, rent: [9, 45, 140, 360, 540, 725], mortgage: 70 },
+    { pos: 14, type: "property", group: "rose", name: "\u05D8\u05D1\u05E8\u05D9\u05D4", region: "\u05DB\u05E0\u05E8\u05EA", price: 150, rent: [10, 50, 150, 400, 600, 800], mortgage: 75 },
+    { pos: 15, type: "transport", name: "\u05E0\u05DE\u05DC \u05D4\u05EA\u05E2\u05D5\u05E4\u05D4 \u05D4\u05D1\u05D9\u05E0\u05DC\u05D0\u05D5\u05DE\u05D9", price: 180, rent: [20, 40, 80, 160], mortgage: 90 },
+    { pos: 16, type: "property", group: "copper", name: "\u05DE\u05D2\u05D3\u05DC \u05D4\u05E2\u05DE\u05E7", region: "\u05E2\u05DE\u05E7 \u05D9\u05D6\u05E8\u05E2\u05D0\u05DC", price: 160, rent: [11, 55, 150, 420, 590, 775], mortgage: 80 },
     { pos: 17, type: "card", deck: "kupat_gemel", name: "\u05E7\u05D5\u05E4\u05EA \u05D2\u05DE\u05DC" },
-    { pos: 18, type: "property", group: "copper", name: "\u05D1\u05D0\u05E8 \u05E9\u05D1\u05E2", region: "\u05D1\u05D9\u05E8\u05EA \u05D4\u05E0\u05D2\u05D1", price: 18e4, rent: [13e3, 65e3, 18e4, 49e4, 7e5, 9e5], mortgage: 9e4 },
-    { pos: 19, type: "property", group: "copper", name: "\u05E2\u05E4\u05D5\u05DC\u05D4", region: "\u05E2\u05DE\u05E7 \u05D9\u05D6\u05E8\u05E2\u05D0\u05DC", price: 19e4, rent: [14e3, 7e4, 2e5, 53e4, 76e4, 1e6], mortgage: 95e3 },
+    { pos: 18, type: "property", group: "copper", name: "\u05D1\u05D0\u05E8 \u05E9\u05D1\u05E2", region: "\u05D1\u05D9\u05E8\u05EA \u05D4\u05E0\u05D2\u05D1", price: 180, rent: [13, 65, 180, 490, 700, 900], mortgage: 90 },
+    { pos: 19, type: "property", group: "copper", name: "\u05E2\u05E4\u05D5\u05DC\u05D4", region: "\u05E2\u05DE\u05E7 \u05D9\u05D6\u05E8\u05E2\u05D0\u05DC", price: 190, rent: [14, 70, 200, 530, 760, 1e3], mortgage: 95 },
     { pos: 20, type: "corner", key: "rest", name: "\u05D7\u05D5\u05E4\u05E9\u05D4 \u05D1\u05D0\u05D9\u05DC\u05EA", subtitle: "\u05D0\u05D9\u05DF \u05EA\u05E9\u05DC\u05D5\u05DD, \u05D0\u05D9\u05DF \u05D2\u05D1\u05D9\u05D9\u05D4" },
-    { pos: 21, type: "property", group: "crimson", name: "\u05E0\u05D4\u05E8\u05D9\u05D4", region: "\u05D2\u05DC\u05D9\u05DC \u05DE\u05E2\u05E8\u05D1\u05D9", price: 2e5, rent: [15e3, 75e3, 21e4, 54e4, 75e4, 95e4], mortgage: 1e5 },
+    { pos: 21, type: "property", group: "crimson", name: "\u05E0\u05D4\u05E8\u05D9\u05D4", region: "\u05D2\u05DC\u05D9\u05DC \u05DE\u05E2\u05E8\u05D1\u05D9", price: 200, rent: [15, 75, 210, 540, 750, 950], mortgage: 100 },
     { pos: 22, type: "card", deck: "yad_hagoral", name: "\u05D9\u05D3 \u05D4\u05D2\u05D5\u05E8\u05DC" },
-    { pos: 23, type: "property", group: "crimson", name: "\u05D0\u05E9\u05E7\u05DC\u05D5\u05DF", region: "\u05D7\u05D5\u05E3 \u05D3\u05E8\u05D5\u05DE\u05D9", price: 21e4, rent: [16e3, 8e4, 22e4, 58e4, 8e5, 1e6], mortgage: 105e3 },
-    { pos: 24, type: "property", group: "crimson", name: "\u05D7\u05D9\u05E4\u05D4", region: "\u05DE\u05E4\u05E8\u05E5 \u05D7\u05D9\u05E4\u05D4", price: 23e4, rent: [18e3, 9e4, 25e4, 65e4, 9e5, 1125e3], mortgage: 115e3 },
-    { pos: 25, type: "transport", name: "\u05E0\u05DE\u05DC \u05D4\u05D9\u05DD", price: 18e4, rent: [2e4, 4e4, 8e4, 16e4], mortgage: 9e4 },
-    { pos: 26, type: "property", group: "olive", name: "\u05D0\u05E9\u05D3\u05D5\u05D3", region: "\u05D7\u05D5\u05E3 \u05D3\u05E8\u05D5\u05DE\u05D9", price: 24e4, rent: [2e4, 1e5, 28e4, 675e3, 925e3, 115e4], mortgage: 12e4 },
-    { pos: 27, type: "property", group: "olive", name: "\u05E8\u05D0\u05E9\u05D5\u05DF \u05DC\u05E6\u05D9\u05D5\u05DF", region: "\u05D2\u05D5\u05E9 \u05D3\u05DF", price: 26e4, rent: [21e3, 1e5, 29e4, 725e3, 975e3, 12e5], mortgage: 13e4 },
-    { pos: 28, type: "utility", name: "\u05DE\u05EA\u05E7\u05DF \u05D4\u05D4\u05EA\u05E4\u05DC\u05D4", price: 14e4, multipliers: [5e3, 12e3], mortgage: 7e4 },
-    { pos: 29, type: "property", group: "olive", name: "\u05E4\u05EA\u05D7 \u05EA\u05E7\u05D5\u05D5\u05D4", region: "\u05D2\u05D5\u05E9 \u05D3\u05DF", price: 28e4, rent: [23e3, 12e4, 32e4, 775e3, 105e4, 13e5], mortgage: 14e4 },
+    { pos: 23, type: "property", group: "crimson", name: "\u05D0\u05E9\u05E7\u05DC\u05D5\u05DF", region: "\u05D7\u05D5\u05E3 \u05D3\u05E8\u05D5\u05DE\u05D9", price: 210, rent: [16, 80, 220, 580, 800, 1e3], mortgage: 105 },
+    { pos: 24, type: "property", group: "crimson", name: "\u05D7\u05D9\u05E4\u05D4", region: "\u05DE\u05E4\u05E8\u05E5 \u05D7\u05D9\u05E4\u05D4", price: 230, rent: [18, 90, 250, 650, 900, 1125], mortgage: 115 },
+    { pos: 25, type: "transport", name: "\u05E0\u05DE\u05DC \u05D4\u05D9\u05DD", price: 180, rent: [20, 40, 80, 160], mortgage: 90 },
+    { pos: 26, type: "property", group: "olive", name: "\u05D0\u05E9\u05D3\u05D5\u05D3", region: "\u05D7\u05D5\u05E3 \u05D3\u05E8\u05D5\u05DE\u05D9", price: 240, rent: [20, 100, 280, 675, 925, 1150], mortgage: 120 },
+    { pos: 27, type: "property", group: "olive", name: "\u05E8\u05D0\u05E9\u05D5\u05DF \u05DC\u05E6\u05D9\u05D5\u05DF", region: "\u05D2\u05D5\u05E9 \u05D3\u05DF", price: 260, rent: [21, 100, 290, 725, 975, 1200], mortgage: 130 },
+    { pos: 28, type: "utility", name: "\u05DE\u05EA\u05E7\u05DF \u05D4\u05D4\u05EA\u05E4\u05DC\u05D4", price: 140, multipliers: [5, 12], mortgage: 70 },
+    { pos: 29, type: "property", group: "olive", name: "\u05E4\u05EA\u05D7 \u05EA\u05E7\u05D5\u05D5\u05D4", region: "\u05D2\u05D5\u05E9 \u05D3\u05DF", price: 280, rent: [23, 120, 320, 775, 1050, 1300], mortgage: 140 },
     { pos: 30, type: "corner", key: "goto_jail", name: "\u05D4\u05D5\u05E6\u05D0\u05D4 \u05DC\u05E4\u05D5\u05E2\u05DC", subtitle: "\u05E2\u05D1\u05D5\u05E8 \u05D9\u05E9\u05D9\u05E8\u05D5\u05EA \u05DC\u05DE\u05E2\u05E6\u05E8 \u05D1\u05D9\u05EA" },
-    { pos: 31, type: "property", group: "green", name: "\u05E0\u05EA\u05E0\u05D9\u05D4", region: "\u05E9\u05E8\u05D5\u05DF", price: 3e5, rent: [26e3, 13e4, 36e4, 85e4, 1125e3, 135e4], mortgage: 15e4 },
-    { pos: 32, type: "property", group: "green", name: "\u05DB\u05E4\u05E8 \u05E1\u05D1\u05D0", region: "\u05E9\u05E8\u05D5\u05DF", price: 32e4, rent: [28e3, 14e4, 39e4, 925e3, 12e5, 145e4], mortgage: 16e4 },
+    { pos: 31, type: "property", group: "green", name: "\u05E0\u05EA\u05E0\u05D9\u05D4", region: "\u05E9\u05E8\u05D5\u05DF", price: 300, rent: [26, 130, 360, 850, 1125, 1350], mortgage: 150 },
+    { pos: 32, type: "property", group: "green", name: "\u05DB\u05E4\u05E8 \u05E1\u05D1\u05D0", region: "\u05E9\u05E8\u05D5\u05DF", price: 320, rent: [28, 140, 390, 925, 1200, 1450], mortgage: 160 },
     { pos: 33, type: "card", deck: "kupat_gemel", name: "\u05E7\u05D5\u05E4\u05EA \u05D2\u05DE\u05DC" },
-    { pos: 34, type: "property", group: "green", name: "\u05E8\u05DE\u05EA \u05D2\u05DF", region: "\u05D2\u05D5\u05E9 \u05D3\u05DF", price: 34e4, rent: [3e4, 15e4, 42e4, 1e6, 13e5, 155e4], mortgage: 17e4 },
-    { pos: 35, type: "transport", name: "\u05D4\u05E8\u05DB\u05D1\u05EA \u05D4\u05E7\u05DC\u05D4", price: 18e4, rent: [2e4, 4e4, 8e4, 16e4], mortgage: 9e4 },
+    { pos: 34, type: "property", group: "green", name: "\u05E8\u05DE\u05EA \u05D2\u05DF", region: "\u05D2\u05D5\u05E9 \u05D3\u05DF", price: 340, rent: [30, 150, 420, 1e3, 1300, 1550], mortgage: 170 },
+    { pos: 35, type: "transport", name: "\u05D4\u05E8\u05DB\u05D1\u05EA \u05D4\u05E7\u05DC\u05D4", price: 180, rent: [20, 40, 80, 160], mortgage: 90 },
     { pos: 36, type: "card", deck: "yad_hagoral", name: "\u05D9\u05D3 \u05D4\u05D2\u05D5\u05E8\u05DC" },
-    { pos: 37, type: "property", group: "azure", name: "\u05D9\u05E8\u05D5\u05E9\u05DC\u05D9\u05DD", region: "\u05D9\u05E8\u05D5\u05E9\u05DC\u05D9\u05DD", price: 36e4, rent: [38e3, 19e4, 53e4, 1225e3, 1525e3, 1775e3], mortgage: 18e4 },
-    { pos: 38, type: "tax", name: "\u05DE\u05E1 \u05E8\u05DB\u05D9\u05E9\u05D4", amount: 1e5 },
-    { pos: 39, type: "property", group: "azure", name: "\u05EA\u05DC \u05D0\u05D1\u05D9\u05D1-\u05D9\u05E4\u05D5", region: "\u05D2\u05D5\u05E9 \u05D3\u05DF", price: 42e4, rent: [44e3, 22e4, 625e3, 14e5, 175e4, 2075e3], mortgage: 21e4 }
+    { pos: 37, type: "property", group: "azure", name: "\u05D9\u05E8\u05D5\u05E9\u05DC\u05D9\u05DD", region: "\u05D9\u05E8\u05D5\u05E9\u05DC\u05D9\u05DD", price: 360, rent: [38, 190, 530, 1225, 1525, 1775], mortgage: 180 },
+    { pos: 38, type: "tax", name: "\u05DE\u05E1 \u05E8\u05DB\u05D9\u05E9\u05D4", amount: 100 },
+    { pos: 39, type: "property", group: "azure", name: "\u05EA\u05DC \u05D0\u05D1\u05D9\u05D1-\u05D9\u05E4\u05D5", region: "\u05D2\u05D5\u05E9 \u05D3\u05DF", price: 420, rent: [44, 220, 625, 1400, 1750, 2075], mortgage: 210 }
   ],
   realismVariant: {
     note: "\u05D4\u05E8\u05E6\u05DC\u05D9\u05D4 \u05D9\u05E7\u05E8\u05D4 \u05D1\u05E4\u05D5\u05E2\u05DC \u05DE\u05D9\u05E8\u05D5\u05E9\u05DC\u05D9\u05DD. \u05DE\u05EA\u05D2 \u05D0\u05D5\u05E4\u05E6\u05D9\u05D5\u05E0\u05DC\u05D9 \u05E9\u05DE\u05D7\u05DC\u05D9\u05E3 \u05D0\u05EA \u05DE\u05E9\u05D1\u05E6\u05EA 37.",
@@ -77,39 +77,39 @@ var board_default = {
   },
   decks: {
     kupat_gemel: [
-      { id: "kg01", text: "\u05E7\u05D9\u05D1\u05DC\u05EA \u05D4\u05D7\u05D6\u05E8 \u05DE\u05E1 \u05DE\u05DE\u05E1 \u05D4\u05DB\u05E0\u05E1\u05D4.", effect: { type: "cash", amount: 2e5 } },
-      { id: "kg02", text: "\u05DE\u05E2\u05E0\u05E7 \u05DC\u05D9\u05D3\u05D4 \u05DE\u05D4\u05D1\u05D9\u05D8\u05D5\u05D7 \u05D4\u05DC\u05D0\u05D5\u05DE\u05D9.", effect: { type: "cash", amount: 5e4 } },
-      { id: "kg03", text: "\u05D3\u05DE\u05D9 \u05E0\u05D9\u05D4\u05D5\u05DC \u05E9\u05E0\u05EA\u05D9\u05D9\u05DD \u05D1\u05E7\u05D5\u05E4\u05EA \u05D4\u05D2\u05DE\u05DC.", effect: { type: "cash", amount: -5e4 } },
-      { id: "kg04", text: "\u05E4\u05D3\u05D9\u05D5\u05DF \u05E7\u05E8\u05DF \u05D4\u05E9\u05EA\u05DC\u05DE\u05D5\u05EA \u05D0\u05D7\u05E8\u05D9 \u05E9\u05E9 \u05E9\u05E0\u05D9\u05DD.", effect: { type: "cash", amount: 15e4 } },
-      { id: "kg05", text: "\u05EA\u05E8\u05DE\u05EA \u05DC\u05E7\u05DE\u05D7\u05D0 \u05D3\u05E4\u05E1\u05D7\u05D0 \u05D1\u05E9\u05DB\u05D5\u05E0\u05D4.", effect: { type: "cash", amount: -5e4 } },
-      { id: "kg06", text: "\u05D6\u05DB\u05D9\u05EA \u05D1\u05D4\u05D2\u05E8\u05DC\u05EA \u05D5\u05E2\u05D3 \u05D4\u05E9\u05DB\u05D5\u05E0\u05D4.", effect: { type: "cash", amount: 1e5 } },
-      { id: "kg07", text: "\u05D7\u05EA\u05D5\u05E0\u05D4 \u05D1\u05DE\u05D5\u05E9\u05D1 \u2014 \u05DB\u05DC \u05E9\u05D7\u05E7\u05DF \u05E0\u05D5\u05EA\u05DF \u05DC\u05DA \u05DE\u05EA\u05E0\u05D4.", effect: { type: "collect_from_each", amount: 5e4 } },
-      { id: "kg08", text: "\u05D7\u05D6\u05E8\u05EA \u05DE\u05DE\u05D9\u05DC\u05D5\u05D0\u05D9\u05DD \u2014 \u05E7\u05D9\u05D1\u05DC\u05EA \u05DE\u05E2\u05E0\u05E7.", effect: { type: "cash", amount: 75e3 } },
-      { id: "kg09", text: "\u05D2\u05DE\u05DC\u05EA \u05E1\u05D9\u05E2\u05D5\u05D3 \u05DC\u05D4\u05D5\u05E8\u05D4 \u2014 \u05D4\u05E9\u05DC\u05DE\u05D4 \u05DE\u05D4\u05DB\u05D9\u05E1.", effect: { type: "cash", amount: -75e3 } },
-      { id: "kg10", text: "\u05D3\u05DE\u05D9 \u05D4\u05D1\u05E8\u05D0\u05D4 \u05E9\u05E0\u05EA\u05D9\u05D9\u05DD.", effect: { type: "cash", amount: 4e4 } },
-      { id: "kg11", text: "\u05D5\u05E2\u05D3 \u05D4\u05D1\u05D9\u05EA \u05DE\u05D7\u05D9\u05D9\u05D1 \u05D1\u05EA\u05D9\u05E7\u05D5\u05DF \u05EA\u05E9\u05EA\u05D9\u05D5\u05EA.", effect: { type: "per_building", perHouse: -25e3, perHotel: -1e5 } },
-      { id: "kg12", text: "\u05D8\u05E2\u05D5\u05EA \u05D1\u05D7\u05D9\u05E9\u05D5\u05D1 \u05D4\u05D0\u05E8\u05E0\u05D5\u05E0\u05D4 \u2014 \u05DC\u05D8\u05D5\u05D1\u05EA\u05DA.", effect: { type: "cash", amount: 6e4 } },
-      { id: "kg13", text: "\u05D4\u05D2\u05E2\u05EA \u05DC\u05D2\u05D9\u05DC \u05E4\u05E8\u05D9\u05E9\u05D4 \u2014 \u05E7\u05E6\u05D1\u05D4 \u05E8\u05D0\u05E9\u05D5\u05E0\u05D4.", effect: { type: "cash", amount: 1e5 } },
-      { id: "kg14", text: "\u05D0\u05D9\u05D7\u05D5\u05E8 \u05D1\u05D4\u05D2\u05E9\u05EA \u05D4\u05D3\u05D5\u05D7 \u05D4\u05E9\u05E0\u05EA\u05D9.", effect: { type: "cash", amount: -8e4 } },
+      { id: "kg01", text: "\u05E7\u05D9\u05D1\u05DC\u05EA \u05D4\u05D7\u05D6\u05E8 \u05DE\u05E1 \u05DE\u05DE\u05E1 \u05D4\u05DB\u05E0\u05E1\u05D4.", effect: { type: "cash", amount: 200 } },
+      { id: "kg02", text: "\u05DE\u05E2\u05E0\u05E7 \u05DC\u05D9\u05D3\u05D4 \u05DE\u05D4\u05D1\u05D9\u05D8\u05D5\u05D7 \u05D4\u05DC\u05D0\u05D5\u05DE\u05D9.", effect: { type: "cash", amount: 50 } },
+      { id: "kg03", text: "\u05D3\u05DE\u05D9 \u05E0\u05D9\u05D4\u05D5\u05DC \u05E9\u05E0\u05EA\u05D9\u05D9\u05DD \u05D1\u05E7\u05D5\u05E4\u05EA \u05D4\u05D2\u05DE\u05DC.", effect: { type: "cash", amount: -50 } },
+      { id: "kg04", text: "\u05E4\u05D3\u05D9\u05D5\u05DF \u05E7\u05E8\u05DF \u05D4\u05E9\u05EA\u05DC\u05DE\u05D5\u05EA \u05D0\u05D7\u05E8\u05D9 \u05E9\u05E9 \u05E9\u05E0\u05D9\u05DD.", effect: { type: "cash", amount: 150 } },
+      { id: "kg05", text: "\u05EA\u05E8\u05DE\u05EA \u05DC\u05E7\u05DE\u05D7\u05D0 \u05D3\u05E4\u05E1\u05D7\u05D0 \u05D1\u05E9\u05DB\u05D5\u05E0\u05D4.", effect: { type: "cash", amount: -50 } },
+      { id: "kg06", text: "\u05D6\u05DB\u05D9\u05EA \u05D1\u05D4\u05D2\u05E8\u05DC\u05EA \u05D5\u05E2\u05D3 \u05D4\u05E9\u05DB\u05D5\u05E0\u05D4.", effect: { type: "cash", amount: 100 } },
+      { id: "kg07", text: "\u05D7\u05EA\u05D5\u05E0\u05D4 \u05D1\u05DE\u05D5\u05E9\u05D1 \u2014 \u05DB\u05DC \u05E9\u05D7\u05E7\u05DF \u05E0\u05D5\u05EA\u05DF \u05DC\u05DA \u05DE\u05EA\u05E0\u05D4.", effect: { type: "collect_from_each", amount: 50 } },
+      { id: "kg08", text: "\u05D7\u05D6\u05E8\u05EA \u05DE\u05DE\u05D9\u05DC\u05D5\u05D0\u05D9\u05DD \u2014 \u05E7\u05D9\u05D1\u05DC\u05EA \u05DE\u05E2\u05E0\u05E7.", effect: { type: "cash", amount: 75 } },
+      { id: "kg09", text: "\u05D2\u05DE\u05DC\u05EA \u05E1\u05D9\u05E2\u05D5\u05D3 \u05DC\u05D4\u05D5\u05E8\u05D4 \u2014 \u05D4\u05E9\u05DC\u05DE\u05D4 \u05DE\u05D4\u05DB\u05D9\u05E1.", effect: { type: "cash", amount: -75 } },
+      { id: "kg10", text: "\u05D3\u05DE\u05D9 \u05D4\u05D1\u05E8\u05D0\u05D4 \u05E9\u05E0\u05EA\u05D9\u05D9\u05DD.", effect: { type: "cash", amount: 40 } },
+      { id: "kg11", text: "\u05D5\u05E2\u05D3 \u05D4\u05D1\u05D9\u05EA \u05DE\u05D7\u05D9\u05D9\u05D1 \u05D1\u05EA\u05D9\u05E7\u05D5\u05DF \u05EA\u05E9\u05EA\u05D9\u05D5\u05EA.", effect: { type: "per_building", perHouse: -25, perHotel: -100 } },
+      { id: "kg12", text: "\u05D8\u05E2\u05D5\u05EA \u05D1\u05D7\u05D9\u05E9\u05D5\u05D1 \u05D4\u05D0\u05E8\u05E0\u05D5\u05E0\u05D4 \u2014 \u05DC\u05D8\u05D5\u05D1\u05EA\u05DA.", effect: { type: "cash", amount: 60 } },
+      { id: "kg13", text: "\u05D4\u05D2\u05E2\u05EA \u05DC\u05D2\u05D9\u05DC \u05E4\u05E8\u05D9\u05E9\u05D4 \u2014 \u05E7\u05E6\u05D1\u05D4 \u05E8\u05D0\u05E9\u05D5\u05E0\u05D4.", effect: { type: "cash", amount: 100 } },
+      { id: "kg14", text: "\u05D0\u05D9\u05D7\u05D5\u05E8 \u05D1\u05D4\u05D2\u05E9\u05EA \u05D4\u05D3\u05D5\u05D7 \u05D4\u05E9\u05E0\u05EA\u05D9.", effect: { type: "cash", amount: -80 } },
       { id: "kg15", text: "\u05DB\u05E8\u05D8\u05D9\u05E1 \u05D9\u05E6\u05D9\u05D0\u05D4 \u05DE\u05DE\u05E2\u05E6\u05E8 \u05D1\u05D9\u05EA \u2014 \u05E9\u05DE\u05D5\u05E8 \u05E2\u05D3 \u05DC\u05E9\u05D9\u05DE\u05D5\u05E9 \u05D0\u05D5 \u05DE\u05DB\u05D5\u05E8.", effect: { type: "keep_out_of_jail" } },
       { id: "kg16", text: "\u05D7\u05D6\u05E8\u05D4 \u05DC\u05D6\u05D9\u05E0\u05D5\u05E7.", effect: { type: "move_to", pos: 0, collectStart: true } }
     ],
     yad_hagoral: [
-      { id: "yg01", text: "\u05E1\u05E2 \u05DC\u05EA\u05DC \u05D0\u05D1\u05D9\u05D1-\u05D9\u05E4\u05D5. \u05D0\u05DD \u05E2\u05D1\u05E8\u05EA \u05D1\u05D6\u05D9\u05E0\u05D5\u05E7 \u2014 \u05E7\u05D1\u05DC \u20AA200,000.", effect: { type: "move_to", pos: 39, collectStart: true } },
-      { id: "yg02", text: "\u05E1\u05E2 \u05DC\u05D9\u05E8\u05D5\u05E9\u05DC\u05D9\u05DD. \u05D0\u05DD \u05E2\u05D1\u05E8\u05EA \u05D1\u05D6\u05D9\u05E0\u05D5\u05E7 \u2014 \u05E7\u05D1\u05DC \u20AA200,000.", effect: { type: "move_to", pos: 37, collectStart: true } },
-      { id: "yg03", text: "\u05E1\u05E2 \u05DC\u05D1\u05D0\u05E8 \u05E9\u05D1\u05E2. \u05D0\u05DD \u05E2\u05D1\u05E8\u05EA \u05D1\u05D6\u05D9\u05E0\u05D5\u05E7 \u2014 \u05E7\u05D1\u05DC \u20AA200,000.", effect: { type: "move_to", pos: 18, collectStart: true } },
+      { id: "yg01", text: "\u05E1\u05E2 \u05DC\u05EA\u05DC \u05D0\u05D1\u05D9\u05D1-\u05D9\u05E4\u05D5. \u05D0\u05DD \u05E2\u05D1\u05E8\u05EA \u05D1\u05D6\u05D9\u05E0\u05D5\u05E7 \u2014 \u05E7\u05D1\u05DC \u20AA200.", effect: { type: "move_to", pos: 39, collectStart: true } },
+      { id: "yg02", text: "\u05E1\u05E2 \u05DC\u05D9\u05E8\u05D5\u05E9\u05DC\u05D9\u05DD. \u05D0\u05DD \u05E2\u05D1\u05E8\u05EA \u05D1\u05D6\u05D9\u05E0\u05D5\u05E7 \u2014 \u05E7\u05D1\u05DC \u20AA200.", effect: { type: "move_to", pos: 37, collectStart: true } },
+      { id: "yg03", text: "\u05E1\u05E2 \u05DC\u05D1\u05D0\u05E8 \u05E9\u05D1\u05E2. \u05D0\u05DD \u05E2\u05D1\u05E8\u05EA \u05D1\u05D6\u05D9\u05E0\u05D5\u05E7 \u2014 \u05E7\u05D1\u05DC \u20AA200.", effect: { type: "move_to", pos: 18, collectStart: true } },
       { id: "yg04", text: "\u05D7\u05D6\u05D5\u05E8 \u05E9\u05DC\u05D5\u05E9 \u05DE\u05E9\u05D1\u05E6\u05D5\u05EA \u05D0\u05D7\u05D5\u05E8\u05D4.", effect: { type: "move_relative", delta: -3 } },
       { id: "yg05", text: "\u05E2\u05D1\u05D5\u05E8 \u05DC\u05D6\u05D9\u05E0\u05D5\u05E7.", effect: { type: "move_to", pos: 0, collectStart: true } },
       { id: "yg06", text: "\u05E1\u05E2 \u05DC\u05E6\u05D5\u05DE\u05EA \u05D4\u05EA\u05D7\u05D1\u05D5\u05E8\u05D4 \u05D4\u05E7\u05E8\u05D5\u05D1 \u05D5\u05E9\u05DC\u05DD \u05DC\u05D1\u05E2\u05DC\u05D9\u05D5 \u05D3\u05DE\u05D9 \u05DE\u05E2\u05D1\u05E8 \u05DB\u05E4\u05D5\u05DC\u05D9\u05DD.", effect: { type: "nearest_transport", rentMultiplier: 2 } },
-      { id: "yg07", text: "\u05EA\u05E7\u05DC\u05D4 \u05D1\u05EA\u05E9\u05EA\u05D9\u05EA \u2014 \u05E1\u05E2 \u05DC\u05EA\u05E9\u05EA\u05D9\u05EA \u05D4\u05E7\u05E8\u05D5\u05D1\u05D4. \u05D0\u05DD \u05D1\u05D1\u05E2\u05DC\u05D5\u05EA \u05E9\u05D7\u05E7\u05DF, \u05E9\u05DC\u05DD \u05E4\u05D9 12 \u05DE\u05E1\u05DB\u05D5\u05DD \u05D4\u05E7\u05D5\u05D1\u05D9\u05D5\u05EA.", effect: { type: "nearest_utility", forceMultiplier: 12e3 } },
-      { id: "yg08", text: "\u05E7\u05E0\u05E1 \u05D7\u05E0\u05D9\u05D4 \u05D1\u05E8\u05D7\u05D5\u05D1 \u05D3\u05D9\u05D6\u05E0\u05D2\u05D5\u05E3.", effect: { type: "cash", amount: -5e4 } },
-      { id: "yg09", text: "\u05D3\u05D5\u05D7 \u05DE\u05D4\u05D9\u05E8\u05D5\u05EA \u05D1\u05DB\u05D1\u05D9\u05E9 6.", effect: { type: "cash", amount: -75e3 } },
+      { id: "yg07", text: "\u05EA\u05E7\u05DC\u05D4 \u05D1\u05EA\u05E9\u05EA\u05D9\u05EA \u2014 \u05E1\u05E2 \u05DC\u05EA\u05E9\u05EA\u05D9\u05EA \u05D4\u05E7\u05E8\u05D5\u05D1\u05D4. \u05D0\u05DD \u05D1\u05D1\u05E2\u05DC\u05D5\u05EA \u05E9\u05D7\u05E7\u05DF, \u05E9\u05DC\u05DD \u05E4\u05D9 12 \u05DE\u05E1\u05DB\u05D5\u05DD \u05D4\u05E7\u05D5\u05D1\u05D9\u05D5\u05EA.", effect: { type: "nearest_utility", forceMultiplier: 12 } },
+      { id: "yg08", text: "\u05E7\u05E0\u05E1 \u05D7\u05E0\u05D9\u05D4 \u05D1\u05E8\u05D7\u05D5\u05D1 \u05D3\u05D9\u05D6\u05E0\u05D2\u05D5\u05E3.", effect: { type: "cash", amount: -50 } },
+      { id: "yg09", text: "\u05D3\u05D5\u05D7 \u05DE\u05D4\u05D9\u05E8\u05D5\u05EA \u05D1\u05DB\u05D1\u05D9\u05E9 6.", effect: { type: "cash", amount: -75 } },
       { id: "yg10", text: "\u05E4\u05E7\u05E7 \u05E2\u05E0\u05E7 \u05D1\u05DB\u05D1\u05D9\u05E9 1 \u2014 \u05D4\u05E4\u05E1\u05D3\u05EA \u05EA\u05D5\u05E8.", effect: { type: "skip_next_turn" } },
-      { id: "yg11", text: "\u05D0\u05D5\u05E9\u05E8\u05D4 \u05EA\u05D5\u05DB\u05E0\u05D9\u05EA \u05EA\u05DE\u05F4\u05D0 38 \u05D1\u05D1\u05E0\u05D9\u05D9\u05DF \u05E9\u05DC\u05DA.", effect: { type: "cash", amount: 15e4 } },
-      { id: "yg12", text: "\u05D4\u05D5\u05D5\u05E2\u05D3\u05D4 \u05D4\u05DE\u05E7\u05D5\u05DE\u05D9\u05EA \u05D3\u05D5\u05E8\u05E9\u05EA \u05E9\u05D9\u05E4\u05D5\u05E5.", effect: { type: "per_building", perHouse: -4e4, perHotel: -15e4 } },
-      { id: "yg13", text: "\u05D3\u05D5\u05D3 \u05D4\u05E9\u05DE\u05E9 \u05D4\u05EA\u05E4\u05D5\u05E6\u05E5 \u05D1\u05D2\u05D2.", effect: { type: "cash", amount: -25e3 } },
-      { id: "yg14", text: "\u05D4\u05E0\u05D7\u05D4 \u05D1\u05D0\u05E8\u05E0\u05D5\u05E0\u05D4 \u05DC\u05EA\u05D5\u05E9\u05D1 \u05D7\u05D5\u05D6\u05E8.", effect: { type: "cash", amount: 8e4 } },
-      { id: "yg15", text: "\u05E6\u05D5 \u05E2\u05D9\u05E7\u05D5\u05DC \u2014 \u05E2\u05D1\u05D5\u05E8 \u05D9\u05E9\u05D9\u05E8\u05D5\u05EA \u05DC\u05DE\u05E2\u05E6\u05E8 \u05D1\u05D9\u05EA. \u05D0\u05DC \u05EA\u05E2\u05D1\u05D5\u05E8 \u05D1\u05D6\u05D9\u05E0\u05D5\u05E7, \u05D0\u05DC \u05EA\u05E7\u05D1\u05DC \u20AA200,000.", effect: { type: "goto_jail" } },
+      { id: "yg11", text: "\u05D0\u05D5\u05E9\u05E8\u05D4 \u05EA\u05D5\u05DB\u05E0\u05D9\u05EA \u05EA\u05DE\u05F4\u05D0 38 \u05D1\u05D1\u05E0\u05D9\u05D9\u05DF \u05E9\u05DC\u05DA.", effect: { type: "cash", amount: 150 } },
+      { id: "yg12", text: "\u05D4\u05D5\u05D5\u05E2\u05D3\u05D4 \u05D4\u05DE\u05E7\u05D5\u05DE\u05D9\u05EA \u05D3\u05D5\u05E8\u05E9\u05EA \u05E9\u05D9\u05E4\u05D5\u05E5.", effect: { type: "per_building", perHouse: -40, perHotel: -150 } },
+      { id: "yg13", text: "\u05D3\u05D5\u05D3 \u05D4\u05E9\u05DE\u05E9 \u05D4\u05EA\u05E4\u05D5\u05E6\u05E5 \u05D1\u05D2\u05D2.", effect: { type: "cash", amount: -25 } },
+      { id: "yg14", text: "\u05D4\u05E0\u05D7\u05D4 \u05D1\u05D0\u05E8\u05E0\u05D5\u05E0\u05D4 \u05DC\u05EA\u05D5\u05E9\u05D1 \u05D7\u05D5\u05D6\u05E8.", effect: { type: "cash", amount: 80 } },
+      { id: "yg15", text: "\u05E6\u05D5 \u05E2\u05D9\u05E7\u05D5\u05DC \u2014 \u05E2\u05D1\u05D5\u05E8 \u05D9\u05E9\u05D9\u05E8\u05D5\u05EA \u05DC\u05DE\u05E2\u05E6\u05E8 \u05D1\u05D9\u05EA. \u05D0\u05DC \u05EA\u05E2\u05D1\u05D5\u05E8 \u05D1\u05D6\u05D9\u05E0\u05D5\u05E7, \u05D0\u05DC \u05EA\u05E7\u05D1\u05DC \u20AA200.", effect: { type: "goto_jail" } },
       { id: "yg16", text: "\u05DB\u05E8\u05D8\u05D9\u05E1 \u05D9\u05E6\u05D9\u05D0\u05D4 \u05DE\u05DE\u05E2\u05E6\u05E8 \u05D1\u05D9\u05EA \u2014 \u05E9\u05DE\u05D5\u05E8 \u05E2\u05D3 \u05DC\u05E9\u05D9\u05DE\u05D5\u05E9 \u05D0\u05D5 \u05DE\u05DB\u05D5\u05E8.", effect: { type: "keep_out_of_jail" } }
     ]
   },
@@ -125,8 +125,8 @@ var board_default = {
   ],
   modes: {
     full: { name: "\u05DE\u05E9\u05D7\u05E7 \u05DE\u05DC\u05D0", auctions: true, hotelThreshold: 4, turnSeconds: 60, hardLimitMinutes: null },
-    quick: { name: "\u05DE\u05D4\u05D9\u05E8", auctions: false, hotelThreshold: 3, turnSeconds: 30, hardLimitMinutes: 60, startingCash: 12e5, passStartBonus: 25e4, dealtProperties: 2, rentSurgeAfterMinutes: 45, rentSurgeMultiplier: 1.5 },
-    blitz: { name: "\u05D1\u05D6\u05E7", auctions: false, hotelThreshold: 2, turnSeconds: 20, hardLimitMinutes: 30, startingCash: 12e5, passStartBonus: 3e5, dealtProperties: 3, rentSurgeAfterMinutes: 20, rentSurgeMultiplier: 1.5 }
+    quick: { name: "\u05DE\u05D4\u05D9\u05E8", auctions: false, hotelThreshold: 3, turnSeconds: 30, hardLimitMinutes: 60, startingCash: 1200, passStartBonus: 250, dealtProperties: 2, rentSurgeAfterMinutes: 45, rentSurgeMultiplier: 1.5 },
+    blitz: { name: "\u05D1\u05D6\u05E7", auctions: false, hotelThreshold: 2, turnSeconds: 20, hardLimitMinutes: 30, startingCash: 1200, passStartBonus: 300, dealtProperties: 3, rentSurgeAfterMinutes: 20, rentSurgeMultiplier: 1.5 }
   }
 };
 
@@ -223,10 +223,18 @@ var MODE_DEFAULTS = {
   }
 };
 var MODE_CASH = {
-  full: { cash: 15e5, pass: 2e5, dealt: 0 },
-  quick: { cash: 12e5, pass: 25e4, dealt: 2 },
-  blitz: { cash: 12e5, pass: 3e5, dealt: 3 }
+  full: modeCash("full"),
+  quick: modeCash("quick"),
+  blitz: modeCash("blitz")
 };
+function modeCash(mode) {
+  const m = BOARD.modes[mode] ?? {};
+  return {
+    cash: m.startingCash ?? BOARD.meta.startingCash,
+    pass: m.passStartBonus ?? BOARD.meta.passStartBonus,
+    dealt: m.dealtProperties ?? 0
+  };
+}
 function defaultSettings(mode = "quick") {
   return {
     mode,
@@ -527,8 +535,8 @@ function finishOnTime(s, events, now) {
 }
 
 // src/engine/auction.ts
-var AUCTION_OPENING = 1e4;
-var AUCTION_INCREMENT = 1e4;
+var AUCTION_OPENING = 10;
+var AUCTION_INCREMENT = 10;
 var BASE_MS = 12e3;
 var FLOOR_MS = 4e3;
 function timerFor(bidCount) {

@@ -3,12 +3,12 @@ import { act, fail, newGame, own, setCash, setPhase } from "./testkit";
 
 // ערי הפיתוח: דימונה (6), אופקים (8), נתיבות (9). בית = ₪50,000.
 const SKY = [6, 8, 9];
-const HOUSE = 50_000;
+const HOUSE = 50;
 // קצה המדבר: ירוחם (1), מצפה רמון (3). בית = ₪40,000.
 const SAND = [1, 3];
 
 /** קבוצה שלמה בבעלות מושב 0, עם הרבה מזומן. */
-function withGroup(positions: number[], cash = 5_000_000) {
+function withGroup(positions: number[], cash = 5_000) {
   let s = newGame(2);
   for (const p of positions) s = own(s, p, 0);
   return setCash(s, 0, cash);
@@ -17,7 +17,7 @@ function withGroup(positions: number[], cash = 5_000_000) {
 describe("בנייה", () => {
   it("דורשת קבוצת צבע שלמה", () => {
     let s = own(newGame(2), SKY[0]!, 0);
-    s = setCash(s, 0, 5_000_000);
+    s = setCash(s, 0, 5_000);
     expect(fail(s, { type: "build_house", pos: SKY[0]! })).toBe("GROUP_INCOMPLETE");
   });
 
@@ -48,7 +48,7 @@ describe("בנייה", () => {
   });
 
   it("דוחה בנייה בלי מזומן", () => {
-    let s = withGroup(SKY, 1_000);
+    let s = withGroup(SKY, 1);
     expect(fail(s, { type: "build_house", pos: SKY[0]! })).toBe("INSUFFICIENT_FUNDS");
   });
 
@@ -75,7 +75,7 @@ describe("בנייה", () => {
   it("במצב מהיר המלון נבנה בשלושה בתים", () => {
     let s = newGame(2, { mode: "quick", hotelThreshold: 3 });
     for (const p of SAND) s = own(s, p, 0);
-    s = setCash(s, 0, 5_000_000);
+    s = setCash(s, 0, 5_000);
     for (let round = 0; round < 3; round++)
       for (const p of SAND) s = act(s, { type: "build_house", pos: p });
     s = act(s, { type: "build_house", pos: SAND[0]! });
@@ -142,7 +142,7 @@ describe("משכון", () => {
     const before = s.players[0]!.cash;
     s = act(s, { type: "mortgage", pos: 39 });
     expect(s.deeds[39]!.mortgaged).toBe(true);
-    expect(s.players[0]!.cash).toBe(before + 210_000);
+    expect(s.players[0]!.cash).toBe(before + 210);
   });
 
   it("חוסם משכון כל עוד יש בנייה כלשהי בקבוצה", () => {
@@ -156,12 +156,12 @@ describe("משכון", () => {
     const before = s.players[0]!.cash;
     s = act(s, { type: "unmortgage", pos: 39 });
     expect(s.deeds[39]!.mortgaged).toBe(false);
-    expect(s.players[0]!.cash).toBe(before - 231_000);   // 210,000 × 1.10
+    expect(s.players[0]!.cash).toBe(before - 231);   // 210,000 × 1.10
   });
 
   it("דוחה פדיון בלי מזומן", () => {
     let s = own(newGame(2), 39, 0, { mortgaged: true });
-    s = setCash(s, 0, 1_000);
+    s = setCash(s, 0, 1);
     expect(fail(s, { type: "unmortgage", pos: 39 })).toBe("INSUFFICIENT_FUNDS");
   });
 

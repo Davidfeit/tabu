@@ -14,11 +14,27 @@ const MODE_DEFAULTS: Record<Settings["mode"], Partial<Settings>> = {
            rentSurgeAfterMinutes: 20 },
 };
 
+/**
+ * הכלכלה נגזרת מ-data/board.json ולא משוכפלת כאן.
+ *
+ * שכפול הערכים אכן היה כאן, ובשינוי קנה המידה של הסכומים הוא התפצל מהמקור
+ * בשקט: הלוח אמר 1,500 והמנוע המשיך לחלק 1,500,000. מקור אמת אחד מונע את
+ * החזרה של זה.
+ */
 const MODE_CASH: Record<Settings["mode"], { cash: number; pass: number; dealt: number }> = {
-  full:  { cash: 1_500_000, pass: 200_000, dealt: 0 },
-  quick: { cash: 1_200_000, pass: 250_000, dealt: 2 },
-  blitz: { cash: 1_200_000, pass: 300_000, dealt: 3 },
+  full:  modeCash("full"),
+  quick: modeCash("quick"),
+  blitz: modeCash("blitz"),
 };
+
+function modeCash(mode: Settings["mode"]): { cash: number; pass: number; dealt: number } {
+  const m = BOARD.modes[mode] ?? {};
+  return {
+    cash: m.startingCash ?? BOARD.meta.startingCash,
+    pass: m.passStartBonus ?? BOARD.meta.passStartBonus,
+    dealt: m.dealtProperties ?? 0,
+  };
+}
 
 export function defaultSettings(mode: Settings["mode"] = "quick"): Settings {
   return {

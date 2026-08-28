@@ -20,15 +20,19 @@ function clean(s: string): string {
 }
 
 const whole = new Intl.NumberFormat("he-IL", { maximumFractionDigits: 0 });
-const oneDecimal = new Intl.NumberFormat("he-IL", { maximumFractionDigits: 1 });
 
 export function shekel(n: number): string {
   return "₪" + clean(whole.format(n));
 }
 
-/** קיצור למשבצות צרות. גרש (U+05F3), לא אפוסטרוף. */
+/**
+ * קיצור למשבצות צרות.
+ *
+ * בקנה המידה של הלוח (60–420 למשבצת, 1,500 מזומן פתיחה) אין מה לקצר, וקיצור
+ * דווקא הזיק: ₪1,500 היה מוצג "₪2 א׳". נשמר כשם נפרד כי הכוונה בקריאה שונה —
+ * "כאן אין מקום" — ואם יתווסף אי פעם מצב עם סכומים גדולים, זה המקום היחיד
+ * שצריך לגעת בו.
+ */
 export function shekelShort(n: number): string {
-  if (Math.abs(n) >= 1_000_000) return "₪" + clean(oneDecimal.format(n / 1_000_000)) + " מ׳";
-  if (Math.abs(n) >= 1_000) return "₪" + clean(whole.format(n / 1_000)) + " א׳";
   return shekel(n);
 }

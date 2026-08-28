@@ -18,7 +18,7 @@ function pickAction(s: GameState, seat: number, r: () => number): Action | null 
     if (a.passed.includes(seat)) return null;
     const price = BOARD.board[a.pos]!;
     const cap = ("price" in price ? price.price : 0) / 2;
-    const next = (a.bid ?? 0) + 10_000;
+    const next = (a.bid ?? 0) + 10;
     if (next <= cap && next <= s.players[seat]!.cash && r() < 0.6) {
       return { type: "auction_bid", amount: next };
     }
@@ -43,7 +43,7 @@ function pickAction(s: GameState, seat: number, r: () => number): Action | null 
       const p = s.players[seat]!;
       if (p.inJail) {
         if (p.getOutCards > 0) return { type: "use_jail_card" };
-        if (p.cash > 200_000 && r() < 0.5) return { type: "pay_jail_fine" };
+        if (p.cash > 200 && r() < 0.5) return { type: "pay_jail_fine" };
       }
       return { type: "roll" };
     }
@@ -55,7 +55,7 @@ function pickAction(s: GameState, seat: number, r: () => number): Action | null 
         : { type: "decline_property" };
     }
     case "awaiting_end": {
-      if (s.players[seat]!.cash > 600_000 && r() < 0.4) {
+      if (s.players[seat]!.cash > 600 && r() < 0.4) {
         for (const pos of DEED_POSITIONS) {
           const probe = reduce(s, { type: "build_house", pos }, { seat, now: 0, seed: "x" });
           if (probe.ok) return { type: "build_house", pos };

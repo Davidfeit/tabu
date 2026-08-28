@@ -78,7 +78,7 @@ function SideEditor({ seat, side, onChange, state, title }: {
 
       <label className="block">
         <span className="mb-1 block text-[0.66rem] text-parchment/50">מזומן</span>
-        <input type="number" min={0} max={player.cash} step={10_000} value={side.cash}
+        <input type="number" min={0} max={player.cash} step={10} value={side.cash}
                onChange={(e) => onChange({
                  ...side,
                  cash: Math.max(0, Math.min(player.cash, Math.round(+e.target.value || 0))),

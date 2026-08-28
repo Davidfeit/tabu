@@ -14,7 +14,7 @@ describe("הצעת עסקה", () => {
     s = own(s, 6, 1);
     s = setPhase(s, "awaiting_end");
     s = act(s, { type: "propose_trade", offer: offer({
-      give: { cash: 100_000, deeds: [39], jailCards: 0 },
+      give: { cash: 100, deeds: [39], jailCards: 0 },
       receive: { cash: 0, deeds: [6], jailCards: 0 },
     }) }, 0);
     expect(s.trade).not.toBeNull();
@@ -22,8 +22,8 @@ describe("הצעת עסקה", () => {
     s = act(s, { type: "accept_trade" }, 1);
     expect(s.deeds[39]!.owner).toBe(1);
     expect(s.deeds[6]!.owner).toBe(0);
-    expect(s.players[0]!.cash).toBe(cash0 - 100_000);
-    expect(s.players[1]!.cash).toBe(cash1 + 100_000);
+    expect(s.players[0]!.cash).toBe(cash0 - 100);
+    expect(s.players[1]!.cash).toBe(cash1 + 100);
     expect(s.trade).toBeNull();
   });
 
@@ -32,7 +32,7 @@ describe("הצעת עסקה", () => {
     s.players[0]!.getOutCards = 1;
     s = act(s, { type: "propose_trade", offer: offer({
       give: { cash: 0, deeds: [], jailCards: 1 },
-      receive: { cash: 50_000, deeds: [], jailCards: 0 },
+      receive: { cash: 50, deeds: [], jailCards: 0 },
     }) }, 0);
     s = act(s, { type: "accept_trade" }, 1);
     expect(s.players[0]!.getOutCards).toBe(0);
@@ -47,9 +47,9 @@ describe("הצעת עסקה", () => {
   });
 
   it("דוחה הצעה של מזומן שאין", () => {
-    let s = setCash(setPhase(newGame(2), "awaiting_end"), 0, 1_000);
+    let s = setCash(setPhase(newGame(2), "awaiting_end"), 0, 1);
     expect(fail(s, { type: "propose_trade", offer: offer({
-      give: { cash: 500_000, deeds: [], jailCards: 0 }, receive: { ...EMPTY },
+      give: { cash: 500, deeds: [], jailCards: 0 }, receive: { ...EMPTY },
     }) }, 0)).toBe("INSUFFICIENT_FUNDS");
   });
 
@@ -121,7 +121,7 @@ describe("קבלה ודחייה", () => {
     }) }, 0);
     const before = s.players[1]!.cash;
     s = act(s, { type: "accept_trade" }, 1);
-    expect(s.players[1]!.cash).toBe(before - 21_000);   // 210,000 × 10%
+    expect(s.players[1]!.cash).toBe(before - 21);   // 210,000 × 10%
     expect(s.deeds[39]!.mortgaged).toBe(true);          // נשאר משוכן
   });
 });

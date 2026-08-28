@@ -82,7 +82,21 @@ export interface BoardData {
   board: Square[];
   decks: Record<DeckKey, unknown[]>;
   tokens: { key: string; name: string }[];
-  modes: Record<string, unknown>;
+  modes: Record<string, BoardMode>;
+}
+
+/** מה שמצב משחק רשאי לדרוס מעל meta. הכל אופציונלי — מה שחסר יורש. */
+export interface BoardMode {
+  name?: string;
+  auctions?: boolean;
+  hotelThreshold?: number;
+  turnSeconds?: number;
+  hardLimitMinutes?: number | null;
+  startingCash?: number;
+  passStartBonus?: number;
+  dealtProperties?: number;
+  rentSurgeAfterMinutes?: number;
+  rentSurgeMultiplier?: number;
 }
 
 export function isDeed(sq: Square): sq is Deed {

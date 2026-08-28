@@ -38,27 +38,27 @@ describe("הצעות", () => {
 
   it("דוחה הצעה מתחת למחיר הפתיחה", () => {
     const s = openAuctionAt39();
-    expect(fail(s, { type: "auction_bid", amount: 5_000 }, 1)).toBe("BID_TOO_LOW");
+    expect(fail(s, { type: "auction_bid", amount: 5 }, 1)).toBe("BID_TOO_LOW");
   });
 
   it("דורשת מדרגה מינימלית מעל ההצעה הקודמת", () => {
     let s = openAuctionAt39();
-    s = act(s, { type: "auction_bid", amount: 50_000 }, 1);
-    expect(fail(s, { type: "auction_bid", amount: 55_000 }, 2)).toBe("BID_TOO_LOW");
-    s = act(s, { type: "auction_bid", amount: 60_000 }, 2);
-    expect(s.auction!.bid).toBe(60_000);
+    s = act(s, { type: "auction_bid", amount: 50 }, 1);
+    expect(fail(s, { type: "auction_bid", amount: 55 }, 2)).toBe("BID_TOO_LOW");
+    s = act(s, { type: "auction_bid", amount: 60 }, 2);
+    expect(s.auction!.bid).toBe(60);
   });
 
   it("תקרת ההצעה היא מזומן ביד — אין משכון באמצע מכרז", () => {
     let s = openAuctionAt39();
-    s = setCash(s, 1, 30_000);
-    expect(fail(s, { type: "auction_bid", amount: 40_000 }, 1)).toBe("INSUFFICIENT_FUNDS");
+    s = setCash(s, 1, 30);
+    expect(fail(s, { type: "auction_bid", amount: 40 }, 1)).toBe("INSUFFICIENT_FUNDS");
   });
 
   it("פאס הוא בלתי הפיך", () => {
     let s = openAuctionAt39();
     s = act(s, { type: "auction_pass" }, 1);
-    expect(fail(s, { type: "auction_bid", amount: 100_000 }, 1)).toBe("ALREADY_PASSED");
+    expect(fail(s, { type: "auction_bid", amount: 100 }, 1)).toBe("ALREADY_PASSED");
     expect(fail(s, { type: "auction_pass" }, 1)).toBe("ALREADY_PASSED");
   });
 });
@@ -67,11 +67,11 @@ describe("סגירת מכרז", () => {
   it("נסגר כשנשאר מציע אחד, ומעביר בעלות תמורת ההצעה", () => {
     let s = openAuctionAt39();
     const before = s.players[1]!.cash;
-    s = act(s, { type: "auction_bid", amount: 100_000 }, 1);
+    s = act(s, { type: "auction_bid", amount: 100 }, 1);
     s = act(s, { type: "auction_pass" }, 0);
     s = act(s, { type: "auction_pass" }, 2);
     expect(s.deeds[39]!.owner).toBe(1);
-    expect(s.players[1]!.cash).toBe(before - 100_000);
+    expect(s.players[1]!.cash).toBe(before - 100);
     expect(s.auction).toBeNull();
     expect(s.phase).toBe("awaiting_end");
   });
@@ -85,7 +85,7 @@ describe("סגירת מכרז", () => {
 
   it("נסגר בטיימאאוט לטובת ההצעה הגבוהה", () => {
     let s = openAuctionAt39();
-    s = act(s, { type: "auction_bid", amount: 80_000 }, 2);
+    s = act(s, { type: "auction_bid", amount: 80 }, 2);
     const late = s.auction!.deadline! + 1;
     s = act(s, { type: "claim_timeout" }, 1, late);
     expect(s.deeds[39]!.owner).toBe(2);
@@ -104,10 +104,10 @@ describe("סגירת מכרז", () => {
 describe("טיימר המכרז", () => {
   it("מתקצר ככל שיש יותר משתתפים שפסחו", () => {
     let s = openAuctionAt39(4);
-    s = act(s, { type: "auction_bid", amount: 10_000 }, 1);
+    s = act(s, { type: "auction_bid", amount: 10 }, 1);
     const first = s.auction!.deadline! - T0;
     s = act(s, { type: "auction_pass" }, 2);
-    s = act(s, { type: "auction_bid", amount: 20_000 }, 3);
+    s = act(s, { type: "auction_bid", amount: 20 }, 3);
     const second = s.auction!.deadline! - T0;
     expect(second).toBeLessThan(first);
   });

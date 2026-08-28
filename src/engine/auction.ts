@@ -2,8 +2,8 @@ import { charge, emit } from "./economy";
 import { activePlayers, deedAt, player } from "./selectors";
 import type { GameEvent, GameState } from "./types";
 
-export const AUCTION_OPENING = 10_000;
-export const AUCTION_INCREMENT = 10_000;
+export const AUCTION_OPENING = 10;
+export const AUCTION_INCREMENT = 10;
 const BASE_MS = 12_000;
 const FLOOR_MS = 4_000;
 

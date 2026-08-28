@@ -5,36 +5,36 @@ import { act, fail, newGame, own, place, setCash, setPhase, withRoll } from "./t
 const SKY = [6, 8, 9];
 
 describe("גיוס כספים", () => {
-  function inDebt(amount = 100_000) {
+  function inDebt(amount = 100) {
     let s = own(newGame(3), 39, 0);         // תל אביב, שווי משכון ₪210,000
-    s = setCash(s, 0, 1_000);
+    s = setCash(s, 0, 1);
     s = setPhase(s, "debt");
     s.debt = { debtorSeat: 0, creditorSeat: 1, amount, deadline: s.turnDeadline! + 60_000 , reason: "test", meta: {} };
     return s;
   }
 
   it("נסגר מעצמו ברגע שיש מזומן — אין פעולת תשלום נפרדת", () => {
-    let s = inDebt(100_000);
+    let s = inDebt(100);
     const creditorBefore = s.players[1]!.cash;
     s = act(s, { type: "mortgage", pos: 39 }, 0);
     expect(s.debt).toBeNull();
-    expect(s.players[1]!.cash).toBe(creditorBefore + 100_000);
-    expect(s.players[0]!.cash).toBe(1_000 + 210_000 - 100_000);
+    expect(s.players[1]!.cash).toBe(creditorBefore + 100);
+    expect(s.players[0]!.cash).toBe(1 + 210 - 100);
   });
 
   it("לא מאפשר לוותר כשיש נכסים לכסות את החוב", () => {
-    const s = inDebt(100_000);
+    const s = inDebt(100);
     expect(fail(s, { type: "declare_bankruptcy" }, 0)).toBe("CAN_PAY");
   });
 
   it("מאפשר לוותר כשבאמת אין כיסוי", () => {
-    let s = inDebt(900_000);
+    let s = inDebt(900);
     s = act(s, { type: "declare_bankruptcy" }, 0);
     expect(s.players[0]!.bankrupt).toBe(true);
   });
 
   it("חיסול אוטומטי בטיימאאוט מוכר וממשכן עד לכיסוי", () => {
-    let s = inDebt(100_000);
+    let s = inDebt(100);
     const late = s.debt!.deadline! + 1;
     s = act(s, { type: "claim_timeout" }, 1, late);
     expect(s.debt).toBeNull();
@@ -61,7 +61,7 @@ describe("פשיטת רגל לשחקן", () => {
     let s = newGame(3);
     for (const p of SKY) s = own(s, p, 0, { houses: 1 });
     s = own(s, 39, 0, { mortgaged: true });
-    s = setCash(s, 0, 5_000);
+    s = setCash(s, 0, 5);
     s = setPhase(s, "debt");
     s.debt = { debtorSeat: 0, creditorSeat: 1, amount: 9_000_000, deadline: null , reason: "test", meta: {} };
     return s;
@@ -93,7 +93,7 @@ describe("פשיטת רגל לשחקן", () => {
     s = act(s, { type: "declare_bankruptcy" }, 0);
     // מקבל: 5,000 מזומן + 3 × 25,000 פירוק בתים = 80,000
     // משלם: 10% על משכון תל אביב = 21,000
-    expect(s.players[1]!.cash).toBe(before + 5_000 + 75_000 - 21_000);
+    expect(s.players[1]!.cash).toBe(before + 5 + 75 - 21);
   });
 
   it("מעביר כרטיסי יציאה לנושה", () => {
@@ -153,22 +153,22 @@ describe("תנאי ניצחון", () => {
 describe("חישובי שווי", () => {
   it("שווי נקי סופר מזומן, שטרות ובנייה", () => {
     let s = own(newGame(2), 6, 0, { houses: 2 });
-    s = setCash(s, 0, 100_000);
+    s = setCash(s, 0, 100);
     // 100,000 + 90,000 (מחיר דימונה) + 2 × 50,000 בתים
-    expect(netWorth(s, 0)).toBe(290_000);
+    expect(netWorth(s, 0)).toBe(290);
   });
 
   it("שווי נקי סופר שטר משוכן בשווי המשכון", () => {
     let s = own(newGame(2), 39, 0, { mortgaged: true });
     s = setCash(s, 0, 0);
-    expect(netWorth(s, 0)).toBe(210_000);
+    expect(netWorth(s, 0)).toBe(210);
   });
 
   it("שווי מימוש סופר בתים בחצי מחיר", () => {
     let s = own(newGame(2), 6, 0, { houses: 2 });
     s = setCash(s, 0, 0);
     // 45,000 (משכון דימונה) + 2 × 25,000
-    expect(liquidValue(s, 0)).toBe(95_000);
+    expect(liquidValue(s, 0)).toBe(95);
   });
 });
 

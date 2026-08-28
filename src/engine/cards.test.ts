@@ -38,7 +38,7 @@ describe("החפיסות", () => {
     expect(s.drawnCard).not.toBeNull();
     expect(s.players[0]!.cash).toBe(before);      // עדיין לא הוחל
     s = act(s, { type: "acknowledge_card" }, 0, T0);
-    expect(s.players[0]!.cash).toBe(before + 200_000);
+    expect(s.players[0]!.cash).toBe(before + 200);
   });
 
   it("החפיסה לא מעורבבת מחדש באמצע משחק — ההידלדלות היא חלק מהחוויה", () => {
@@ -54,19 +54,19 @@ describe("החפיסות", () => {
 describe("אפקטים כספיים", () => {
   it("קלף זיכוי מוסיף מזומן", () => {
     const { state } = playCard(newGame(2), "kupat_gemel", "kg01");
-    expect(state.players[0]!.cash).toBe(BOARD.meta.startingCash + 200_000);
+    expect(state.players[0]!.cash).toBe(BOARD.meta.startingCash + 200);
   });
 
   it("קלף חיוב גובה מזומן", () => {
     const { state } = playCard(newGame(2), "kupat_gemel", "kg03");
-    expect(state.players[0]!.cash).toBe(BOARD.meta.startingCash - 50_000);
+    expect(state.players[0]!.cash).toBe(BOARD.meta.startingCash - 50);
   });
 
   it("קלף החתונה גובה מכל שחקן אחר", () => {
     const { state } = playCard(newGame(3), "kupat_gemel", "kg07");
-    expect(state.players[0]!.cash).toBe(BOARD.meta.startingCash + 2 * 50_000);
-    expect(state.players[1]!.cash).toBe(BOARD.meta.startingCash - 50_000);
-    expect(state.players[2]!.cash).toBe(BOARD.meta.startingCash - 50_000);
+    expect(state.players[0]!.cash).toBe(BOARD.meta.startingCash + 2 * 50);
+    expect(state.players[1]!.cash).toBe(BOARD.meta.startingCash - 50);
+    expect(state.players[2]!.cash).toBe(BOARD.meta.startingCash - 50);
   });
 
   it("קלף השיפוצים מחייב לפי בנייה בפועל", () => {
@@ -74,7 +74,7 @@ describe("אפקטים כספיים", () => {
     s = own(s, 8, 0, { hotel: true });
     const { state } = playCard(s, "kupat_gemel", "kg11");
     // 3 בתים × 25,000 + מלון × 100,000
-    expect(state.players[0]!.cash).toBe(BOARD.meta.startingCash - 175_000);
+    expect(state.players[0]!.cash).toBe(BOARD.meta.startingCash - 175);
   });
 
   it("קלף שיפוצים לא גובה כלום בלי בנייה", () => {
@@ -118,7 +118,7 @@ describe("אפקטי תנועה", () => {
     s = own(s, 5, 1);                                       // תחנת הרכבת לשחקן 1
     const { state } = playCard(s, "yad_hagoral", "yg06");
     expect(state.players[0]!.pos).toBe(5);
-    expect(state.players[0]!.cash).toBe(BOARD.meta.startingCash - 40_000);
+    expect(state.players[0]!.cash).toBe(BOARD.meta.startingCash - 40);
   });
 
   it("קלף התשתית כופה ×12,000 גם כשלבעלים יש אחת בלבד", () => {
@@ -127,7 +127,7 @@ describe("אפקטי תנועה", () => {
     s.dice = [4, 5];
     const { state } = playCard(s, "yad_hagoral", "yg07");
     expect(state.players[0]!.pos).toBe(12);
-    expect(state.players[0]!.cash).toBe(BOARD.meta.startingCash - 9 * 12_000);
+    expect(state.players[0]!.cash).toBe(BOARD.meta.startingCash - 9 * 12);
   });
 });
 
@@ -144,9 +144,9 @@ describe("אפקטים מיוחדים", () => {
 
   it("קלף שמחייב יותר מהמזומן פותח חוב", () => {
     let s = own(newGame(2), 39, 0);
-    s = setCash(s, 0, 1_000);
+    s = setCash(s, 0, 1);
     const { state } = playCard(s, "kupat_gemel", "kg14");    // ‎-80,000
     expect(state.phase).toBe("debt");
-    expect(state.debt!.amount).toBe(80_000);
+    expect(state.debt!.amount).toBe(80);
   });
 });

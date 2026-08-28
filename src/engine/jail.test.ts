@@ -72,7 +72,7 @@ describe("מעצר בית — שלוש דרכים החוצה", () => {
   });
 
   it("דוחה ערובה בלי מזומן", () => {
-    const s = setCash(inJail(), 0, 100);
+    const s = setCash(inJail(), 0, 10);   // מתחת לערובה (₪50)
     expect(fail(s, { type: "pay_jail_fine" })).toBe("INSUFFICIENT_FUNDS");
   });
 
@@ -118,7 +118,7 @@ describe("מעצר בית — שלושה ניסיונות", () => {
     let s = inJail();
     s.players[0]!.jailTurns = 2;
     s = own(s, 39, 0);
-    s = setCash(s, 0, 1_000);
+    s = setCash(s, 0, 1);
     s = act(s, { type: "roll" });
     expect(s.phase).toBe("debt");
     expect(s.pendingMove).toBe(5);
@@ -141,7 +141,7 @@ describe("מעצר בית — מה עדיין מותר", () => {
     s.players[0]!.pos = 10;
     const before = s.players[0]!.cash;
     s = act(s, { type: "roll" }, 1);
-    expect(s.players[0]!.cash).toBe(before + 5_000);
+    expect(s.players[0]!.cash).toBe(before + 5);
   });
 
   it("מותר לבנות ולמשכן מתוך המעצר", () => {

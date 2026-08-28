@@ -111,13 +111,13 @@ describe("קנייה", () => {
     expect(s.phase).toBe("awaiting_buy");
     s = act(s, { type: "buy_property" });
     expect(s.deeds[39]!.owner).toBe(0);
-    expect(s.players[0]!.cash).toBe(before - 420_000);
+    expect(s.players[0]!.cash).toBe(before - 420);
   });
 
   it("דוחה קנייה בלי מזומן מספיק", () => {
     let s = place(withRoll(newGame(2), 3, 4), 0, 32);
     s = act(s, { type: "roll" });
-    s = setCash(s, 0, 1000);
+    s = setCash(s, 0, 1);
     expect(fail(s, { type: "buy_property" })).toBe("INSUFFICIENT_FUNDS");
   });
 
