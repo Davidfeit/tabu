@@ -12,7 +12,13 @@ export function ViewControls({ bare, onToggleBare }: {
   const [full, toggleFull, supported] = useFullscreen();
 
   return (
-    <div className="absolute bottom-2 left-2 z-40 flex gap-1.5" dir="ltr">
+    <div className="absolute bottom-2 left-2 z-40 flex items-center gap-1.5" dir="ltr">
+      {/* מזהה הבנייה. קטן ודהוי, אבל עונה בוודאות על "האם הגרסה החדשה
+          באוויר" — שאלה שאי אפשר היה לענות עליה בלי לנחש. */}
+      <span className="select-all font-mono text-[0.6rem] text-parchment/25"
+            title="מזהה הבנייה שמוגשת כרגע">
+        {__BUILD_ID__}
+      </span>
       <button onClick={onToggleBare} className={BTN}
               title={bare ? "הצגת הפאנלים" : "הסתרת הפאנלים — לוח גדול יותר"}
               aria-label={bare ? "הצגת הפאנלים" : "הסתרת הפאנלים"}

@@ -38,6 +38,18 @@ for f in db/001_schema.sql db/002_commit_move.sql db/003_rls.sql \
   psql "$PGURL" -v ON_ERROR_STOP=1 -q -f "$f"
 done
 
+step "מוודא שהמדיניות אכן קיימת"
+# "הרצתי ולא השתנה כלום" הוא מבוי סתום. כאן נאמר בפירוש מה קיים בפועל,
+# כדי שלא נצטרך לנחש אם ההרצה תפסה.
+psql "$PGURL" -q -tA <<'SQL' | sed 's/^/   /'
+select coalesce(
+  (select string_agg(policyname, ', ' order by policyname)
+     from pg_policies
+    where schemaname = 'realtime' and tablename = 'messages'),
+  '(אין מדיניות על realtime.messages)');
+SQL
+printf '   דרושות: tabu_broadcast_read, tabu_signal_read, tabu_signal_write\n'
+
 step "בודק שהשידור מה-DB אכן מגיע ליעד"
 # שתי הנחות נושאות, ואף אחת מהן לא מתועדת אצל Supabase:
 #

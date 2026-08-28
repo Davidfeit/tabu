@@ -5,3 +5,6 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv;
 }
+
+/** מזהה הבנייה, מוזרק ב-vite.config.ts. */
+declare const __BUILD_ID__: string;
