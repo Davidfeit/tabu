@@ -14,7 +14,7 @@ import { Button } from "@/components/Button";
 import { CardModal } from "@/components/CardModal";
 import { EventLog } from "@/components/EventLog";
 import { GameOver } from "@/components/GameOver";
-import { Lobby, type JoinedRoom } from "@/components/Lobby";
+import { inviteCode, Lobby, type JoinedRoom } from "@/components/Lobby";
 import { ManagePanel } from "@/components/ManagePanel";
 import { MoneyFlow } from "@/components/MoneyFlow";
 import { MediaPrompt } from "@/components/MediaPrompt";
@@ -198,7 +198,7 @@ export default function App() {
 
   // לינק הזמנה: ‎#CODE‎ פותח ישר את הלובי עם הקוד.
   useEffect(() => {
-    if (location.hash.length > 1 && ONLINE_ENABLED) setScreen({ kind: "lobby" });
+    if (inviteCode(location.hash) && ONLINE_ENABLED) setScreen({ kind: "lobby" });
   }, []);
 
   const toHome = useCallback(() => setScreen({ kind: "home" }), []);
@@ -227,7 +227,7 @@ export default function App() {
       )}
 
       {screen.kind === "lobby" && (
-        <Lobby onJoined={(room) => setScreen({ kind: "waiting", room })} onBack={toHome} />
+        <Lobby invite={typeof location === "undefined" ? null : inviteCode(location.hash)} onJoined={(room) => setScreen({ kind: "waiting", room })} onBack={toHome} />
       )}
 
       {screen.kind === "waiting" && (

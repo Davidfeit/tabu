@@ -52,13 +52,26 @@ export function explain(raw: string): { text: string; hint?: string; raw?: strin
   return { text: "משהו השתבש. נסו שוב.", raw };
 }
 
-export function Lobby({ onJoined, onBack }: {
+/**
+ * קוד חדר מתוך כתובת ההזמנה.
+ *
+ * הלינק הוא ‎…/#ABC123‎. בלי זה המוזמן ראה מסך עם שתי אפשרויות והיה צריך
+ * להקליד ידנית קוד שכבר היה בכתובת שלחץ עליה.
+ */
+export function inviteCode(hash: string): string | null {
+  const raw = hash.replace(/^#/, "").trim().toUpperCase();
+  return /^[A-Z0-9]{4,8}$/.test(raw) ? raw : null;
+}
+
+export function Lobby({ onJoined, onBack, invite }: {
   onJoined: (room: JoinedRoom) => void;
   onBack: () => void;
+  /** קוד מקישור הזמנה. כשהוא קיים, המסך הופך למסך הצטרפות בלבד. */
+  invite?: string | null;
 }) {
   const [name, setName] = useState("");
   const [tokenIdx, setTokenIdx] = useState(0);
-  const [code, setCode] = useState("");
+  const [code, setCode] = useState(invite ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ReturnType<typeof explain> | null>(null);
 
@@ -108,6 +121,25 @@ export function Lobby({ onJoined, onBack }: {
       </section>
 
       <section className="space-y-2 rounded-lg bg-black/25 p-4 ring-1 ring-white/10">
+        {invite ? (
+          <>
+            <p className="text-center text-[0.8rem] text-parchment/70">
+              הוזמנתם לחדר{" "}
+              <span className="font-mono tracking-[0.2em] text-parchment"
+                    style={{ direction: "ltr", unicodeBidi: "isolate" }}>{invite}</span>
+            </p>
+            <Button variant="primary" disabled={!ready || busy} className="w-full !py-2"
+                    onClick={() => run(async () => {
+                      const userId = await signIn();
+                      const r = await api.joinRoom(invite, name.trim(), token);
+                      return { roomId: r.roomId, seat: r.seat ?? 0, code: invite,
+                               userId, isHost: false };
+                    })}>
+              {busy ? "מצטרף…" : "הצטרפות למשחק"}
+            </Button>
+          </>
+        ) : (
+        <>
         <Button variant="primary" disabled={!ready || busy} className="w-full !py-2"
                 onClick={() => run(async () => {
                   const userId = await signIn();
@@ -140,6 +172,8 @@ export function Lobby({ onJoined, onBack }: {
             הצטרפות
           </Button>
         </div>
+        </>
+        )}
       </section>
 
       {error && (
