@@ -6,6 +6,7 @@ import { SupabaseTransport } from "@/net/transport";
 import { LocalGameProvider, useGame } from "@/ui/GameContext";
 import { RemoteGameProvider } from "@/ui/RemoteGameProvider";
 import { useMesh } from "@/ui/useMesh";
+import { MotionProvider } from "@/ui/MotionContext";
 import { BankCard } from "@/components/BankCard";
 import { AuctionPanel } from "@/components/AuctionPanel";
 import { Board } from "@/components/Board";
@@ -77,6 +78,7 @@ function GameScreen({ onRestart, videoTiles }: {
     // פנויים בכל צד ממילא, ולכן אין סיבה שהפאנלים יגזלו מהלוח: הם צפים
     // מעל השוליים האלה. כך הלוח תמיד min(100dvh, 100vw) — המקסימום
     // הפיזי — גם במסכים צרים, שבהם פריסת עמודות הייתה מכווצת אותו.
+    <MotionProvider state={state}>
     <main dir="rtl" className="relative h-[100dvh] w-full overflow-hidden">
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="relative h-full max-h-full" style={{ aspectRatio: "1 / 1" }}>
@@ -117,6 +119,7 @@ function GameScreen({ onRestart, videoTiles }: {
           כרטיס שחקן היה כלוא ב-overflow שלו. */}
       <MoneyFlow />
     </main>
+    </MotionProvider>
   );
 }
 

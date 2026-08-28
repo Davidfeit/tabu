@@ -1,5 +1,6 @@
 import { BOARD } from "@/lib/board";
 import { useGame } from "@/ui/GameContext";
+import { useMotion } from "@/ui/MotionContext";
 import { Button } from "./Button";
 
 const DECK_STYLE = {
@@ -10,8 +11,11 @@ const DECK_STYLE = {
 /** הקלף מוצג ומחכה לאישור, כדי שהשחקן יספיק לקרוא אותו לפני שהאפקט מוחל. */
 export function CardModal() {
   const { state, dispatch, canControl } = useGame();
+  const { settling } = useMotion();
   const drawn = state.drawnCard;
-  if (!drawn) return null;
+  // הקלף נשלף ברגע שהמנוע מחיל את הנחיתה, אבל על המסך החייל עוד בדרך.
+  // כרטיס שקופץ באמצע ההליכה מסתיר בדיוק את מה שגרם לו.
+  if (!drawn || settling) return null;
 
   const def = (BOARD.decks[drawn.deck] as { id: string; text: string }[])
     .find((c) => c.id === drawn.id);

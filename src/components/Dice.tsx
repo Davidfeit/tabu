@@ -11,6 +11,14 @@ const PIPS: Record<number, [number, number][]> = {
 
 const TUMBLE_MS = 480;
 
+/**
+ * כמה זמן הגלגול נמשך על המסך, כולל ההשהיה של הקובייה השנייה.
+ *
+ * מיוצא כי התזוזה של החייל מחכה לו: חייל שיוצא לדרך בזמן שהקוביות עוד
+ * מתגלגלות מספר את התוצאה לפני שהיא נקראה.
+ */
+export const DICE_MS = TUMBLE_MS + 90;
+
 function Die({ value, size, rolling, delay }: {
   value: number; size: number; rolling: boolean; delay: number;
 }) {
@@ -55,7 +63,7 @@ export function Dice({ dice, size = 34 }: {
     previous.current = key;
     if (key === null) return;
     setRolling(true);
-    const id = setTimeout(() => setRolling(false), TUMBLE_MS + 90);
+    const id = setTimeout(() => setRolling(false), DICE_MS);
     return () => clearTimeout(id);
   }, [key]);
 

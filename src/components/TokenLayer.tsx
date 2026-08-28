@@ -1,5 +1,5 @@
 import { cellCenter, crowdOffset, crowdScale, inwardOffset, TOKEN_PCT } from "@/lib/geometry";
-import { useTokenMotion } from "@/ui/useTokenMotion";
+import { useMotion } from "@/ui/MotionContext";
 import type { GameState } from "@/engine/types";
 import { Token } from "./Token";
 
@@ -10,13 +10,13 @@ import { Token } from "./Token";
  * קופץ במקום לזוז, ולכן אי אפשר להנפיש תנועה בלי שכבה משותפת.
  */
 export function TokenLayer({ state }: { state: GameState }) {
-  const motion = useTokenMotion(state);
+  const { bySeat } = useMotion();
   const active = state.players.filter((p) => !p.bankrupt);
 
   // כמה חיילים על כל משבצת, כדי לפזר אותם ולא להסתיר זה את זה.
   const perCell = new Map<number, number[]>();
   for (const p of active) {
-    const pos = motion.get(p.seat)?.pos ?? p.pos;
+    const pos = bySeat.get(p.seat)?.pos ?? p.pos;
     const list = perCell.get(pos) ?? [];
     list.push(p.seat);
     perCell.set(pos, list);
@@ -26,7 +26,7 @@ export function TokenLayer({ state }: { state: GameState }) {
     <div className="pointer-events-none absolute inset-0 z-20"
          style={{ containerType: "inline-size" }} aria-hidden="true">
       {active.map((p) => {
-        const m = motion.get(p.seat);
+        const m = bySeat.get(p.seat);
         const pos = m?.pos ?? p.pos;
         const crowd = perCell.get(pos) ?? [p.seat];
         const off = crowdOffset(crowd.indexOf(p.seat), crowd.length);
