@@ -110,6 +110,10 @@ export function useMesh(
       created?.close();
       setMesh(null);
       setPeers([]);
+      // משחררים את המצלמה, ולא רק את החיבורים: כיבוי וידאו שמשאיר את
+      // הנורה דולקת אינו כיבוי. הפעלה מחדש תבקש אותה שוב.
+      releaseLocalStream();
+      setLocal(null);
     };
   }, [selfId, transport, peerIds === null]);
 

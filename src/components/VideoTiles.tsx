@@ -30,6 +30,7 @@ export const VIDEO_SEATS = [0, 1, 2, 3];
  */
 export function VideoTiles({
   state, mySeat, local, peers, error, relayError, wanted = [], selfId = "", stats,
+  videoOn = true, onToggleVideo,
 }: {
   state: GameState;
   mySeat: number | null;
@@ -42,6 +43,9 @@ export function VideoTiles({
   wanted?: string[];
   selfId?: string;
   stats?: SignalStats;
+  /** האם המצלמה דולקת. כשהיא כבויה אין מה לאבחן. */
+  videoOn?: boolean;
+  onToggleVideo?: () => void;
 }) {
   const byUser = new Map(peers.map((p) => [p.id, p]));
 
@@ -63,15 +67,27 @@ export function VideoTiles({
                       mirrored={isMe}
                       dimmed={p.bankrupt}
                       active={p.seat === state.currentSeat && !p.bankrupt}
-                      hint={isMe ? undefined : peerHint(peer, relayError)} />
+                      hint={isMe || !videoOn ? undefined : peerHint(peer, relayError)} />
           );
         })}
       </div>
 
-      <VideoDiag selfId={selfId} wanted={wanted} peers={peers}
-                 stats={stats} relayError={relayError} />
+      {onToggleVideo && (
+        <button onClick={onToggleVideo}
+                className="absolute right-1 top-1 z-10 rounded-md bg-neutral-950/75 px-2 py-1
+                           text-[0.66rem] text-parchment/70 ring-1 ring-white/15
+                           hover:text-parchment">
+          {videoOn ? "כיבוי מצלמה" : "הפעלת מצלמה"}
+        </button>
+      )}
 
-      {error && (
+      {videoOn && (
+        <VideoDiag selfId={selfId} wanted={wanted} peers={peers}
+                   players={state.players.map((p) => ({ name: p.name, userId: p.userId }))}
+                   stats={stats} relayError={relayError} />
+      )}
+
+      {videoOn && error && (
         <p className="pointer-events-none absolute inset-x-[8%] bottom-[2%] rounded
                       bg-black/75 px-2 py-1 text-center text-[0.62rem] leading-snug
                       text-amber-200/90">
@@ -154,8 +170,9 @@ export function EmptySeat() {
  * "לא זורמים פריימים" בזמן שהווידאו כבר זרם: אירוע ה-unmute יכול
  * להקדים את ההאזנה לו, ואז אין מה שיעדכן.
  */
-function VideoDiag({ selfId, wanted, peers, stats, relayError }: {
+function VideoDiag({ selfId, wanted, peers, players, stats, relayError }: {
   selfId: string; wanted: string[]; peers: PeerState[];
+  players: { name: string; userId: string }[];
   stats?: SignalStats; relayError?: string | null;
 }) {
   const [, tick] = useState(0);
@@ -172,7 +189,7 @@ function VideoDiag({ selfId, wanted, peers, stats, relayError }: {
     <div dir="rtl" className="pointer-events-none absolute inset-x-0 bottom-0 space-y-0.5
                               bg-black/70 px-2 py-1 text-[0.6rem] leading-tight
                               text-amber-200/90">
-      {diagLines({ selfId, wanted, peers: live, stats, relayError }).map((l) => (
+      {diagLines({ selfId, wanted, peers: live, players, stats, relayError }).map((l) => (
         <div key={l} style={{ unicodeBidi: "plaintext" }}>{l}</div>
       ))}
     </div>

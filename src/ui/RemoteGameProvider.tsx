@@ -31,6 +31,10 @@ export function RemoteGameProvider({
   children: React.ReactNode;
 }) {
   const [state, setState] = useState<GameState>(initialState);
+  // ה-catch של השליחה רץ אחרי הרינדור, ולכן הוא צריך את המצב העדכני
+  // ולא את זה שנתפס בסגירה.
+  const stateRef = useRef(initialState);
+  stateRef.current = state;
   const [events, setEvents] = useState<GameEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
   const version = useRef(initialVersion);
@@ -94,7 +98,8 @@ export function RemoteGameProvider({
         setError(null);
       })
       .catch((e: Error) => {
-        setError(errorText(e.message as never) || "השרת דחה את הפעולה");
+        // המצב שממנו יצאנו הוא מה שחוסם, ולכן הוא זה שמסביר.
+        setError(errorText(e.message as never, stateRef.current) || "השרת דחה את הפעולה");
         if (optimisticFrom) void reload();
       });
   }, [roomId, mySeat, reload]);

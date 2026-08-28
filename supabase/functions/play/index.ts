@@ -149,7 +149,6 @@ async function joinRoom(userId: string, body: Record<string, unknown>) {
   if (room.status === "active") {
     const added = await commitAction(
       room.id, userId, seat, { type: "add_player", userId, name, token },
-      `join-${userId}`,
     );
     if (!added.ok) {
       // מתגלגלים אחורה, אחרת נשאר מושב יתום שחוסם ניסיון נוסף.
@@ -201,8 +200,17 @@ async function startGame(userId: string, roomId: string) {
  * משותף למהלכי משחק ולהצטרפות תוך כדי משחק — שתיהן שינוי מצב, ולשכפל
  * את לולאת ההתחייבות פירושו שתיקון בה יחול רק על אחת מהן.
  */
+/**
+ * מריץ פעולה ומתחייב עליה.
+ *
+ * key הוא מפתח האידמפוטנטיות, ועמודת ה-SQL שלו היא uuid. מחרוזת שאינה
+ * uuid מפילה את הקריאה כולה על שגיאת המרה — וזה מה שקרה בהצטרפות
+ * באמצע משחק, שנפלה על COMMIT_FAILED וגלגלה את המושב אחורה. לכן
+ * ברירת מחדל שנוצרת כאן, ולא מחרוזת שמישהו מרכיב בקריאה.
+ */
 async function commitAction(
-  roomId: string, userId: string, seat: number, action: unknown, key: string,
+  roomId: string, userId: string, seat: number, action: unknown,
+  key: string = crypto.randomUUID(),
 ): Promise<{ ok: true; version: number; state: Record<string, unknown> }
          | { ok: false; error: string; status: number }> {
   const { data: room } = await admin.from("game_rooms")

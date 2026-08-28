@@ -14,17 +14,34 @@ export interface DiagInput {
   /** מזהי העמיתים שהמצב החי אומר שצריך להתחבר אליהם. */
   wanted: string[];
   peers: PeerState[];
+  /** השחקנים שעל הלוח, לבדיקת השיוך למשבצות. */
+  players?: { name: string; userId: string }[];
   stats?: SignalStats;
   relayError?: string | null;
 }
 
-/** ארבעה תווים מספיקים לזיהוי, ומזהה מלא לא נכנס למסך. */
-export const short = (id: string): string => id.slice(0, 4);
+/**
+ * מזהה מקוצר לתצוגה.
+ *
+ * שישה תווים ולא ארבעה: עם ארבעה שני מזהים שונים יכולים להיראות זהים
+ * על המסך, וזה בדיוק מה שהופך "המזהים לא תואמים" לבלתי ניתן לזיהוי.
+ */
+export const short = (id: string): string => id.slice(0, 6);
 
 export function diagLines(d: DiagInput): string[] {
   const lines: string[] = [];
   lines.push(`אני ${short(d.selfId)} · מבוקשים: ${
     d.wanted.length ? d.wanted.map(short).join(", ") : "אין"}`);
+
+  // השיוך משבצת→עמית נעשה לפי מזהה משתמש, ואם הוא לא תואם רואים בו-זמנית
+  // "מחובר" באבחון ו"לא נוצר חיבור" על המשבצת. בלי השורה הזו הסתירה הזו
+  // בלתי ניתנת לפענוח מהמסך.
+  for (const p of d.players ?? []) {
+    if (p.userId === d.selfId) continue;
+    const match = d.peers.find((x) => x.id === p.userId);
+    lines.push(`משבצת ${p.name} (${short(p.userId)}): ${
+      !match ? "אין עמית תואם" : match.stream ? "עמית עם זרם" : "עמית בלי זרם"}`);
+  }
 
   if (d.wanted.length === 0) {
     lines.push("אין עמיתים ברשימה — אף אחד אחר לא נמצא במצב המשחק");

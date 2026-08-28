@@ -1,6 +1,6 @@
 import { squareAt } from "./board";
 import { shekel } from "./format";
-import type { ErrorCode, GameEvent } from "@/engine/types";
+import type { ErrorCode, GameEvent, GameState } from "@/engine/types";
 
 /**
  * לוקליזציה.
@@ -52,7 +52,30 @@ const ERRORS: Record<ErrorCode, string> = {
   ALREADY_IN_GAME: "כבר במשחק",
 };
 
-export function errorText(code: ErrorCode): string {
+/**
+ * WRONG_PHASE לפי מה שבאמת חוסם.
+ *
+ * "אי אפשר לעשות את זה עכשיו" נכון תמיד ולא עוזר לעולם: המשחק יודע
+ * בדיוק מה הוא מחכה לו, ולכן הוא יכול לומר את זה. השאלה "למה אי אפשר?"
+ * לא צריכה להישאל.
+ */
+function phaseBlock(s: Pick<GameState, "phase" | "drawnCard">): string {
+  if (s.drawnCard) return "יש כרטיס פתוח — סגרו אותו קודם";
+  switch (s.phase) {
+    case "awaiting_roll": return "צריך לגלגל קוביות קודם";
+    case "awaiting_buy":  return "קודם להחליט על הנכס — קנייה או ויתור";
+    case "awaiting_end":  return "המשבצת כבר נפתרה — אפשר לבנות, או לסיים תור";
+    case "debt":          return "יש חוב פתוח — צריך לגייס כסף או להיכנע";
+    case "auction":       return "יש מכרז פעיל";
+    case "finished":      return "המשחק נגמר";
+    default:              return ERRORS.WRONG_PHASE;
+  }
+}
+
+export function errorText(
+  code: ErrorCode, state?: Pick<GameState, "phase" | "drawnCard">,
+): string {
+  if (code === "WRONG_PHASE" && state) return phaseBlock(state);
   return ERRORS[code] ?? "משהו השתבש";
 }
 

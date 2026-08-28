@@ -160,6 +160,7 @@ function OnlineGame({ room, initial, version, onLeave }: {
             <MediaPrompt onAllow={() => setVideoOn(true)} onSkip={() => setVideoOn(false)} />
           )}
           <OnlineBody room={room} onLeave={onLeave} videoOn={videoOn}
+                      onToggleVideo={() => setVideoOn((v) => !v)}
                       transport={transport} relayError={relayError} />
         </>
       )}
@@ -175,10 +176,11 @@ function OnlineGame({ room, initial, version, onLeave }: {
  * שבו יושבים: פותחים את המשחק, ורק אז החבר נכנס דרך הקישור. הצד השני
  * כן היה יוצר חיבור, אבל בלי שהצד הזה יענה אין וידאו לאף אחד.
  */
-function OnlineBody({ room, onLeave, videoOn, transport, relayError }: {
+function OnlineBody({ room, onLeave, videoOn, onToggleVideo, transport, relayError }: {
   room: JoinedRoom;
   onLeave: () => void;
   videoOn: boolean | null;
+  onToggleVideo: () => void;
   transport: SignalTransport | null;
   relayError: string | null;
 }) {
@@ -190,12 +192,15 @@ function OnlineBody({ room, onLeave, videoOn, transport, relayError }: {
   return (
     <GameScreen
       onRestart={onLeave}
-      videoTiles={videoOn ? (
+      // גם כשהמצלמה כבויה המשבצות נשארות: הן מחזיקות את הכפתור שמדליק
+      // אותה בחזרה, ובלעדיהן כיבוי היה מסלול חד-כיווני.
+      videoTiles={videoOn === null ? undefined : (
         <VideoTilesBridge local={mesh.local} peers={mesh.peers} error={mesh.error}
                           relayError={relayError} mySeat={room.seat}
                           wanted={peerIds} selfId={room.userId}
-                          stats={transport?.stats} />
-      ) : undefined}
+                          stats={transport?.stats}
+                          videoOn={videoOn} onToggleVideo={onToggleVideo} />
+      )}
     />
   );
 }

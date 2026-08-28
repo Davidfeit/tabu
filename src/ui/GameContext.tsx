@@ -55,7 +55,7 @@ export function LocalGameProvider({
       const r = reduce(prev, action, {
         seat: actor, now: Date.now(), seed: seedRef.current,
       });
-      if (!r.ok) { setError(errorText(r.error)); return prev; }
+      if (!r.ok) { setError(errorText(r.error, prev)); return prev; }
       setError(null);
       if (r.events.length) {
         setEvents((log) => [...r.events, ...log].slice(0, MAX_LOG));
