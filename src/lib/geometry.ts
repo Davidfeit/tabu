@@ -160,53 +160,77 @@ export const HALF_CELL_PCT = 100 / TOTAL_UNITS / 2;
 /** רוחב חייל בודד, באחוזים מרוחב הלוח. */
 export const TOKEN_PCT = 4.2;
 
-/**
- * כמה החייל נדחף פנימה, אל טבעת הלבד שבין המשבצת למרכז הלוח.
- *
- * חייל שיושב *על* המשבצת מסתיר בדיוק את מה שצריך לקרוא — שם העיר והמחיר —
- * ודווקא מטשטש את המיקום שהוא אמור להבליט. מעט יותר מחצי משבצת מוציא אותו
- * החוצה לגמרי אל הלבד, צמוד למשבצת שלו ובלי לכסות אותה.
- */
-export const INWARD_PCT = HALF_CELL_PCT + TOKEN_PCT * 0.55;
-
-/**
- * כיוון "פנימה" למשבצת, מנורמל.
- *
- * בפינה שני הצירים פעילים, ובלי נרמול ההיסט האלכסוני היה ארוך פי שורש 2
- * והחייל היה נוחת עמוק בתוך המרכז.
- */
-export function inwardOffset(pos: number): Point {
-  const { row, col } = cellFor(pos);
-  const x = col === 1 ? 1 : col === GRID ? -1 : 0;
-  const y = row === 1 ? 1 : row === GRID ? -1 : 0;
-  const len = Math.hypot(x, y) || 1;
-  return { xPct: (x / len) * INWARD_PCT, yPct: (y / len) * INWARD_PCT };
-}
+/** יחס גובה-רוחב של החייל, כמו ב-Token.tsx. */
+export const TOKEN_ASPECT = 53 / 40;
 
 /**
  * הקטנת חיילים כשהם צפופים על משבצת אחת.
  *
- * בלי זה, פיזור מספיק כדי שלא יסתירו זה את זה גורר חריגה מהמשבצת אל
- * השכנות. הקטנה מפנה את המרווח שהפיזור צריך.
+ * בלי זה, ארבעה חיילים כתף אל כתף חורגים הרבה מעבר לרוחב המשבצת.
  */
 export function crowdScale(total: number): number {
   if (total <= 2) return 1;
-  if (total <= 4) return 0.86;
-  return 0.74;
+  if (total <= 4) return 0.84;
+  return 0.72;
+}
+
+/** מידות חייל בודד באחוזים מהלוח, אחרי הקטנת צפיפות. */
+export function tokenSize(total: number): { w: number; h: number } {
+  const w = TOKEN_PCT * crowdScale(total);
+  return { w, h: w * TOKEN_ASPECT };
+}
+
+/** חצי משבצת בכל ציר. פינה רחבה מחצי משבצת רגילה. */
+function halfCell(pos: number): Point {
+  const { row, col } = cellFor(pos);
+  return {
+    xPct: (trackSize(col) / 2 / TOTAL_UNITS) * 100,
+    yPct: (trackSize(row) / 2 / TOTAL_UNITS) * 100,
+  };
 }
 
 /**
- * היסט חייל בתוך המשבצת, כדי ששניים לא יסתירו זה את זה.
+ * איפה החייל *עומד* — נקודת כפות הרגליים, לא מרכז הגוף.
  *
- * מסודר במעגל סביב מרכז המשבצת. הרדיוס נגזר מהמקום שנשאר אחרי ההקטנה,
- * ולא נבחר ביד — כך חייל לעולם לא גולש למשבצת השכנה.
+ * שתי בעיות נפתרות כאן יחד. חייל שמצויר על המשבצת מסתיר בדיוק את מה
+ * שצריך לקרוא — שם העיר והמחיר — ודווקא מטשטש את המיקום שהוא אמור
+ * להבליט; ופיזור צפיפות במעגל סביב נקודה גרם לארבעה חיילים להיערם זה על
+ * זה ולהיראות שוכבים.
+ *
+ * לכן: כפות הרגליים על קו אחד בטבעת הלבד שמחוץ למשבצת, והצפופים נפרשים
+ * כתף אל כתף לאורך הקו במקום להצטופף סביב נקודה.
  */
-export function crowdOffset(indexInCell: number, total: number): Point {
-  if (total <= 1) return { xPct: 0, yPct: 0 };
-  const halfToken = (TOKEN_PCT * crowdScale(total)) / 2;
-  const radius = Math.max(0, HALF_CELL_PCT - halfToken) * 0.92;
-  const angle = (indexInCell / total) * Math.PI * 2 - Math.PI / 2;
-  return { xPct: Math.cos(angle) * radius, yPct: Math.sin(angle) * radius };
+export function standFor(pos: number, indexInCell: number, total: number): Point {
+  const c = cellCenter(pos);
+  const { row, col } = cellFor(pos);
+  const { w, h } = tokenSize(total);
+  const half = halfCell(pos);
+  const spread = (indexInCell - (total - 1) / 2) * w * 0.75;
+
+  // פינה: שתי הצלעות שכנות לה, ודחיפה בציר אחד בלבד הייתה מעלה את החייל
+  // על המשבצת של הצלע השנייה. לכן דחיפה אלכסונית, אל תוך הלבד.
+  const vertical = row === 1 || row === GRID;
+  const horizontal = col === 1 || col === GRID;
+  if (vertical && horizontal) {
+    const sx = col === GRID ? -1 : 1;
+    const sy = row === GRID ? -1 : 1;
+    return {
+      xPct: c.xPct + sx * (half.xPct + w / 2) + spread,
+      yPct: c.yPct + sy * half.yPct + (sy > 0 ? h : 0),
+    };
+  }
+
+  // שורה עליונה: הטבעת נמצאת *מתחת* למשבצת, ולכן קו הרצפה יורד בגובה
+  // חייל שלם — אחרת הגוף היה עולה בחזרה על המשבצת.
+  if (row === 1) return { xPct: c.xPct + spread, yPct: c.yPct + half.yPct + h };
+  if (row === GRID) return { xPct: c.xPct + spread, yPct: c.yPct - half.yPct };
+
+  // עמודות: הפרישה אנכית, והגוף מוסט אופקית בחצי רוחב כדי לצאת מהמשבצת.
+  const dir = col === 1 ? 1 : -1;
+  return {
+    xPct: c.xPct + dir * (half.xPct + w / 2),
+    yPct: c.yPct + h / 2 + spread,
+  };
 }
 
 /**

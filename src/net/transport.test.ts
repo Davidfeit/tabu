@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { BroadcastTransport } from "./transport";
+import { BroadcastTransport, SupabaseTransport } from "./transport";
 import type { SignalMessage } from "./signaling";
 
 /**
@@ -96,5 +96,49 @@ describe("תעבורה בין כרטיסיות", () => {
     a.send("B", offer("A"));
     expect(got).toHaveLength(1);
     a.close(); b.close();
+  });
+});
+
+describe("SupabaseTransport — ערוצים פרטיים", () => {
+  interface Opened { topic: string; opts?: { config?: { private?: boolean } } }
+
+  function fakeRealtime() {
+    const opened: Opened[] = [];
+    const sent: unknown[] = [];
+    const sb = {
+      channel(topic: string, opts?: Opened["opts"]) {
+        opened.push({ topic, opts });
+        return {
+          on() { return this; },
+          subscribe() { return this; },
+          send(m: unknown) { sent.push(m); return Promise.resolve("ok"); },
+          unsubscribe() { return Promise.resolve("ok"); },
+        };
+      },
+      removeChannel() { return Promise.resolve("ok"); },
+    };
+    return { sb, opened, sent };
+  }
+
+  // הבאג שהיה: subscribe פתח ערוץ פרטי ו-send פתח ערוץ רגיל באותו שם.
+  // אלה שני ערוצים שונים אצל Supabase, וההודעה נעלמה בלי שגיאה.
+  it("גם השליחה וגם ההאזנה פותחות ערוץ פרטי", () => {
+    const { sb, opened } = fakeRealtime();
+    const t = new SupabaseTransport(sb as never);
+    t.subscribe("me", () => {});
+    t.send("you", { kind: "ice", from: "me", candidates: [] });
+
+    expect(opened).toHaveLength(2);
+    for (const ch of opened) {
+      expect(ch.opts?.config?.private).toBe(true);
+    }
+  });
+
+  it("שולחת אל תיבת הדואר של הנמען, ומאזינה לשלה", () => {
+    const { sb, opened } = fakeRealtime();
+    const t = new SupabaseTransport(sb as never);
+    t.subscribe("me", () => {});
+    t.send("you", { kind: "ice", from: "me", candidates: [] });
+    expect(opened.map((c) => c.topic)).toEqual(["sig:me", "sig:you"]);
   });
 });

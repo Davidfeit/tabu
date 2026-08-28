@@ -3,7 +3,7 @@ import { pathBetween } from "@/lib/geometry";
 import type { GameState } from "@/engine/types";
 import { DICE_MS } from "@/components/Dice";
 
-const STEP_MS = 105;
+export const STEP_MS = 105;
 /** מרחק מרבי שמונפש צעד-צעד. גלגול 2d6 לעולם לא עובר 12. */
 const MAX_WALK = 12;
 

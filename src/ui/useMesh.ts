@@ -4,6 +4,7 @@ import {
   type MediaDiagnosis, type MediaErrorKind,
 } from "@/net/media";
 import { PeerMesh, type PeerState } from "@/net/mesh";
+import { iceServers } from "@/net/supabase";
 import type { SignalTransport } from "@/net/transport";
 
 export interface MeshStatus {
@@ -64,10 +65,15 @@ export function useMesh(
       setLocal(stream);
       setError(null);
 
+      // TURN נשלף מהשרת. הקוד הזה הצהיר בהערה ש"TURN נוסף בפרודקשן" אבל
+      // מעולם לא ביקש אותו, ולכן כל חיבור מאחורי CGNAT — הרוב בסלולר
+      // בישראל — נכשל בלי דרך לדעת למה.
+      const ice = await iceServers();
+      if (cancelled) { releaseLocalStream(); return; }
+
       const m = new PeerMesh({
         selfId, localStream: stream,
-        // STUN בלבד מספיק בין כרטיסיות ובאותה רשת. TURN נוסף בפרודקשן.
-        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
+        iceServers: ice,
         send: (peerId, message) => transport.send(peerId, message),
         onPeersChanged: setPeers,
       });

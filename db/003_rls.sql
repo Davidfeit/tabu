@@ -19,6 +19,19 @@ language sql stable security definer set search_path = public as $$
      where room_id = p_room and user_id = p_user and status <> 'left');
 $$;
 
+-- שני משתמשים שנמצאים באותו חדר. משמש את מדיניות ערוצי הסיגנלינג:
+-- מותר לשלוח הצעת וידאו רק למי שמשחק איתך, ולא לכל מזהה שמנחשים.
+create or replace function public.shares_room(p_a uuid, p_b uuid)
+returns boolean
+language sql stable security definer set search_path = public as $$
+  select exists (
+    select 1
+      from game_room_players x
+      join game_room_players y on y.room_id = x.room_id
+     where x.user_id = p_a and y.user_id = p_b
+       and x.status <> 'left' and y.status <> 'left');
+$$;
+
 -- ── קריאה ────────────────────────────────────────────────────────────────
 
 drop policy if exists rooms_read on public.game_rooms;
@@ -93,4 +106,34 @@ begin
 
   -- הלקוח לא משדר אירועי משחק. רק ה-DB עושה זאת, דרך commit_move.
   execute $p$drop policy if exists tabu_broadcast_write on realtime.messages$p$;
+
+  -- ── ערוצי הסיגנלינג של הווידאו ──────────────────────────────────────
+  --
+  -- אלה ערוצים פרטיים בשם sig:<user_id>, ולא room:<room_id>. המדיניות
+  -- שלמעלה מתירה רק נושאים שמתחילים ב-room:, ולכן כיבוי "Allow public
+  -- access" חסם את הסיגנלינג לחלוטין: ההצעות וה-ICE לא הגיעו לאף אחד,
+  -- אף חיבור עמית-לעמית לא נוצר, וכל שחקן ראה רק את עצמו.
+  --
+  -- הכלל: קוראים רק את תיבת הדואר של עצמך, וכותבים רק למי שמשחק איתך.
+
+  execute $p$drop policy if exists tabu_signal_read on realtime.messages$p$;
+  execute $p$
+    create policy tabu_signal_read on realtime.messages
+      for select to authenticated
+      using (
+        extension = 'broadcast'
+        and realtime.topic() = 'sig:' || auth.uid()::text
+      )$p$;
+
+  execute $p$drop policy if exists tabu_signal_write on realtime.messages$p$;
+  execute $p$
+    create policy tabu_signal_write on realtime.messages
+      for insert to authenticated
+      with check (
+        extension = 'broadcast'
+        and realtime.topic() like 'sig:%'
+        and public.shares_room(
+              auth.uid(),
+              nullif(replace(realtime.topic(), 'sig:', ''), '')::uuid)
+      )$p$;
 end $$;

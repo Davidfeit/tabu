@@ -1,5 +1,6 @@
-import { cellCenter, crowdOffset, crowdScale, inwardOffset, TOKEN_PCT } from "@/lib/geometry";
+import { standFor, tokenSize } from "@/lib/geometry";
 import { useMotion } from "@/ui/MotionContext";
+import { STEP_MS } from "@/ui/useTokenMotion";
 import type { GameState } from "@/engine/types";
 import { Token } from "./Token";
 
@@ -29,13 +30,11 @@ export function TokenLayer({ state }: { state: GameState }) {
         const m = bySeat.get(p.seat);
         const pos = m?.pos ?? p.pos;
         const crowd = perCell.get(pos) ?? [p.seat];
-        const off = crowdOffset(crowd.indexOf(p.seat), crowd.length);
         // הרוחב ביחידות מכולה של הלוח — חייל בגודל פיקסלים קבוע נראה
         // זעיר במסך גדול ומגושם במסך קטן.
-        const width = `${TOKEN_PCT * crowdScale(crowd.length)}cqw`;
-        const { xPct, yPct } = cellCenter(pos);
-        // דחיפה אל טבעת הלבד שמחוץ למשבצת — ראה inwardOffset.
-        const inward = inwardOffset(pos);
+        const width = `${tokenSize(crowd.length).w}cqw`;
+        // הנקודה היא כפות הרגליים, לא המרכז — ראה standFor.
+        const { xPct, yPct } = standFor(pos, crowd.indexOf(p.seat), crowd.length);
         const isTurn = p.seat === state.currentSeat;
 
         return (
@@ -43,11 +42,13 @@ export function TokenLayer({ state }: { state: GameState }) {
                className="tabu-token absolute"
                data-walking={m?.walking ? "true" : undefined}
                style={{
-                 left: `${xPct + inward.xPct + off.xPct}%`,
-                 top: `${yPct + inward.yPct + off.yPct}%`,
+                 left: `${xPct}%`,
+                 top: `${yPct}%`,
                  // ההעברה על left/top ולא על transform, כדי ש-transform
                  // יישאר פנוי לקפיצה האנכית של ההליכה.
-                 transitionDuration: m?.walking ? "100ms" : "260ms",
+                 // בדיוק אורך הצעד: מרווח בין המעברים מייצר עצירה זעירה
+                 // בכל משבצת, וזה מה שנקרא קופצני.
+                 transitionDuration: m?.walking ? `${STEP_MS}ms` : "260ms",
                  zIndex: isTurn ? 3 : 2,
                }}>
             <span className="tabu-token__inner block">

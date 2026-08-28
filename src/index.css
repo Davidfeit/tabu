@@ -30,17 +30,25 @@
   /* ── החייל ──
      ההזזה על left/top, כדי ש-transform יישאר פנוי לקפיצה האנכית. שניהם
      יחד על אותו אלמנט היו נלחמים זה בזה. */
+  /* הנקודה שנקבעת ב-standFor היא כפות הרגליים, ולכן -100% ולא -50%:
+     החייל עומד על הקו במקום להיות מרוכז עליו ולהיראות שוכב. */
   .tabu-token {
-    transform: translate(-50%, -50%);
+    transform: translate(-50%, -100%);
     transition-property: left, top;
     transition-timing-function: cubic-bezier(0.34, 1.2, 0.64, 1);
     filter: drop-shadow(0 2px 3px rgb(0 0 0 / 0.55));
   }
+  /* בהליכה — לינארי. עקומת קפיץ על כל צעד בן 105ms גורמת לכל צעד לחרוג
+     ולהתייצב בנפרד, והתוצאה היא רעידה במקום החלקה אחת רציפה. הקפיץ נשאר
+     לנחיתה האחרונה, שם הוא באמת נראה כמו עצירה. */
+  .tabu-token[data-walking="true"] {
+    transition-timing-function: linear;
+  }
   .tabu-token[data-walking="true"] .tabu-token__inner {
-    animation: tabu-hop 100ms ease-in-out;
+    animation: tabu-hop 105ms ease-in-out;
   }
   @keyframes tabu-hop {
-    50% { transform: translateY(-7px) scale(1.12); }
+    50% { transform: translateY(-3px) scale(1.04); }
   }
 
   /* ── הקוביות ──

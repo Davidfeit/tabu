@@ -127,7 +127,13 @@ export class SupabaseTransport implements SignalTransport {
   send(peerId: string, message: SignalMessage): void {
     const topic = signalTopic(peerId);
     let ch = this.channels.get(topic);
-    if (!ch) { ch = this.sb.channel(topic); ch.subscribe(); this.channels.set(topic, ch); }
+    // private:true חייב להופיע גם בשליחה. ערוץ שנפתח בלי הדגל הוא ערוץ
+    // אחר מזה שהנמען מאזין לו, וההודעה נעלמת בלי שגיאה.
+    if (!ch) {
+      ch = this.sb.channel(topic, { config: { private: true } });
+      ch.subscribe();
+      this.channels.set(topic, ch);
+    }
     void ch.send({ type: "broadcast", event: "signal", payload: message });
   }
 

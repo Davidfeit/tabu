@@ -1,20 +1,18 @@
 import { describe, it, expect } from "vitest";
 import {
   BAR_PERCENT,
+  CORNER_UNITS,
   GRID,
-  HALF_CELL_PCT,
-  INWARD_PCT,
   SQUARE_COUNT,
-  TOKEN_PCT,
+  TOTAL_UNITS,
   cellCenter,
   cellFor,
   colorBarEdge,
   contentInset,
-  crowdOffset,
-  crowdScale,
-  inwardOffset,
   labelRotation,
   pathBetween,
+  standFor,
+  tokenSize,
   travelArrowRotation,
 } from "./geometry";
 import type { Side } from "./geometry";
@@ -191,83 +189,68 @@ describe("pathBetween", () => {
   });
 });
 
-describe("crowdOffset", () => {
-  it("לא מזיז חייל בודד", () => {
-    expect(crowdOffset(0, 1)).toEqual({ xPct: 0, yPct: 0 });
-  });
+describe("עמידה על המשבצת", () => {
+  const CELL = 100 / TOTAL_UNITS;
 
-  it("מפזר כמה חיילים למקומות שונים", () => {
-    const points = [0, 1, 2, 3].map((i) => crowdOffset(i, 4));
-    const keys = new Set(points.map((p) => `${p.xPct.toFixed(3)},${p.yPct.toFixed(3)}`));
-    expect(keys.size).toBe(4);
-  });
-
-  it("חייל לא חורג מהמשבצת שלו, בכל צפיפות", () => {
-    // זו האילוץ האמיתי: מרכז ההיסט ועוד חצי רוחב חייל, מול חצי משבצת.
-    for (let n = 2; n <= 6; n++) {
-      const halfToken = (TOKEN_PCT * crowdScale(n)) / 2;
-      for (let i = 0; i < n; i++) {
-        const { xPct, yPct } = crowdOffset(i, n);
-        expect(Math.hypot(xPct, yPct) + halfToken).toBeLessThanOrEqual(HALF_CELL_PCT);
-      }
-    }
-  });
-
-  it("מקטין חיילים ככל שהמשבצת צפופה יותר", () => {
-    expect(crowdScale(2)).toBe(1);
-    expect(crowdScale(4)).toBeLessThan(crowdScale(2));
-    expect(crowdScale(6)).toBeLessThan(crowdScale(4));
-    expect(crowdScale(6)).toBeGreaterThan(0.6);   // עדיין נראה
-  });
-
-  it("שני חיילים על משבצת אחת מרוחקים מספיק כדי לא להסתיר זה את זה", () => {
-    for (let n = 2; n <= 6; n++) {
-      const width = TOKEN_PCT * crowdScale(n);
-      const a = crowdOffset(0, n), b = crowdOffset(1, n);
-      const gap = Math.hypot(a.xPct - b.xPct, a.yPct - b.yPct);
-      expect(gap).toBeGreaterThan(width * 0.5);
-    }
-  });
-});
-
-describe("היסט פנימה", () => {
-  it("כל משבצת נדחפת אל מרכז הלוח ולא החוצה", () => {
+  it("החייל עומד מחוץ למשבצת, ולא עליה", () => {
+    // הנקודה היא כפות הרגליים. הגוף עולה ממנה כלפי מעלה, ולכן צריך לבדוק
+    // שכל התיבה שלו נמצאת בצד הלבד ולא מעל התווית.
     for (let pos = 0; pos < SQUARE_COUNT; pos++) {
+      const { row, col } = cellFor(pos);
       const c = cellCenter(pos);
-      const o = inwardOffset(pos);
-      const before = Math.hypot(c.xPct - 50, c.yPct - 50);
-      const after = Math.hypot(c.xPct + o.xPct - 50, c.yPct + o.yPct - 50);
-      expect(after).toBeLessThan(before);
-    }
-  });
+      const f = standFor(pos, 0, 1);
+      const { w, h } = tokenSize(1);
+      const halfY = (row === 1 || row === GRID ? CORNER_UNITS : 1) / 2 / TOTAL_UNITS * 100;
+      const halfX = (col === 1 || col === GRID ? CORNER_UNITS : 1) / 2 / TOTAL_UNITS * 100;
 
-  it("אורך ההיסט זהה בפינות ובצלעות — הנרמול עובד", () => {
-    const len = (p: number) => {
-      const o = inwardOffset(p);
-      return Math.hypot(o.xPct, o.yPct);
-    };
-    for (const corner of [0, 10, 20, 30]) {
-      expect(len(corner)).toBeCloseTo(INWARD_PCT, 10);
-    }
-    for (const edge of [5, 15, 25, 35]) {
-      expect(len(edge)).toBeCloseTo(INWARD_PCT, 10);
-    }
-  });
-
-  it("החייל יוצא לגמרי מגבולות המשבצת שלו", () => {
-    // הקצה הקרוב של החייל חייב לעבור את גבול המשבצת, אחרת הוא עדיין
-    // מכסה חלק מהתווית — וזו בדיוק הבעיה שההיסט בא לפתור.
-    const nearEdge = INWARD_PCT - TOKEN_PCT / 2;
-    expect(nearEdge).toBeGreaterThan(HALF_CELL_PCT);
-  });
-
-  it("גם עם פיזור צפיפות מלא החייל נשאר בטבעת ולא חוזר על המשבצת", () => {
-    for (let total = 1; total <= 4; total++) {
-      for (let i = 0; i < total; i++) {
-        const o = crowdOffset(i, total);
-        const worst = INWARD_PCT - Math.hypot(o.xPct, o.yPct);
-        expect(worst).toBeGreaterThan(0);
+      const corner = (row === 1 || row === GRID) && (col === 1 || col === GRID);
+      if (corner) {
+        // בפינה נדרשת יציאה בשני הצירים גם יחד, אחרת החייל עולה על
+        // המשבצת של הצלע השנייה.
+        const dx = Math.abs(f.xPct - c.xPct);
+        expect(dx - w / 2).toBeGreaterThanOrEqual(halfX - 1e-9);
+        const top = row === GRID ? f.yPct - h : f.yPct - h;
+        if (row === GRID) expect(f.yPct).toBeLessThanOrEqual(c.yPct - halfY + 1e-9);
+        else expect(top).toBeGreaterThanOrEqual(c.yPct + halfY - 1e-9);
+      } else if (row === GRID) {
+        expect(f.yPct).toBeLessThanOrEqual(c.yPct - halfY + 1e-9);   // מעל המשבצת
+      } else if (row === 1) {
+        expect(f.yPct - h).toBeGreaterThanOrEqual(c.yPct + halfY - 1e-9); // מתחתיה
+      } else {
+        const dx = Math.abs(f.xPct - c.xPct);
+        expect(dx - w / 2).toBeGreaterThanOrEqual(halfX - 1e-9);      // לצידה
       }
     }
+  });
+
+  it("צפופים עומדים בשורה על אותו קו רצפה, לא זה על זה", () => {
+    const total = 4;
+    const feet = [0, 1, 2, 3].map((i) => standFor(5, i, total));
+    // שורה תחתונה: אותו גובה, ומרווח קבוע לרוחב.
+    for (const f of feet) expect(f.yPct).toBeCloseTo(feet[0]!.yPct, 10);
+    const gaps = feet.slice(1).map((f, i) => f.xPct - feet[i]!.xPct);
+    for (const g of gaps) expect(g).toBeCloseTo(gaps[0]!, 10);
+    expect(gaps[0]).toBeGreaterThan(0);
+  });
+
+  it("השורה מרוכזת סביב המשבצת", () => {
+    for (const total of [1, 2, 3, 4]) {
+      const xs = Array.from({ length: total }, (_, i) => standFor(5, i, total).xPct);
+      const mid = (xs[0]! + xs[total - 1]!) / 2;
+      expect(mid).toBeCloseTo(cellCenter(5).xPct, 10);
+    }
+  });
+
+  it("ארבעה חיילים נכנסים ברוחב סביר ביחס למשבצת", () => {
+    const { w } = tokenSize(4);
+    const xs = [0, 1, 2, 3].map((i) => standFor(5, i, 4).xPct);
+    const span = xs[3]! - xs[0]! + w;
+    expect(span).toBeLessThan(CELL * 1.6);
+  });
+
+  it("בעמודות הפרישה אנכית ולא אופקית", () => {
+    const a = standFor(15, 0, 3), b = standFor(15, 2, 3);
+    expect(a.xPct).toBeCloseTo(b.xPct, 10);
+    expect(b.yPct).toBeGreaterThan(a.yPct);
   });
 });
