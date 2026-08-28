@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   acquireLocalStream, classifyMediaError, diagnoseMedia, releaseLocalStream,
   type MediaDiagnosis, type MediaErrorKind,
@@ -36,7 +36,14 @@ export function useMesh(
   const [discovered, setDiscovered] = useState<string[]>([]);
   const [error, setError] = useState<MediaErrorKind | null>(null);
   const [diagnosis, setDiagnosis] = useState<MediaDiagnosis | null>(null);
-  const mesh = useRef<PeerMesh | null>(null);
+  // ב-state ולא ב-ref, בכוונה.
+  //
+  // ה-ref נכתב בתוך פונקציה אסינכרונית, ואילו אפקט היישור למטה מתעורר רק
+  // כש-local או רשימת העמיתים משתנים. כלומר היה מרוץ: setLocal גורם
+  // לרינדור, האפקט רץ, ה-ref עדיין ריק כי ה-await לא הסתיים — ואז ה-ref
+  // מתמלא בלי שאף אחד יריץ sync שוב. התוצאה: אף חיבור לא נוצר, ולכן כל
+  // שחקן ראה רק את עצמו. state מכריח רינדור, והאפקט תלוי בו.
+  const [mesh, setMesh] = useState<PeerMesh | null>(null);
 
   useEffect(() => {
     if (!transport) return;
@@ -50,6 +57,7 @@ export function useMesh(
     }
 
     let cancelled = false;
+    let created: PeerMesh | null = null;
     let unsubscribe: (() => void) | undefined;
     let unpresence: (() => void) | undefined;
 
@@ -77,7 +85,8 @@ export function useMesh(
         send: (peerId, message) => transport.send(peerId, message),
         onPeersChanged: setPeers,
       });
-      mesh.current = m;
+      created = m;
+      setMesh(m);
 
       unsubscribe = transport.subscribe(selfId, (msg) => void m.handle(msg));
       if (peerIds === null) unpresence = transport.presence(selfId, setDiscovered);
@@ -87,8 +96,8 @@ export function useMesh(
       cancelled = true;
       unsubscribe?.();
       unpresence?.();
-      mesh.current?.close();
-      mesh.current = null;
+      created?.close();
+      setMesh(null);
       setPeers([]);
     };
   }, [selfId, transport, peerIds === null]);
@@ -97,9 +106,9 @@ export function useMesh(
   const wanted = peerIds ?? discovered;
   const key = wanted.slice().sort().join(",");
   useEffect(() => {
-    if (!mesh.current) return;
-    mesh.current.sync(key ? key.split(",") : []);
-  }, [key, local]);
+    if (!mesh) return;
+    mesh.sync(key ? key.split(",") : []);
+  }, [key, mesh]);
 
   useEffect(() => () => { releaseLocalStream(); }, []);
 

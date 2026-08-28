@@ -3,7 +3,7 @@ import { diagnosisLine, type MediaErrorKind } from "@/net/media";
 import type { PeerState } from "@/net/mesh";
 import { BroadcastTransport, type SignalTransport } from "@/net/transport";
 import { useGame } from "@/ui/GameContext";
-import { EmptySeat, SeatTile, VIDEO_SEATS } from "./VideoTiles";
+import { EmptySeat, peerHint, SeatTile, VIDEO_SEATS } from "./VideoTiles";
 import { useMesh } from "@/ui/useMesh";
 import { Button } from "./Button";
 
@@ -108,23 +108,34 @@ export function LocalVideo() {
 
   // אותה רשת 2×2 כמו במשחק מקוון. שתי פריסות שונות לאותו שטח פירושן ששינוי
   // באחת נבדק רק בחצי מהמקרים — וזה בדיוק מה שקרה כאן.
-  const peers = mesh.peers;
+  // מקומית יש מצלמה אחת — של מי שתורו — ולכרטיסיות נוספות אין מושב משלהן.
+  // לכן העמיתים משויכים לפי הסדר למושבים *שאינם* הנוכחי. השיוך הקודם לקח
+  // את peers[index-of-seat], כך שעמית יחיד נחת באינדקס 0 בזמן שהמושב השני
+  // חיפש את peers[1] — והזרם היה שם אבל לא הוצג לעולם.
+  const others = VIDEO_SEATS.filter((seat) => seat !== state.currentSeat);
+  const peerBySeat = new Map<number, PeerState>();
+  others.forEach((seat, i) => {
+    const peer = mesh.peers[i];
+    if (peer) peerBySeat.set(seat, peer);
+  });
+
   return (
     <div className="relative h-full w-full">
       <div className="grid h-full w-full grid-cols-2 grid-rows-2 gap-[3%]">
         {VIDEO_SEATS.map((seat) => {
           const p = state.players[seat];
           if (!p) return <EmptySeat key={seat} />;
-          // מקומית יש מצלמה אחת, והיא של מי שתורו. שאר המשבצות מציגות חייל.
           const isCurrent = p.seat === state.currentSeat;
-          const peer = peers[VIDEO_SEATS.indexOf(seat)] as PeerState | undefined;
+          const peer = peerBySeat.get(seat);
           return (
             <SeatTile key={seat} name={p.name} seat={p.seat} token={p.token}
-                      stream={on && isCurrent ? mesh.local : (on ? peer?.stream ?? null : null)}
+                      stream={!on ? null : isCurrent ? mesh.local : peer?.stream ?? null}
                       mirrored={isCurrent}
                       dimmed={p.bankrupt}
                       active={isCurrent && !p.bankrupt}
-                      hint={on && isCurrent ? "מבקש הרשאה…" : undefined} />
+                      hint={!on ? undefined
+                            : isCurrent ? (mesh.local ? undefined : "מבקש הרשאה…")
+                            : peerHint(peer)} />
           );
         })}
       </div>
