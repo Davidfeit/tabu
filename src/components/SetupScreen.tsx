@@ -20,7 +20,6 @@ export function SetupScreen({ onStart }: {
   const [names, setNames] = useState(
     () => ["דנה", "יואב", ...Array(BOARD.meta.maxPlayers - 2).fill("")]);
   const [mode, setMode] = useState<Settings["mode"]>("quick");
-  const [auctions, setAuctions] = useState(true);
 
   const filled = names.map((n, i) => ({ n: n.trim(), i })).filter((x) => x.n.length > 0);
   const ready = filled.length >= BOARD.meta.minPlayers;
@@ -71,18 +70,7 @@ export function SetupScreen({ onStart }: {
           </label>
         ))}
 
-        <label className="mt-1 flex cursor-pointer items-start gap-2.5 rounded-md
-                          bg-black/20 p-2 ring-1 ring-white/5">
-          <input type="checkbox" checked={auctions} className="mt-1"
-                 onChange={(e) => setAuctions(e.target.checked)} />
-          <span>
-            <span className="block text-sm font-semibold text-parchment">מכרזים</span>
-            <span className="block text-[0.68rem] text-parchment/45">
-              נכס שוויתרו עליו יוצא למכרז. זהו חוק האיזון החשוב במשחק —
-              בלעדיו משחקים נמשכים הרבה יותר.
-            </span>
-          </span>
-        </label>
+        
       </section>
 
       <div className="text-center">
@@ -91,7 +79,7 @@ export function SetupScreen({ onStart }: {
                   filled.map(({ n, i }) => ({
                     userId: `local-${i}`, name: n, token: TOKENS[i]!.key,
                   })),
-                  { mode, auctions },
+                  { mode, auctions: false },
                 )}>
           התחל משחק
         </Button>

@@ -38,8 +38,8 @@ export function TurnBar() {
   );
 }
 
-export function Actions({ onTrade }: { onTrade?: () => void }) {
-  const { state, dispatch, canControl, mySeat } = useGame();
+export function Actions() {
+  const { state, dispatch, canControl } = useGame();
   const p = state.players[state.currentSeat]!;
   const mine = canControl(state.currentSeat);
   const sq = squareAt(p.pos);
@@ -47,11 +47,6 @@ export function Actions({ onTrade }: { onTrade?: () => void }) {
 
   if (state.debt) return <DebtActions />;
 
-  // סחר מותר בכל עת חוץ ממכרז וגיוס כספים — כולל כשזה לא תורך.
-  const proposer = mySeat ?? state.currentSeat;
-  const canTrade = onTrade && state.phase !== "auction" && state.phase !== "finished"
-    && !state.trade && state.players.filter((q) => !q.bankrupt).length > 1
-    && !state.players[proposer]!.bankrupt;
 
   return (
     <div className="flex flex-wrap items-center justify-center gap-1.5">
@@ -95,7 +90,6 @@ export function Actions({ onTrade }: { onTrade?: () => void }) {
         </Button>
       )}
 
-      {canTrade && <Button onClick={onTrade}>הצע עסקה</Button>}
     </div>
   );
 }

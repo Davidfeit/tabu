@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SeatSpec } from "@/engine/setup";
 import type { GameState, Settings } from "@/engine/types";
-import { CONFIG_PROBLEM, ONLINE_ENABLED, supabase } from "@/net/supabase";
-import { SupabaseTransport } from "@/net/transport";
+import { api, CONFIG_PROBLEM, ONLINE_ENABLED, supabase } from "@/net/supabase";
+import { RoomTransport } from "@/net/transport";
 import { LocalGameProvider, useGame } from "@/ui/GameContext";
 import { RemoteGameProvider } from "@/ui/RemoteGameProvider";
 import { useMesh } from "@/ui/useMesh";
 import { MotionProvider } from "@/ui/MotionContext";
 import { useIsPhone } from "@/ui/useIsPhone";
 import { BankCard } from "@/components/BankCard";
-import { AuctionPanel } from "@/components/AuctionPanel";
 import { Board } from "@/components/Board";
 import { Button } from "@/components/Button";
 import { CardModal } from "@/components/CardModal";
@@ -23,7 +22,6 @@ import { PhoneController } from "@/components/PhoneController";
 import { PlayerPanel } from "@/components/PlayerPanel";
 import { ViewControls } from "@/components/ViewControls";
 import { SetupScreen } from "@/components/SetupScreen";
-import { TradeBuilder, TradeOfferCard } from "@/components/TradePanel";
 import { CenterPanel } from "@/components/CenterPanel";
 import { VideoTiles } from "@/components/VideoTiles";
 import { WaitingRoom } from "@/components/WaitingRoom";
@@ -65,9 +63,8 @@ function ManageColumn() {
 function GameScreen({ onRestart, videoTiles }: {
   onRestart: () => void; videoTiles?: React.ReactNode;
 }) {
-  const { state, events, mySeat } = useGame();
+  const { state, events } = useGame();
   const [bare, setBare] = useState(false);
-  const [trading, setTrading] = useState(false);
   const nearEnd = state.settings.hardLimitMinutes !== null
     && Date.now() - state.startedAt > (state.settings.hardLimitMinutes - 20) * 60_000;
 
@@ -84,16 +81,8 @@ function GameScreen({ onRestart, videoTiles }: {
     <main dir="rtl" className="relative h-[100dvh] w-full overflow-hidden">
       <div className="absolute inset-0 flex items-center justify-center">
         <div className="relative h-full max-h-full" style={{ aspectRatio: "1 / 1" }}>
-          <Board state={state}
-                 center={<CenterPanel videoTiles={videoTiles}
-                                      onTrade={() => setTrading(true)} />} />
-          <AuctionPanel />
+          <Board state={state} center={<CenterPanel videoTiles={videoTiles} />} />
           <CardModal />
-          {trading && (
-            <TradeBuilder mySeat={mySeat ?? state.currentSeat}
-                          onClose={() => setTrading(false)} />
-          )}
-          <TradeOfferCard />
           <GameOver onRestart={onRestart} />
         </div>
       </div>
@@ -136,8 +125,11 @@ function OnlineGame({ room, initial, version, onLeave }: {
   const peerIds = initial.players.map((p) => p.userId).filter((id) => id !== room.userId);
   // התעבורה נוצרת רק אחרי אישור המצלמה, כדי לא לפתוח ערוצים לחינם.
   const transport = useMemo(
-    () => (videoOn && !phone ? new SupabaseTransport(supabase().realtime as never) : null),
-    [videoOn, phone]);
+    () => (videoOn && !phone
+      ? new RoomTransport(supabase().realtime as never, room.roomId,
+                          (to, message) => api.signal(room.roomId, to, message))
+      : null),
+    [videoOn, phone, room.roomId]);
   const mesh = useMesh(room.userId, peerIds, transport);
 
   return (

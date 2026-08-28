@@ -102,6 +102,8 @@ export const api = {
   startGame: (roomId: string) => call<{ version: number; state: unknown }>("start", { roomId }),
   play: (roomId: string, action: unknown, idempotencyKey: string) =>
     call<{ version: number; state: unknown }>("play", { roomId, action, idempotencyKey }),
+  signal: (roomId: string, to: string, message: unknown) =>
+    call<{ ok: true }>("signal", { roomId, to, message }),
 };
 
 /**

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { BroadcastTransport, SupabaseTransport } from "./transport";
+import { BroadcastTransport, RoomTransport } from "./transport";
 import type { SignalMessage } from "./signaling";
 
 /**
@@ -99,46 +99,68 @@ describe("תעבורה בין כרטיסיות", () => {
   });
 });
 
-describe("SupabaseTransport — ערוצים פרטיים", () => {
-  interface Opened { topic: string; opts?: { config?: { private?: boolean } } }
-
-  function fakeRealtime() {
-    const opened: Opened[] = [];
-    const sent: unknown[] = [];
+describe("RoomTransport — סיגנלינג על ערוץ החדר", () => {
+  function fake() {
+    const opened: { topic: string; opts?: { config?: { private?: boolean } } }[] = [];
+    const handlers: ((m: { payload: unknown }) => void)[] = [];
+    const removed: unknown[] = [];
     const sb = {
-      channel(topic: string, opts?: Opened["opts"]) {
+      channel(topic: string, opts?: { config?: { private?: boolean } }) {
         opened.push({ topic, opts });
-        return {
-          on() { return this; },
-          subscribe() { return this; },
-          send(m: unknown) { sent.push(m); return Promise.resolve("ok"); },
-          unsubscribe() { return Promise.resolve("ok"); },
+        const ch = {
+          on(_e: string, _f: unknown, cb: (m: { payload: unknown }) => void) {
+            handlers.push(cb); return ch;
+          },
+          subscribe() { return ch; },
+          send() { return Promise.resolve("ok"); },
         };
+        return ch;
       },
-      removeChannel() { return Promise.resolve("ok"); },
+      removeChannel(ch: unknown) { removed.push(ch); return Promise.resolve("ok"); },
     };
-    return { sb, opened, sent };
+    return { sb, opened, handlers, removed };
   }
 
-  // הבאג שהיה: subscribe פתח ערוץ פרטי ו-send פתח ערוץ רגיל באותו שם.
-  // אלה שני ערוצים שונים אצל Supabase, וההודעה נעלמה בלי שגיאה.
-  it("גם השליחה וגם ההאזנה פותחות ערוץ פרטי", () => {
-    const { sb, opened } = fakeRealtime();
-    const t = new SupabaseTransport(sb as never);
-    t.subscribe("me", () => {});
-    t.send("you", { kind: "ice", from: "me", candidates: [] });
+  const msg: SignalMessage = { kind: "ice", from: "me", candidates: [] };
 
-    expect(opened).toHaveLength(2);
-    for (const ch of opened) {
-      expect(ch.opts?.config?.private).toBe(true);
-    }
+  it("מאזין לערוץ החדר, פרטי — אותו ערוץ שמצב המשחק כבר זורם עליו", () => {
+    const { sb, opened } = fake();
+    new RoomTransport(sb as never, "room-1", async () => {}).subscribe("me", () => {});
+    expect(opened).toEqual([{ topic: "room:room-1", opts: { config: { private: true } } }]);
   });
 
-  it("שולחת אל תיבת הדואר של הנמען, ומאזינה לשלה", () => {
-    const { sb, opened } = fakeRealtime();
-    const t = new SupabaseTransport(sb as never);
-    t.subscribe("me", () => {});
-    t.send("you", { kind: "ice", from: "me", candidates: [] });
-    expect(opened.map((c) => c.topic)).toEqual(["sig:me", "sig:you"]);
+  it("מוסר רק הודעות שמיועדות לי", () => {
+    const { sb, handlers } = fake();
+    const got: unknown[] = [];
+    new RoomTransport(sb as never, "r", async () => {}).subscribe("me", (m) => got.push(m));
+    // השידור מגיע לכל חברי החדר, ולכן הסינון חייב לקרות אצל המקבל.
+    handlers[0]!({ payload: { to: "someone-else", message: msg } });
+    handlers[0]!({ payload: { to: "me", message: msg } });
+    expect(got).toEqual([msg]);
+  });
+
+  it("מתעלם משידור בלי גוף הודעה, בלי לזרוק", () => {
+    const { sb, handlers } = fake();
+    const got: unknown[] = [];
+    new RoomTransport(sb as never, "r", async () => {}).subscribe("me", (m) => got.push(m));
+    expect(() => handlers[0]!({ payload: { to: "me" } })).not.toThrow();
+    expect(() => handlers[0]!({ payload: undefined })).not.toThrow();
+    expect(got).toEqual([]);
+  });
+
+  it("שולח דרך הממסר, אל הנמען", async () => {
+    const { sb } = fake();
+    const sent: [string, unknown][] = [];
+    const t = new RoomTransport(sb as never, "r", async (to, m) => { sent.push([to, m]); });
+    t.send("you", msg);
+    await Promise.resolve();
+    expect(sent).toEqual([["you", msg]]);
+  });
+
+  it("כשל בממסר לא מפיל את הלקוח — perfect negotiation מתאושש", async () => {
+    const { sb } = fake();
+    const t = new RoomTransport(sb as never, "r", async () => { throw new Error("500"); });
+    expect(() => t.send("you", msg)).not.toThrow();
+    await Promise.resolve();
   });
 });

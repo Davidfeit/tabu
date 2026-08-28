@@ -1,4 +1,4 @@
-import { signalTopic, type SignalMessage } from "./signaling";
+import type { SignalMessage } from "./signaling";
 
 /**
  * תעבורת הסיגנלינג.
@@ -119,31 +119,42 @@ interface RealtimeLike {
  * במקום חמש. ראה src/net/signaling.ts — זה ההבדל בין ~1,050 משחקים
  * בחודש בשכבה החינמית לבין ~26,000.
  */
-export class SupabaseTransport implements SignalTransport {
-  private channels = new Map<string, ReturnType<RealtimeLike["channel"]>>();
+/**
+ * סיגנלינג על ערוץ החדר.
+ *
+ * הגרסה הקודמת פתחה ערוץ פרטי לכל שחקן (sig:<uid>). זה חסך מסירות, אבל
+ * דרש מדיניות משלו על realtime.messages — ובפועל ההודעות לא הגיעו, בזמן
+ * שערוץ החדר עבד מצוין ומצב המשחק זרם עליו.
+ *
+ * לכן: מאזינים לאותו ערוץ שכבר עובד, ושולחים דרך ה-Edge Function שמשדר
+ * אליו עם תפקיד השירות. עולה קריאת רשת לכל הודעת סיגנלינג — מדובר
+ * בעשרות בודדות לכל חיבור — ובתמורה אין מסלול שני שצריך להוכיח את עצמו.
+ */
+export class RoomTransport implements SignalTransport {
+  private ch: ReturnType<RealtimeLike["channel"]> | null = null;
 
-  constructor(private readonly sb: RealtimeLike) {}
+  constructor(
+    private readonly sb: RealtimeLike,
+    private readonly roomId: string,
+    private readonly relay: (to: string, message: SignalMessage) => Promise<unknown>,
+  ) {}
 
   send(peerId: string, message: SignalMessage): void {
-    const topic = signalTopic(peerId);
-    let ch = this.channels.get(topic);
-    // private:true חייב להופיע גם בשליחה. ערוץ שנפתח בלי הדגל הוא ערוץ
-    // אחר מזה שהנמען מאזין לו, וההודעה נעלמת בלי שגיאה.
-    if (!ch) {
-      ch = this.sb.channel(topic, { config: { private: true } });
-      ch.subscribe();
-      this.channels.set(topic, ch);
-    }
-    void ch.send({ type: "broadcast", event: "signal", payload: message });
+    void this.relay(peerId, message).catch(() => {
+      // כשל בודד אינו קטלני: perfect negotiation מתאושש, ו-ICE נשלח שוב.
+    });
   }
 
   subscribe(selfId: string, onMessage: (m: SignalMessage) => void): () => void {
-    const topic = signalTopic(selfId);
-    const ch = this.sb.channel(topic, { config: { private: true } });
-    ch.on("broadcast", { event: "signal" }, ({ payload }) => onMessage(payload as SignalMessage));
+    const ch = this.sb.channel(`room:${this.roomId}`, { config: { private: true } });
+    ch.on("broadcast", { event: "signal" }, ({ payload }) => {
+      const p = payload as { to?: string; message?: SignalMessage } | undefined;
+      // השידור מגיע לכל חברי החדר; הנמען מסונן כאן.
+      if (p?.to === selfId && p.message) onMessage(p.message);
+    });
     ch.subscribe();
-    this.channels.set(topic, ch);
-    return () => { this.sb.removeChannel(ch); this.channels.delete(topic); };
+    this.ch = ch;
+    return () => { this.sb.removeChannel(ch); this.ch = null; };
   }
 
   /** ברשת, רשימת העמיתים מגיעה ממצב המשחק ולא מ-presence. */
@@ -152,7 +163,6 @@ export class SupabaseTransport implements SignalTransport {
   }
 
   close(): void {
-    for (const ch of this.channels.values()) this.sb.removeChannel(ch);
-    this.channels.clear();
+    if (this.ch) { this.sb.removeChannel(this.ch); this.ch = null; }
   }
 }

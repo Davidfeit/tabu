@@ -17,7 +17,7 @@ var board_default = {
     jailFine: 50,
     maxJailTurns: 3,
     minPlayers: 2,
-    maxPlayers: 6
+    maxPlayers: 4
   },
   groups: [
     { key: "sand", name: "\u05E7\u05E6\u05D4 \u05D4\u05DE\u05D3\u05D1\u05E8", color: "#8C6239", textOn: "#ffffff", icon: "dune", houseCost: 40, size: 2 },
@@ -249,6 +249,9 @@ function defaultSettings(mode = "quick") {
     doubleOnStart: false,
     ...MODE_DEFAULTS[mode]
   };
+}
+function startingCash(s) {
+  return MODE_CASH[s.mode].cash;
 }
 function passStartBonus(s) {
   return MODE_CASH[s.mode].pass;
@@ -1019,6 +1022,28 @@ function reduce(state, action, ctx) {
   const events = [];
   const { seat, now } = ctx;
   if (s.phase === "finished") return err("GAME_OVER");
+  if (action.type === "add_player") {
+    if (s.players.length >= BOARD.meta.maxPlayers) return err("ROOM_FULL");
+    if (s.players.some((p) => p.userId === action.userId)) return err("ALREADY_IN_GAME");
+    const seatNo = s.players.length;
+    s.players.push({
+      seat: seatNo,
+      userId: action.userId,
+      name: action.name,
+      token: action.token,
+      // מזומן פתיחה מלא ובלי נכסים. חלוקת נכסים בפתיחה כבר קרתה, ולתת
+      // אותם עכשיו היה מעניק יתרון למי שאיחר.
+      cash: startingCash(s.settings),
+      pos: 0,
+      inJail: false,
+      jailTurns: 0,
+      getOutCards: 0,
+      bankrupt: false,
+      skipNextTurn: false
+    });
+    emit(s, events, "player_joined", seatNo, { name: action.name });
+    return { ok: true, state: s, events };
+  }
   if (action.type !== "claim_timeout" && s.players[seat]?.bankrupt) {
     return err("PLAYER_BANKRUPT");
   }

@@ -72,16 +72,58 @@ async function createRoom(userId: string, body: Record<string, unknown>) {
   return json({ ok: true, roomId: data.id, code: data.code, seedHash: hash });
 }
 
+/**
+ * ממסר סיגנלינג של הווידאו, דרך ערוץ החדר.
+ *
+ * ערוץ נפרד לכל שחקן (sig:<uid>) דרש מדיניות משלו על realtime.messages,
+ * ובפועל לא עבר. ערוץ החדר כן עובד — מצב המשחק זורם עליו — ולכן
+ * הסיגנלינג רוכב עליו במקום על מסלול שלא הוכח. השידור נעשה מהשרת עם
+ * תפקיד השירות, ולכן אינו תלוי במדיניות כתיבה של הלקוח.
+ *
+ * הנמען מסונן בצד הלקוח, אבל הרשות נבדקת כאן: רק חבר בחדר משדר בו, ורק
+ * אל חבר אחר בו.
+ */
+async function relaySignal(userId: string, body: Record<string, unknown>) {
+  const roomId = String(body.roomId ?? "");
+  const to = String(body.to ?? "");
+  const message = body.message;
+  if (!roomId || !to || message === undefined) {
+    return json({ ok: false, error: "BAD_SIGNAL" }, 400);
+  }
+
+  const { data: members } = await admin.from("game_room_players")
+    .select("user_id").eq("room_id", roomId);
+  const ids = new Set((members ?? []).map((m) => m.user_id));
+  if (!ids.has(userId) || !ids.has(to)) {
+    return json({ ok: false, error: "NOT_MEMBER" }, 403);
+  }
+
+  const { error } = await admin.rpc("tabu_broadcast", {
+    p_topic: `room:${roomId}`,
+    p_event: "signal",
+    p_payload: { to, from: userId, message },
+  });
+  if (error) return json({ ok: false, error: "SIGNAL_FAILED" }, 500);
+  return json({ ok: true });
+}
+
 async function joinRoom(userId: string, body: Record<string, unknown>) {
   const { data: room } = await admin.from("game_rooms")
     .select("id, status, max_players").eq("code", String(body.code ?? "")).single();
   if (!room) return json({ ok: false, error: "NO_ROOM" }, 404);
-  if (room.status !== "lobby") return json({ ok: false, error: "ALREADY_STARTED" }, 409);
 
   const { data: players } = await admin.from("game_room_players")
     .select("user_id, seat").eq("room_id", room.id).order("seat");
+
+  // חבר קיים חוזר למושב שלו — לפני בדיקת הסטטוס, בכוונה. מי שסגר את
+  // הלשונית באמצע משחק חזר קודם ל-ALREADY_STARTED והיה צריך להתחיל מחדש,
+  // בזמן שהמושב שלו והנכסים שלו ממתינים לו בחדר.
   const mine = players?.find((p) => p.user_id === userId);
   if (mine) return json({ ok: true, roomId: room.id, seat: mine.seat });
+
+  if (room.status === "finished") {
+    return json({ ok: false, error: "ALREADY_STARTED" }, 409);
+  }
   if ((players?.length ?? 0) >= room.max_players) {
     return json({ ok: false, error: "ROOM_FULL" }, 409);
   }
@@ -91,11 +133,29 @@ async function joinRoom(userId: string, body: Record<string, unknown>) {
   let seat = 0;
   while (taken.has(seat)) seat++;
 
+  const name = String(body.name ?? "שחקן");
+  const token = String(body.token ?? "camel");
   const { error } = await admin.from("game_room_players").insert({
-    room_id: room.id, user_id: userId, seat,
-    display_name: String(body.name ?? "שחקן"), token: String(body.token ?? "camel"),
+    room_id: room.id, user_id: userId, seat, display_name: name, token,
   });
   if (error) return json({ ok: false, error: "JOIN_FAILED" }, 409);
+
+  // משחק שכבר רץ: המושב נרשם, ועכשיו צריך גם להושיב אותו בשולחן. בלי זה
+  // המצטרף רואה את הלוח אבל אינו בו — אין לו מזומן, אין לו תור, ואין דרך
+  // להבחין בכך מהמסך.
+  if (room.status === "active") {
+    const added = await commitAction(
+      room.id, userId, seat, { type: "add_player", userId, name, token },
+      `join-${userId}`,
+    );
+    if (!added.ok) {
+      // מתגלגלים אחורה, אחרת נשאר מושב יתום שחוסם ניסיון נוסף.
+      await admin.from("game_room_players")
+        .delete().eq("room_id", room.id).eq("user_id", userId);
+      return json({ ok: false, error: added.error }, added.status);
+    }
+  }
+
   return json({ ok: true, roomId: room.id, seat });
 }
 
@@ -132,26 +192,31 @@ async function startGame(userId: string, roomId: string) {
  * זה לא כישלון אלא בדיוק מה שהנעילה האופטימית אמורה לתפוס — טוענים מחדש
  * ומריצים את המנוע על המצב העדכני.
  */
-async function play(userId: string, roomId: string, body: Record<string, unknown>) {
-  const { data: seatRow } = await admin.from("game_room_players")
-    .select("seat, status").eq("room_id", roomId).eq("user_id", userId).single();
-  if (!seatRow) return json({ ok: false, error: "NOT_A_PLAYER" }, 403);
-
+/**
+ * מריץ פעולה במנוע ומתחייב עליה, עם סיבוב נוסף אם הגרסה התיישנה.
+ *
+ * משותף למהלכי משחק ולהצטרפות תוך כדי משחק — שתיהן שינוי מצב, ולשכפל
+ * את לולאת ההתחייבות פירושו שתיקון בה יחול רק על אחת מהן.
+ */
+async function commitAction(
+  roomId: string, userId: string, seat: number, action: unknown, key: string,
+): Promise<{ ok: true; version: number; state: Record<string, unknown> }
+         | { ok: false; error: string; status: number }> {
   const { data: room } = await admin.from("game_rooms")
     .select("server_seed, status").eq("id", roomId).single();
-  if (!room || room.status !== "active") return json({ ok: false, error: "NOT_ACTIVE" }, 409);
-
-  const key = String(body.idempotencyKey ?? crypto.randomUUID());
+  if (!room || room.status !== "active") {
+    return { ok: false, error: "NOT_ACTIVE", status: 409 };
+  }
 
   for (let attempt = 0; attempt < 2; attempt++) {
     const { data: row } = await admin.from("game_state")
       .select("version, state").eq("room_id", roomId).single();
-    if (!row) return json({ ok: false, error: "NO_STATE" }, 404);
+    if (!row) return { ok: false, error: "NO_STATE", status: 404 };
 
-    const result = reduce(row.state, body.action, {
-      seat: seatRow.seat, now: Date.now(), seed: room.server_seed,
+    const result = reduce(row.state, action, {
+      seat, now: Date.now(), seed: room.server_seed,
     });
-    if (!result.ok) return json({ ok: false, error: result.error }, 422);
+    if (!result.ok) return { ok: false, error: result.error, status: 422 };
 
     const { data: commit, error } = await admin.rpc("commit_move", {
       p_room: roomId,
@@ -161,7 +226,7 @@ async function play(userId: string, roomId: string, body: Record<string, unknown
       p_actor: userId,
       p_key: key,
     });
-    if (error) return json({ ok: false, error: "COMMIT_FAILED" }, 500);
+    if (error) return { ok: false, error: "COMMIT_FAILED", status: 500 };
     if (commit?.ok) {
       if (result.state.phase === "finished") {
         // הזרע נחשף רק עכשיו: מכאן אפשר לשחזר ולאמת כל גלגול במשחק.
@@ -169,12 +234,26 @@ async function play(userId: string, roomId: string, body: Record<string, unknown
           status: "finished", finished_at: new Date().toISOString(),
         }).eq("id", roomId);
       }
-      return json({ ok: true, version: commit.version, state: result.state });
+      return { ok: true, version: commit.version, state: result.state };
     }
-    if (commit?.error !== "STALE") return json({ ok: false, error: commit?.error }, 409);
+    if (commit?.error !== "STALE") {
+      return { ok: false, error: commit?.error ?? "COMMIT_FAILED", status: 409 };
+    }
     // STALE — סיבוב נוסף עם המצב העדכני.
   }
-  return json({ ok: false, error: "STALE" }, 409);
+  return { ok: false, error: "STALE", status: 409 };
+}
+
+async function play(userId: string, roomId: string, body: Record<string, unknown>) {
+  const { data: seatRow } = await admin.from("game_room_players")
+    .select("seat, status").eq("room_id", roomId).eq("user_id", userId).single();
+  if (!seatRow) return json({ ok: false, error: "NOT_A_PLAYER" }, 403);
+
+  const key = String(body.idempotencyKey ?? crypto.randomUUID());
+  const r = await commitAction(roomId, userId, seatRow.seat, body.action, key);
+  return r.ok
+    ? json({ ok: true, version: r.version, state: r.state })
+    : json({ ok: false, error: r.error }, r.status);
 }
 
 // ── ניתוב ────────────────────────────────────────────────────────────────
@@ -223,6 +302,7 @@ async function handle(req: Request): Promise<Response> {
     case "join":   return joinRoom(userId, body);
     case "start":  return startGame(userId, roomId);
     case "play":   return play(userId, roomId, body);
+    case "signal": return relaySignal(userId, body);
     default:       return json({ ok: false, error: "UNKNOWN_OP" }, 400);
   }
 }

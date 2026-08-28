@@ -48,6 +48,8 @@ const ERRORS: Record<ErrorCode, string> = {
   NO_DEBT: "אין חוב פתוח",
   CAN_PAY: "יש לך נכסים לכסות את החוב — אי אפשר לוותר",
   UNKNOWN_ACTION: "פעולה לא מוכרת",
+  ROOM_FULL: "החדר מלא",
+  ALREADY_IN_GAME: "כבר במשחק",
 };
 
 export function errorText(code: ErrorCode): string {
@@ -99,6 +101,7 @@ const EVENTS: Record<string, Fmt> = {
   mortgaged:         (p, w) => `${w} — משכון ${name(p.pos)}, ${money(p.amount)}`,
   unmortgaged:       (p, w) => `${w} — פדיון המשכון על ${name(p.pos)}`,
   auction_opened:    (p, _w) => `${name(p.pos)} — יוצא למכרז`,
+  player_joined:     (_p, w) => `${w} — הצטרף למשחק`,
   auction_bid:       (p, w) => `${w} — הצעה ${money(p.amount)}`,
   auction_pass:      (_p, w) => `${w} — פאס`,
   auction_won:       (p, w) => `${name(p.pos)} → ${w} במכרז, ${money(p.amount)}`,

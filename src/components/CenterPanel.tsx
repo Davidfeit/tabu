@@ -10,9 +10,8 @@ import { Dice } from "./Dice";
  * תחתון גוזל גובה מהלוח, ובמסך רגיל זה בדיוק המימד שחסר. כאן זה שטח
  * שממילא פנוי, וזה גם המקום שהעין נמצאת בו.
  */
-export function CenterPanel({ videoTiles, onTrade }: {
+export function CenterPanel({ videoTiles }: {
   videoTiles?: React.ReactNode;
-  onTrade?: () => void;
 }) {
   const { state } = useGame();
   return (
@@ -32,7 +31,7 @@ export function CenterPanel({ videoTiles, onTrade }: {
                       shadow-xl ring-1 ring-white/15 backdrop-blur-sm">
         <Dice dice={state.dice} size={40} />
         <TurnBar />
-        <Actions onTrade={onTrade} />
+        <Actions />
       </div>
     </div>
   );

@@ -52,6 +52,11 @@ export function defaultSettings(mode: Settings["mode"] = "quick"): Settings {
   };
 }
 
+/** מזומן הפתיחה של המצב. משמש גם בהצטרפות למשחק שכבר רץ. */
+export function startingCash(s: Settings): number {
+  return MODE_CASH[s.mode].cash;
+}
+
 export function passStartBonus(s: Settings): number {
   return MODE_CASH[s.mode].pass;
 }

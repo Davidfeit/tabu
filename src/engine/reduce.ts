@@ -6,7 +6,7 @@ import { applyCard, moveTo, resolveLanding, sendToJail } from "./moves";
 import {
   BOARD_SIZE, JAIL_POS, activePlayers, buildingUnits, deedAt, houseCost, liquidValue, player,
 } from "./selectors";
-import { DEED_POSITIONS } from "./setup";
+import { DEED_POSITIONS, startingCash } from "./setup";
 import type {
   Action, Ctx, ErrorCode, GameEvent, GameState, Result, TradeOffer,
 } from "./types";
@@ -190,6 +190,25 @@ export function reduce(state: GameState, action: Action, ctx: Ctx): Result {
   const { seat, now } = ctx;
 
   if (s.phase === "finished") return err("GAME_OVER");
+
+  // הצטרפות היא פעולה על החדר, לא מהלך של שחקן: אין לה מושב קיים, ולכן
+  // היא נבדקת לפני כל שאר השמירות שמניחות ששולח הפעולה יושב כבר בשולחן.
+  if (action.type === "add_player") {
+    if (s.players.length >= BOARD.meta.maxPlayers) return err("ROOM_FULL");
+    if (s.players.some((p) => p.userId === action.userId)) return err("ALREADY_IN_GAME");
+
+    const seatNo = s.players.length;
+    s.players.push({
+      seat: seatNo, userId: action.userId, name: action.name, token: action.token,
+      // מזומן פתיחה מלא ובלי נכסים. חלוקת נכסים בפתיחה כבר קרתה, ולתת
+      // אותם עכשיו היה מעניק יתרון למי שאיחר.
+      cash: startingCash(s.settings), pos: 0, inJail: false, jailTurns: 0,
+      getOutCards: 0, bankrupt: false, skipNextTurn: false,
+    });
+    emit(s, events, "player_joined", seatNo, { name: action.name });
+    return { ok: true, state: s, events };
+  }
+
   // claim_timeout היא פעולת תיקון, לא מהלך משחק: היא חייבת להיות זמינה גם
   // לשחקן שפשט רגל, אחרת חדר יכול להיתקע כשמי שנפל היה בתורו.
   if (action.type !== "claim_timeout" && s.players[seat]?.bankrupt) {

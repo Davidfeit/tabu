@@ -87,7 +87,8 @@ export function Lobby({ onJoined, onBack, invite }: {
     finally { setBusy(false); }
   }
 
-  const settings: Partial<Settings> = { mode: "quick", auctions: true };
+  // מכרזים ועסקאות הוסרו: הם עצרו את המשחק וסיבכו אותו יותר משתרמו.
+  const settings: Partial<Settings> = { mode: "quick", auctions: false };
 
   return (
     <div dir="rtl" className="mx-auto max-w-md space-y-5 px-4 py-10">

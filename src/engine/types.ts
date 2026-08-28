@@ -137,7 +137,14 @@ export type Action =
   | { type: "reject_trade" }
   | { type: "end_turn" }
   | { type: "declare_bankruptcy" }
-  | { type: "claim_timeout" };
+  | { type: "claim_timeout" }
+  /**
+   * הצטרפות למשחק שכבר התחיל.
+   *
+   * מונפקת רק בשרת, אחרי שנרשם מושב בבסיס הנתונים. אין לה שולח בצד
+   * הלקוח — ולכן גם אין דרך לזייף אותה מהדפדפן.
+   */
+  | { type: "add_player"; userId: string; name: string; token: string };
 
 export type ActionType = Action["type"];
 
@@ -168,7 +175,7 @@ export type ErrorCode =
   | "NOT_IN_JAIL" | "NO_JAIL_CARD" | "BID_TOO_LOW" | "ALREADY_PASSED"
   | "NO_AUCTION" | "NO_TRADE" | "NOT_TRADE_TARGET" | "INVALID_TRADE"
   | "GAME_OVER" | "PLAYER_BANKRUPT" | "DEADLINE_NOT_REACHED" | "NO_DEBT"
-  | "CAN_PAY" | "UNKNOWN_ACTION";
+  | "CAN_PAY" | "UNKNOWN_ACTION" | "ROOM_FULL" | "ALREADY_IN_GAME";
 
 export type Result =
   | { ok: true; state: GameState; events: GameEvent[] }
