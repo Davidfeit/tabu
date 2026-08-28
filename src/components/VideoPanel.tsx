@@ -22,24 +22,51 @@ export function VideoFrame({ stream, mirrored }: {
   stream: MediaStream | null; mirrored: boolean;
 }) {
   const ref = useRef<HTMLVideoElement>(null);
+  const [silenced, setSilenced] = useState(false);
+
   useEffect(() => {
     const el = ref.current;
     if (!el || !stream) return;
     el.srcObject = stream;
-    // ספארי חוסם הפעלה קולית עד למחוות משתמש; כישלון כאן אינו חריג.
-    void el.play().catch(() => {});
+    setSilenced(false);
+
+    // מדיניות ה-autoplay חוסמת ניגון *עם קול* בלי מחוות משתמש. הבליעה
+    // השקטה של הכישלון הזו הותירה ריבוע שחור בדיוק כשהחיבור הצליח:
+    // הזרם הגיע, האלמנט פשוט לא ניגן. וידאו מושתק תמיד מותר, ולכן
+    // נסיגה להשתקה — עדיף תמונה בלי קול על מסך שחור.
+    void el.play().catch(() => {
+      el.muted = true;
+      void el.play().then(() => setSilenced(true)).catch(() => setSilenced(true));
+    });
+
     return () => { el.srcObject = null; };
   }, [stream]);
 
+  const unmute = () => {
+    const el = ref.current;
+    if (!el) return;
+    el.muted = false;
+    void el.play().then(() => setSilenced(false)).catch(() => {});
+  };
+
   return (
-    <video ref={ref}
-           // playsinline חובה — בלעדיו ספארי כופה מסך מלא.
-           playsInline autoPlay
-           // התצוגה העצמית מושתקת תמיד, אחרת נוצר משוב אקוסטי.
-           muted={mirrored}
-           className="h-full w-full object-cover"
-           // מראה רק על עצמך. לעולם לא על המשתתפים האחרים.
-           style={mirrored ? { transform: "scaleX(-1)" } : undefined} />
+    <>
+      <video ref={ref}
+             // playsinline חובה — בלעדיו ספארי כופה מסך מלא.
+             playsInline autoPlay
+             // התצוגה העצמית מושתקת תמיד, אחרת נוצר משוב אקוסטי.
+             muted={mirrored}
+             className="h-full w-full object-cover"
+             // מראה רק על עצמך. לעולם לא על המשתתפים האחרים.
+             style={mirrored ? { transform: "scaleX(-1)" } : undefined} />
+      {silenced && !mirrored && (
+        <button onClick={unmute}
+                className="absolute inset-x-1 bottom-5 mx-auto w-fit rounded bg-black/80
+                           px-2 py-1 text-[0.62rem] text-amber-200/90 ring-1 ring-white/15">
+          הדפדפן חסם קול — לחצו להפעלה
+        </button>
+      )}
+    </>
   );
 }
 

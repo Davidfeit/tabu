@@ -17,7 +17,7 @@ class FakePC {
   iceConnectionState: RTCIceConnectionState = "new";
   localDescription: { type: string; sdp: string } | null = null;
   remoteDescription: { type: string; sdp: string } | null = null;
-  ontrack: ((e: { streams: MediaStream[] }) => void) | null = null;
+  ontrack: ((e: { streams: MediaStream[]; track: MediaStreamTrack }) => void) | null = null;
   onicecandidate: ((e: { candidate: RTCIceCandidate | null }) => void) | null = null;
   onnegotiationneeded: (() => void) | null = null;
   onconnectionstatechange: (() => void) | null = null;
@@ -87,7 +87,12 @@ class FakePC {
   private settle() {
     this.connectionState = "connecting";
     this.onconnectionstatechange?.();
-    this.ontrack?.({ streams: [{ id: "remote" } as MediaStream] });
+    // מסלול אמיתי ולא רק זרם: הקוד נרשם ל-mute/unmute עליו, כי "יש זרם"
+    // אינו "זורמים פריימים".
+    const track = { kind: "video", readyState: "live", muted: false,
+                    onmute: null, onunmute: null } as unknown as MediaStreamTrack;
+    const remote = { id: "remote", getVideoTracks: () => [track] } as unknown as MediaStream;
+    this.ontrack?.({ streams: [remote], track });
   }
 
   /** ICE הצליח. בדפדפן זה קורה מעצמו; כאן מפורשות. */
@@ -107,6 +112,7 @@ class FakePC {
 
 const stream = () => ({
   getTracks: () => [{ kind: "video" }, { kind: "audio" }],
+  getVideoTracks: () => [{ kind: "video", readyState: "live", muted: false }],
 } as unknown as MediaStream);
 
 beforeEach(() => {

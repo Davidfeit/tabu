@@ -33,7 +33,10 @@ export function diagLines(d: DiagInput): string[] {
   }
 
   for (const p of d.peers) {
-    const track = p.stream ? "יש מסלול וידאו" : "בלי מסלול";
+    const track = !p.stream ? "בלי מסלול"
+      : p.video.tracks === 0 ? "זרם בלי מסלול וידאו"
+      : p.video.muted ? "מסלול קיים אבל לא זורמים פריימים"
+      : p.video.live ? "וידאו זורם" : "מסלול לא פעיל";
     lines.push(`${short(p.id)}: ${p.connection}/${p.signaling} · ${track}` +
                `${p.relayed ? " · דרך ממסר" : ""} · ${p.polite ? "מנומס" : "לא מנומס"}`);
     // הכיוונים בנפרד: "שלחתי הצעה ולא קיבלתי תשובה" ו"קיבלתי הצעה ולא
@@ -41,6 +44,12 @@ export function diagLines(d: DiagInput): string[] {
     lines.push(`   ↑ הצעה ${p.out.offer} תשובה ${p.out.answer} ICE ${p.out.ice}` +
                ` · ↓ הצעה ${p.in.offer} תשובה ${p.in.answer} ICE ${p.in.ice}`);
     if (p.lastError) lines.push(`   ✗ ${p.lastError}`);
+    // חיבור מוצלח שלא מציג כלום הוא תקלה אחרת לגמרי מכל מה שמעליו:
+    // המשא ומתן הצליח, והבעיה היא בצד המשדר או בניגון אצלנו.
+    if (p.connection === "connected" && p.stream && p.video.muted) {
+      lines.push("   החיבור תקין והמסלול ריק — המצלמה שלו כבויה, "
+        + "או שהחלון שלו ברקע ובלי מצלמה פעילה");
+    }
     // תיאור מרוחק שלא הוחל הוא הגבול המדויק בין סיגנלינג ל-ICE.
     if (p.connection === "new" && p.in.offer + p.in.answer > 0 && !p.lastError) {
       lines.push("   הגיע SDP ולא הוחל — המשא ומתן נעצר, לא ICE");
@@ -78,8 +87,17 @@ export function diagLines(d: DiagInput): string[] {
   return lines;
 }
 
-/** האם בכלל להציג — ברגע שכל מי שמבוקש משדר, אין מה לאבחן. */
+/**
+ * האם בכלל להציג.
+ *
+ * "יש זרם" לא מספיק כתנאי כיבוי: בדיוק ברגע שהחיבור הצליח והמסך נשאר
+ * שחור, האבחון נעלם — כלומר הוא כיבה את עצמו במקום היחיד שבו הוא הכי
+ * נחוץ. התנאי הוא פריימים שזורמים באמת.
+ */
 export function needsDiag(d: Pick<DiagInput, "wanted" | "peers">): boolean {
   if (d.wanted.length === 0) return false;
-  return d.wanted.some((id) => !d.peers.find((p) => p.id === id)?.stream);
+  return d.wanted.some((id) => {
+    const p = d.peers.find((x) => x.id === id);
+    return !p?.stream || p.video.muted || !p.video.live;
+  });
 }

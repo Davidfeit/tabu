@@ -36,6 +36,9 @@ describe("אבחון וידאו", () => {
   it("כשהכל זורם אין מה להציג", () => {
     const stream = {} as MediaStream;
     expect(needsDiag({ wanted: ["you0"], peers: [peer({ id: "you0", stream })] })).toBe(false);
+    // אבל זרם שלא זורמים בו פריימים הוא בדיוק המקרה שבו צריך אבחון.
+    expect(needsDiag({ wanted: ["you0"], peers: [peer({ id: "you0", stream,
+      video: { tracks: 1, live: true, muted: true } })] })).toBe(true);
     expect(needsDiag({ wanted: ["you0"], peers: [peer({ id: "you0" })] })).toBe(true);
     expect(needsDiag({ wanted: [], peers: [] })).toBe(false);
   });
@@ -101,4 +104,12 @@ it("לא מאשים 'אין וידאו' את מי שהודעות ממנו כבר
     stats: { sent: 2, failed: 0, received: 4, forMe: 2, online: ["me00"] } }).join("\n");
   expect(l).toContain("לא מכריז נוכחות");
   expect(l).not.toContain("לא מריץ וידאו");
+});
+
+it("חיבור תקין עם מסלול ריק נאמר במפורש", () => {
+  const l = diagLines({ selfId: "me00", wanted: ["you0"], peers: [peer({
+    id: "you0", connection: "connected", stream: {} as MediaStream,
+    video: { tracks: 1, live: true, muted: true } })] }).join("\n");
+  expect(l).toContain("לא זורמים פריימים");
+  expect(l).toContain("המצלמה שלו כבויה");
 });

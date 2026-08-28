@@ -16,6 +16,15 @@ import { IceBatcher, isPolite, type SignalMessage } from "./signaling";
  * מגיעים לאותה מסקנה בלי סיבוב תקשורת נוסף.
  */
 
+/**
+ * מה באמת קורה במסלול הווידאו שהתקבל.
+ *
+ * זרם שהגיע אינו אומר שרואים משהו: מסלול יכול להיות live אבל muted,
+ * כלומר לא זורמים בו פריימים. על המסך זה ריבוע שחור בדיוק כמו חיבור
+ * שלא נוצר, ולכן זה נמדד ולא מנוחש.
+ */
+export interface VideoTrackInfo { tracks: number; live: boolean; muted: boolean }
+
 /** ספירת הודעות סיגנלינג לפי סוג, לכיוון אחד. */
 export interface SignalCount { offer: number; answer: number; ice: number }
 
@@ -37,6 +46,7 @@ export interface PeerState {
    * "ה-SDP נדחה" ל"ריבוע שחור" — בלי שום דרך להבדיל בינו לבין NAT.
    */
   lastError: string | null;
+  video: VideoTrackInfo;
 }
 
 const noCount = (): SignalCount => ({ offer: 0, answer: 0, ice: 0 });
@@ -86,6 +96,16 @@ interface Peer {
 /** כמה להמתין לתשובה לפני שהצד הלא-מנומס נסוג בעצמו. */
 export const GLARE_MS = 2500;
 
+export function videoInfo(stream: MediaStream | null): VideoTrackInfo {
+  const tracks = stream?.getVideoTracks?.() ?? [];
+  return {
+    tracks: tracks.length,
+    live: tracks.some((t) => t.readyState === "live"),
+    // muted מהצד המקבל פירושו שכרגע לא מגיעים פריימים.
+    muted: tracks.length > 0 && tracks.every((t) => t.muted),
+  };
+}
+
 /** הודעת שגיאה קריאה, גם כשמה שנזרק אינו Error. */
 const errText = (e: unknown): string =>
   e instanceof Error ? e.message : String(e);
@@ -132,8 +152,12 @@ export class PeerMesh {
       if (track.kind === "video") void capSender(sender);
     }
 
-    pc.ontrack = ({ streams }) => {
+    pc.ontrack = ({ streams, track }) => {
       peer.stream = streams[0] ?? null;
+      // mute/unmute הם השינוי היחיד שמבדיל בין "מסלול קיים" לבין
+      // "פריימים באמת זורמים", והם קורים אחרי ontrack.
+      track.onunmute = () => this.emit();
+      track.onmute = () => this.emit();
       this.emit();
     };
 
@@ -315,6 +339,7 @@ export class PeerMesh {
       id, stream: p.stream, connection: p.pc.connectionState, relayed: p.relayed,
       signaling: p.pc.signalingState, polite: p.polite,
       in: { ...p.in }, out: { ...p.out }, lastError: p.lastError,
+      video: videoInfo(p.stream),
     }));
   }
 
