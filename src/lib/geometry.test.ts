@@ -1,5 +1,22 @@
 import { describe, it, expect } from "vitest";
-import { cellCenter, cellFor, colorBarEdge, contentInset, crowdOffset, crowdScale, labelRotation, pathBetween, travelArrowRotation, BAR_PERCENT, GRID, HALF_CELL_PCT, SQUARE_COUNT, TOKEN_PCT } from "./geometry";
+import {
+  BAR_PERCENT,
+  GRID,
+  HALF_CELL_PCT,
+  INWARD_PCT,
+  SQUARE_COUNT,
+  TOKEN_PCT,
+  cellCenter,
+  cellFor,
+  colorBarEdge,
+  contentInset,
+  crowdOffset,
+  crowdScale,
+  inwardOffset,
+  labelRotation,
+  pathBetween,
+  travelArrowRotation,
+} from "./geometry";
 import type { Side } from "./geometry";
 
 describe("cellFor", () => {
@@ -209,6 +226,48 @@ describe("crowdOffset", () => {
       const a = crowdOffset(0, n), b = crowdOffset(1, n);
       const gap = Math.hypot(a.xPct - b.xPct, a.yPct - b.yPct);
       expect(gap).toBeGreaterThan(width * 0.5);
+    }
+  });
+});
+
+describe("היסט פנימה", () => {
+  it("כל משבצת נדחפת אל מרכז הלוח ולא החוצה", () => {
+    for (let pos = 0; pos < SQUARE_COUNT; pos++) {
+      const c = cellCenter(pos);
+      const o = inwardOffset(pos);
+      const before = Math.hypot(c.xPct - 50, c.yPct - 50);
+      const after = Math.hypot(c.xPct + o.xPct - 50, c.yPct + o.yPct - 50);
+      expect(after).toBeLessThan(before);
+    }
+  });
+
+  it("אורך ההיסט זהה בפינות ובצלעות — הנרמול עובד", () => {
+    const len = (p: number) => {
+      const o = inwardOffset(p);
+      return Math.hypot(o.xPct, o.yPct);
+    };
+    for (const corner of [0, 10, 20, 30]) {
+      expect(len(corner)).toBeCloseTo(INWARD_PCT, 10);
+    }
+    for (const edge of [5, 15, 25, 35]) {
+      expect(len(edge)).toBeCloseTo(INWARD_PCT, 10);
+    }
+  });
+
+  it("החייל יוצא לגמרי מגבולות המשבצת שלו", () => {
+    // הקצה הקרוב של החייל חייב לעבור את גבול המשבצת, אחרת הוא עדיין
+    // מכסה חלק מהתווית — וזו בדיוק הבעיה שההיסט בא לפתור.
+    const nearEdge = INWARD_PCT - TOKEN_PCT / 2;
+    expect(nearEdge).toBeGreaterThan(HALF_CELL_PCT);
+  });
+
+  it("גם עם פיזור צפיפות מלא החייל נשאר בטבעת ולא חוזר על המשבצת", () => {
+    for (let total = 1; total <= 4; total++) {
+      for (let i = 0; i < total; i++) {
+        const o = crowdOffset(i, total);
+        const worst = INWARD_PCT - Math.hypot(o.xPct, o.yPct);
+        expect(worst).toBeGreaterThan(0);
+      }
     }
   });
 });

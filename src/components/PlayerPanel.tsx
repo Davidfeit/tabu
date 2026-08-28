@@ -65,10 +65,21 @@ function CashLine({ seat, cash }: { seat: number; cash: number }) {
   );
 }
 
-export function PlayerPanel({ state, showWorth }: { state: GameState; showWorth: boolean }) {
+/**
+ * כרטיסי שחקנים, עם פירוט הנכסים מתחת לכל אחד.
+ *
+ * seats מאפשר לפצל את השחקנים בין שני צידי המסך — ארבעה כרטיסים בטור אחד
+ * דוחקים את הנכסים אל מחוץ למסך, ואז הפירוט קיים אבל לא נראה.
+ */
+export function PlayerPanel({ state, showWorth, seats }: {
+  state: GameState; showWorth: boolean; seats?: number[];
+}) {
+  const shown = seats
+    ? seats.map((i) => state.players[i]).filter((p) => p !== undefined)
+    : state.players;
   return (
     <section dir="rtl" className="space-y-2" aria-label="שחקנים">
-      {state.players.map((p) => {
+      {shown.map((p) => {
         const active = p.seat === state.currentSeat && !p.bankrupt;
         return (
           <article key={p.seat}

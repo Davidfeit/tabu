@@ -155,7 +155,7 @@ function runGame(gameSeed: string, botSeed: number, players: number,
 describe("סימולציית משחקים שלמים", () => {
   it("שומר על כל האינוריאנטים לאורך 40 משחקים מלאים", () => {
     for (let i = 0; i < 40; i++) {
-      const players = 2 + (i % 5);
+      const players = 2 + (i % 3);   // 2–4, כמספר המושבים
       const { state } = runGame(`g${i}`, i * 7919, players, defaultSettings("full"));
       expect(["finished", "awaiting_roll", "awaiting_end", "awaiting_buy", "auction", "debt"])
         .toContain(state.phase);

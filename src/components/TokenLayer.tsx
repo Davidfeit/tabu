@@ -1,4 +1,4 @@
-import { cellCenter, crowdOffset, crowdScale, TOKEN_PCT } from "@/lib/geometry";
+import { cellCenter, crowdOffset, crowdScale, inwardOffset, TOKEN_PCT } from "@/lib/geometry";
 import { useTokenMotion } from "@/ui/useTokenMotion";
 import type { GameState } from "@/engine/types";
 import { Token } from "./Token";
@@ -34,6 +34,8 @@ export function TokenLayer({ state }: { state: GameState }) {
         // זעיר במסך גדול ומגושם במסך קטן.
         const width = `${TOKEN_PCT * crowdScale(crowd.length)}cqw`;
         const { xPct, yPct } = cellCenter(pos);
+        // דחיפה אל טבעת הלבד שמחוץ למשבצת — ראה inwardOffset.
+        const inward = inwardOffset(pos);
         const isTurn = p.seat === state.currentSeat;
 
         return (
@@ -41,8 +43,8 @@ export function TokenLayer({ state }: { state: GameState }) {
                className="tabu-token absolute"
                data-walking={m?.walking ? "true" : undefined}
                style={{
-                 left: `${xPct + off.xPct}%`,
-                 top: `${yPct + off.yPct}%`,
+                 left: `${xPct + inward.xPct + off.xPct}%`,
+                 top: `${yPct + inward.yPct + off.yPct}%`,
                  // ההעברה על left/top ולא על transform, כדי ש-transform
                  // יישאר פנוי לקפיצה האנכית של ההליכה.
                  transitionDuration: m?.walking ? "100ms" : "260ms",

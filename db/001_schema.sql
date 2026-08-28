@@ -10,7 +10,7 @@ create table if not exists public.game_rooms (
   status        text not null default 'lobby'
                 check (status in ('lobby','active','finished','abandoned')),
   host_id       uuid not null,
-  max_players   smallint not null default 6 check (max_players between 2 and 6),
+  max_players   smallint not null default 4 check (max_players between 2 and 4),
   settings      jsonb not null default '{}'::jsonb,
   -- מחויבות provably-fair: ה-hash מתפרסם בפתיחה, הזרע נחשף רק בסיום.
   server_seed_hash text,

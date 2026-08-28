@@ -107,11 +107,15 @@ export function Tile({ square, state }: { square: Square; state: GameState | nul
            className="relative flex flex-col items-center justify-center gap-1 rounded-sm
                       border border-black/25 bg-parchment p-1 text-center shadow-inner">
         <SquareIcon kind={square.key} className="h-6 w-6 text-felt/70" />
-        <div className="font-display text-[0.72rem] font-bold leading-tight text-neutral-900">
+        <div className="font-display font-bold leading-tight text-neutral-900"
+             style={{ fontSize: "clamp(0.7rem, 1.42vmin, 1.15rem)" }}>
           {square.name}
         </div>
         {square.subtitle && (
-          <div className="text-[0.5rem] leading-tight text-neutral-500">{square.subtitle}</div>
+          <div className="leading-tight text-neutral-500"
+               style={{ fontSize: "clamp(0.5rem, 0.92vmin, 0.8rem)" }}>
+            {square.subtitle}
+          </div>
         )}
       </div>
     );
@@ -163,12 +167,17 @@ export function Tile({ square, state }: { square: Square; state: GameState | nul
             square.type === "tax" || square.type === "card") && (
             <SquareIcon kind={square.type} className="h-4 w-4 shrink-0 text-felt/60" />
           )}
-          <div className="w-full px-[1px] font-display text-[0.58rem] font-semibold
-                          leading-[1.1] text-neutral-900">
+          {/* הגודל נגזר מהמסך ולא קבוע ב-rem: הלוח הוא min(100dvh, 100vw),
+              ולכן משבצת היא ~9vmin — וטקסט ביחידות vmin גדל איתה. הערכים
+              הקודמים (0.58rem) יצאו ~9px במסך 1080p, קטן מכדי לקרוא. */}
+          <div className="w-full px-[1px] font-display font-semibold
+                          leading-[1.12] text-neutral-900"
+               style={{ fontSize: "clamp(0.6rem, 1.22vmin, 1.05rem)" }}>
             {square.name}
           </div>
           {amount !== null && (
-            <div className="tabular-nums text-[0.53rem] font-medium leading-none text-neutral-600">
+            <div className="tabular-nums font-semibold leading-none text-neutral-600"
+                 style={{ fontSize: "clamp(0.55rem, 1.02vmin, 0.9rem)" }}>
               {deed?.mortgaged ? "משוכן" : shekelShort(amount)}
             </div>
           )}

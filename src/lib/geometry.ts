@@ -154,11 +154,34 @@ export function cellCenter(pos: number): Point {
   };
 }
 
-/** רוחב חייל בודד, באחוזים מרוחב הלוח. */
-export const TOKEN_PCT = 3.4;
-
 /** חצי משבצת רגילה, באחוזים. זהו הגבול שחייל לא אמור לחרוג ממנו. */
 export const HALF_CELL_PCT = 100 / TOTAL_UNITS / 2;
+
+/** רוחב חייל בודד, באחוזים מרוחב הלוח. */
+export const TOKEN_PCT = 4.2;
+
+/**
+ * כמה החייל נדחף פנימה, אל טבעת הלבד שבין המשבצת למרכז הלוח.
+ *
+ * חייל שיושב *על* המשבצת מסתיר בדיוק את מה שצריך לקרוא — שם העיר והמחיר —
+ * ודווקא מטשטש את המיקום שהוא אמור להבליט. מעט יותר מחצי משבצת מוציא אותו
+ * החוצה לגמרי אל הלבד, צמוד למשבצת שלו ובלי לכסות אותה.
+ */
+export const INWARD_PCT = HALF_CELL_PCT + TOKEN_PCT * 0.55;
+
+/**
+ * כיוון "פנימה" למשבצת, מנורמל.
+ *
+ * בפינה שני הצירים פעילים, ובלי נרמול ההיסט האלכסוני היה ארוך פי שורש 2
+ * והחייל היה נוחת עמוק בתוך המרכז.
+ */
+export function inwardOffset(pos: number): Point {
+  const { row, col } = cellFor(pos);
+  const x = col === 1 ? 1 : col === GRID ? -1 : 0;
+  const y = row === 1 ? 1 : row === GRID ? -1 : 0;
+  const len = Math.hypot(x, y) || 1;
+  return { xPct: (x / len) * INWARD_PCT, yPct: (y / len) * INWARD_PCT };
+}
 
 /**
  * הקטנת חיילים כשהם צפופים על משבצת אחת.

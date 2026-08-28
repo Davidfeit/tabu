@@ -15,7 +15,10 @@ const MODES: { key: Settings["mode"]; label: string; hint: string }[] = [
 export function SetupScreen({ onStart }: {
   onStart: (seats: SeatSpec[], settings: Partial<Settings>) => void;
 }) {
-  const [names, setNames] = useState(["דנה", "יואב", "", "", "", ""]);
+  // מספר המושבים נגזר מהלוח ולא נכתב כאן — שישה שדות נשארו אחרי שהמשחק
+  // הוגבל לארבעה, ושני האחרונים היו מציעים מושב שאי אפשר להתחיל איתו.
+  const [names, setNames] = useState(
+    () => ["דנה", "יואב", ...Array(BOARD.meta.maxPlayers - 2).fill("")]);
   const [mode, setMode] = useState<Settings["mode"]>("quick");
   const [auctions, setAuctions] = useState(true);
 

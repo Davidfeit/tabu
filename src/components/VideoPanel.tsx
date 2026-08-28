@@ -3,9 +3,9 @@ import { diagnosisLine, type MediaErrorKind } from "@/net/media";
 import type { PeerState } from "@/net/mesh";
 import { BroadcastTransport, type SignalTransport } from "@/net/transport";
 import { useGame } from "@/ui/GameContext";
+import { EmptySeat, SeatTile, VIDEO_SEATS } from "./VideoTiles";
 import { useMesh } from "@/ui/useMesh";
 import { Button } from "./Button";
-import { seatColor, Token } from "./Token";
 
 const MEDIA_ERRORS: Record<MediaErrorKind, string> = {
   denied: "הגישה למצלמה נדחתה. אפשר לשנות זאת בהגדרות האתר בדפדפן.",
@@ -43,28 +43,6 @@ export function VideoFrame({ stream, mirrored }: {
   );
 }
 
-function Tile({ label, color, stream, mirrored, active, hint }: {
-  label: string; color?: string; stream: MediaStream | null;
-  mirrored: boolean; active: boolean; hint?: string;
-}) {
-  return (
-    <div className={`relative aspect-[4/3] w-[7.5rem] overflow-hidden rounded-md border
-                     bg-black/35 ${active ? "border-amber-400/75 ring-1 ring-amber-400/30"
-                                          : "border-white/12"}`}>
-      {stream ? <VideoFrame stream={stream} mirrored={mirrored} /> : (
-        <div className="flex h-full w-full items-center justify-center
-                        text-[0.58rem] text-parchment/35">
-          {hint ?? "מתחבר…"}
-        </div>
-      )}
-      <span className="absolute inset-x-0 bottom-0 truncate bg-black/60 px-1 py-0.5
-                       text-center text-[0.58rem] font-medium"
-            style={{ color: color ?? "#e8e0cd", unicodeBidi: "plaintext" }}>
-        {label}
-      </span>
-    </div>
-  );
-}
 
 /**
  * וידאו במשחק המקומי.
@@ -127,77 +105,54 @@ export function LocalVideo() {
   }, [on]);
 
   const mesh = useMesh(selfId, null, transport);
-  const active = state.players.filter((p) => !p.bankrupt);
-  const current = state.players[state.currentSeat]!;
 
-  if (!on) {
-    return (
-      <div className="flex flex-col items-center gap-3">
-        <div className="font-logo text-3xl tracking-tight text-parchment/80 drop-shadow">
-          טאבו
-        </div>
-        <div className="grid gap-2"
-             style={{ gridTemplateColumns: `repeat(${Math.min(active.length, 3)}, minmax(0,1fr))` }}>
-          {active.map((p) => (
-            <div key={p.seat}
-                 className={`flex aspect-[4/3] w-[7.5rem] flex-col items-center justify-center
-                             gap-1.5 rounded-md border bg-black/25
-                             ${p.seat === state.currentSeat
-                               ? "border-amber-400/75 ring-1 ring-amber-400/30"
-                               : "border-dashed border-white/12"}`}>
-              <Token token={p.token} seat={p.seat} size={30} />
-              <span className="max-w-full truncate px-1 text-[0.66rem] font-medium"
-                    style={{ color: seatColor(p.seat), unicodeBidi: "plaintext" }}>
-                {p.name}
-              </span>
-            </div>
-          ))}
-        </div>
-        <Button onClick={() => setOn(true)}>הפעלת מצלמה</Button>
-        <p className="max-w-[22rem] text-[0.6rem] leading-snug text-parchment/25">
-          הווידאו עובר ישירות בין המחשבים, בלי שרת באמצע. כאן אפשר לראות
-          את עצמכם; פתיחת כרטיסייה נוספת של העמוד מדגימה את החיבור המלא.
-        </p>
-      </div>
-    );
-  }
-
+  // אותה רשת 2×2 כמו במשחק מקוון. שתי פריסות שונות לאותו שטח פירושן ששינוי
+  // באחת נבדק רק בחצי מהמקרים — וזה בדיוק מה שקרה כאן.
+  const peers = mesh.peers;
   return (
-    <div className="flex flex-col items-center gap-2">
-      <div className="flex flex-wrap items-center justify-center gap-2">
-        <Tile label={`${current.name} · אתם`} color={seatColor(state.currentSeat)}
-              stream={mesh.local} mirrored active hint="מבקש הרשאה…" />
-        {mesh.peers.map((peer: PeerState) => (
-          <Tile key={peer.id} label="משתתף נוסף" stream={peer.stream} mirrored={false}
-                active={false}
-                hint={peer.connection === "connected" ? "ממתין לווידאו" : "מתחבר…"} />
-        ))}
+    <div className="relative h-full w-full">
+      <div className="grid h-full w-full grid-cols-2 grid-rows-2 gap-[3%]">
+        {VIDEO_SEATS.map((seat) => {
+          const p = state.players[seat];
+          if (!p) return <EmptySeat key={seat} />;
+          // מקומית יש מצלמה אחת, והיא של מי שתורו. שאר המשבצות מציגות חייל.
+          const isCurrent = p.seat === state.currentSeat;
+          const peer = peers[VIDEO_SEATS.indexOf(seat)] as PeerState | undefined;
+          return (
+            <SeatTile key={seat} name={p.name} seat={p.seat} token={p.token}
+                      stream={on && isCurrent ? mesh.local : (on ? peer?.stream ?? null : null)}
+                      mirrored={isCurrent}
+                      dimmed={p.bankrupt}
+                      active={isCurrent && !p.bankrupt}
+                      hint={on && isCurrent ? "מבקש הרשאה…" : undefined} />
+          );
+        })}
       </div>
 
-      {mesh.error && (
-        <div role="alert" className="max-w-[24rem] space-y-1.5 text-center">
-          <p className="text-[0.66rem] leading-snug text-amber-200/85">
+      <button onClick={() => setOn((v) => !v)}
+              className="absolute right-1 top-1 z-10 rounded-md bg-neutral-950/75 px-2 py-1
+                         text-[0.66rem] text-parchment/70 ring-1 ring-white/15
+                         hover:text-parchment">
+        {on ? "כיבוי מצלמה" : "הפעלת מצלמה"}
+      </button>
+
+      {on && mesh.error && (
+        <div role="alert"
+             className="absolute inset-x-[6%] bottom-[2%] space-y-1 rounded bg-black/85
+                        px-2 py-1.5 text-center">
+          <p className="text-[0.62rem] leading-snug text-amber-200/90">
             {MEDIA_ERRORS[mesh.error]}
           </p>
           {mesh.diagnosis?.embedded && <EscapeFrame />}
           {mesh.diagnosis && (
             // שורת האבחון מוצגת בכוונה: ההודעה הקודמת האשימה את הדפדפן
             // בלי בסיס, וזה מה שנמדד בפועל.
-            <p className="text-[0.55rem] text-parchment/25" dir="rtl">
+            <p className="text-[0.53rem] text-parchment/30" dir="rtl">
               {diagnosisLine(mesh.diagnosis)}
             </p>
           )}
         </div>
       )}
-      {!mesh.error && mesh.peers.length === 0 && (
-        <p className="text-[0.6rem] text-parchment/25">
-          פתחו כרטיסייה נוספת של העמוד כדי לראות חיבור בין שני משתתפים
-        </p>
-      )}
-
-      <Button className="!px-2 !py-0.5 !text-[0.66rem]" onClick={() => setOn(false)}>
-        כיבוי מצלמה
-      </Button>
     </div>
   );
 }

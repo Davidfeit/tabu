@@ -12,7 +12,7 @@
     "jailFine": 50,
     "maxJailTurns": 3,
     "minPlayers": 2,
-    "maxPlayers": 6
+    "maxPlayers": 4
   },
   "groups": [
     { "key": "sand",    "name": "קצה המדבר",          "color": "#8C6239", "textOn": "#ffffff", "icon": "dune",   "houseCost": 40,  "size": 2 },

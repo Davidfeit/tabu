@@ -6,6 +6,7 @@ import { SupabaseTransport } from "@/net/transport";
 import { LocalGameProvider, useGame } from "@/ui/GameContext";
 import { RemoteGameProvider } from "@/ui/RemoteGameProvider";
 import { useMesh } from "@/ui/useMesh";
+import { BankCard } from "@/components/BankCard";
 import { AuctionPanel } from "@/components/AuctionPanel";
 import { Board } from "@/components/Board";
 import { Button } from "@/components/Button";
@@ -93,14 +94,20 @@ function GameScreen({ onRestart, videoTiles }: {
         </div>
       </div>
 
+      {/* שני שחקנים בכל צד, כדי שפירוט הנכסים של כל אחד ייכנס למסך.
+          הבנק בצד שמאל, ונשאר עוגן גלוי לשטרות המעופפים. */}
       <aside className={`${aside} right-0 ${bare ? "translate-x-full" : ""}`}
              aria-hidden={bare}>
-        <PlayerPanel state={state} showWorth={nearEnd || state.phase === "finished"} />
+        <PlayerPanel state={state} seats={[0, 1]}
+                     showWorth={nearEnd || state.phase === "finished"} />
         <EventLog events={events} state={state} />
       </aside>
 
       <aside className={`${aside} left-0 ${bare ? "-translate-x-full" : ""}`}
              aria-hidden={bare}>
+        <PlayerPanel state={state} seats={[2, 3]}
+                     showWorth={nearEnd || state.phase === "finished"} />
+        <BankCard />
         <ManageColumn />
       </aside>
 
