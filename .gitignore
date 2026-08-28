@@ -3,3 +3,8 @@ dist
 .env
 .env.local
 tsconfig.tsbuildinfo
+
+# נבנה מ-src/engine בכל פריסה (scripts/build-engine-bundle.mjs). כשהוא היה
+# מנוהל בגיט, כל הרצה של setup:supabase השאירה אותו "משונה" — ואז git pull
+# סירב, המשתמש נשאר עם קוד ישן, והפריסה העלתה אותו בשקט.
+supabase/functions/_shared/engine.js

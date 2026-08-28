@@ -19,11 +19,9 @@ jobs:
           node-version: 22          # supabase-js דורש WebSocket מובנה
           cache: npm
       - run: npm ci
+      # החבילה נבנית כאן, ו-src/engine/bundle.test.ts מריץ עליה משחק
+      # אמיתי. כך היא לא יכולה להתיישן מול המקור: היא נוצרת ממנו.
       - run: npm run build:engine
-      # החבילה חייבת להיות מסונכרנת עם המקור: אחרת הדפדפן יעבוד
-      # והשרת יקרוס, וזה יתגלה רק בפרודקשן.
-      - name: חבילת המנוע מסונכרנת
-        run: git diff --exit-code supabase/functions/_shared/engine.js
       - run: npm run typecheck
       - run: npm run test
       - run: npm run build

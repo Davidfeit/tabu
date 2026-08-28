@@ -20,6 +20,43 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR/.."
 
+# ── האם הקוד כאן עדכני? ──────────────────────────────────────────────────
+#
+# הפריסה מעלה את הקבצים שיושבים כאן *עכשיו*. קרה בפועל: git pull נכשל
+# ("cannot pull with rebase: You have unstaged changes"), השורה נבלעה בין
+# שאר הפלט, והסקריפט פרס בשקט את הגרסה הישנה. מהדפדפן זה נראה כמו תקלה
+# באפליקציה ולא כמו קוד ישן, ולכן זה נבדק לפני שנוגעים במשהו.
+sayfail() { printf '\n\033[31m✗ %s\033[0m\n' "$1" >&2; shift
+            for l in "$@"; do printf '   %s\n' "$l" >&2; done; exit 1; }
+
+if git rev-parse --git-dir >/dev/null 2>&1; then
+  DIRTY="$(git status --porcelain --untracked-files=no 2>/dev/null || true)"
+  UPSTREAM="$(git rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)"
+  if [[ -n "$UPSTREAM" ]] && git fetch --quiet 2>/dev/null; then
+    BEHIND="$(git rev-list --count "HEAD..$UPSTREAM" 2>/dev/null || echo 0)"
+    if [[ "${BEHIND:-0}" -gt 0 ]]; then
+      NOTE=()
+      if [[ -n "$DIRTY" ]]; then
+        NOTE=("" "git pull נכשל כנראה בגלל הקבצים ששונו כאן:"
+              "$(printf '%s' "$DIRTY" | sed 's/^/     /')"
+              "" "אם לא ערכתם אותם בעצמכם — הם נוצרו בהרצה קודמת, ואפשר לזרוק:"
+              "   git checkout -- . && git pull")
+      else
+        NOTE=("" "   git pull")
+      fi
+      sayfail "הקוד כאן ישן ב-$BEHIND קומיטים מ-$UPSTREAM" \
+        "" \
+        "פריסה עכשיו תעלה לענן את הגרסה הישנה, וזה ייראה בדפדפן" \
+        "כמו תקלה באפליקציה. קודם מעדכנים:" "${NOTE[@]}"
+    fi
+  fi
+  # לא בתנאי מקוצר: תחת set -e, && שנכשל בסוף בלוק מפיל את הסקריפט.
+  if [[ -n "$DIRTY" ]]; then
+    printf '   שינויים מקומיים שייפרסו כמות שהם:\n%s\n' \
+      "$(printf '%s' "$DIRTY" | sed 's/^/      /')"
+  fi
+fi
+
 # ── חיבור ────────────────────────────────────────────────────────────────
 # משותף עם scripts/realtime-partitions-fallback.sh. מגדיר die(), משיג
 # PGURL ומוודא שהוא עובד — בלי זה placeholder מגיע עד כשל DNS עמום.
