@@ -193,37 +193,30 @@ describe("pathBetween", () => {
 describe("עמידה על המשבצת", () => {
   const CELL = 100 / TOTAL_UNITS;
 
-  it("החייל עומד מחוץ למשבצת, ולא עליה", () => {
-    // הנקודה היא כפות הרגליים. הגוף עולה ממנה כלפי מעלה, ולכן צריך לבדוק
-    // שכל התיבה שלו נמצאת בצד הלבד ולא מעל התווית.
+  it("תחתית החייל נשענת על המשבצת, בכל ארבע הצלעות", () => {
+    // כפות הרגליים על הצלע הפנימית של המשבצת עצמה, והגוף יוצא ממנה החוצה
+    // בזכות הסיבוב. זה הכלל היחיד, ואין לו יוצא מן הכלל.
     for (let pos = 0; pos < SQUARE_COUNT; pos++) {
       const { row, col } = cellFor(pos);
       const c = cellCenter(pos);
       const f = standFor(pos, 0, 1);
-      const { w, h } = tokenSize(1);
       const halfY = (row === 1 || row === GRID ? CORNER_UNITS : 1) / 2 / TOTAL_UNITS * 100;
       const halfX = (col === 1 || col === GRID ? CORNER_UNITS : 1) / 2 / TOTAL_UNITS * 100;
 
-      const corner = (row === 1 || row === GRID) && (col === 1 || col === GRID);
-      if (corner) {
-        // בפינה נדרשת יציאה בשני הצירים גם יחד, אחרת החייל עולה על
-        // המשבצת של הצלע השנייה.
-        const dx = Math.abs(f.xPct - c.xPct);
-        expect(dx - w / 2).toBeGreaterThanOrEqual(halfX - 1e-9);
-        const top = row === GRID ? f.yPct - h : f.yPct - h;
-        if (row === GRID) expect(f.yPct).toBeLessThanOrEqual(c.yPct - halfY + 1e-9);
-        else expect(top).toBeGreaterThanOrEqual(c.yPct + halfY - 1e-9);
-      } else if (row === GRID) {
-        expect(f.yPct).toBeLessThanOrEqual(c.yPct - halfY + 1e-9);   // מעל המשבצת
-      } else if (row === 1) {
-        expect(f.yPct - h).toBeGreaterThanOrEqual(c.yPct + halfY - 1e-9); // מתחתיה
-      } else {
-        // בעמודות כפות הרגליים על הצלע הפנימית עצמה, והגוף יוצא ממנה
-        // בזכות הסיבוב — ולכן נבדק המיקום ולא רוחב הגוף.
-        const dx = Math.abs(f.xPct - c.xPct);
-        expect(dx).toBeCloseTo(halfX, 10);
-      }
+      if (row === GRID) expect(f.yPct).toBeCloseTo(c.yPct - halfY, 10);
+      else if (row === 1) expect(f.yPct).toBeCloseTo(c.yPct + halfY, 10);
+      else expect(Math.abs(f.xPct - c.xPct)).toBeCloseTo(halfX, 10);
     }
+  });
+
+  it("הסיבוב מוציא את הגוף מהמשבצת, לא לתוכה", () => {
+    // 0 = הגוף כלפי מעלה. בשורה העליונה "החוצה" הוא כלפי מטה, ולכן 180.
+    expect(standRotation(5)).toBe(0);      // שורה תחתונה
+    expect(standRotation(0)).toBe(0);      // פינת הזינוק
+    expect(standRotation(25)).toBe(180);   // שורה עליונה
+    expect(standRotation(20)).toBe(180);   // פינה עליונה
+    expect(standRotation(15)).toBe(90);    // עמודה שמאלית
+    expect(standRotation(35)).toBe(-90);   // עמודה ימנית
   });
 
   it("צפופים עומדים בשורה על אותו קו רצפה, לא זה על זה", () => {
@@ -249,18 +242,6 @@ describe("עמידה על המשבצת", () => {
     const xs = [0, 1, 2, 3].map((i) => standFor(5, i, 4).xPct);
     const span = xs[3]! - xs[0]! + w;
     expect(span).toBeLessThan(CELL * 1.6);
-  });
-
-  it("החייל מסובב כמו התווית של המשבצת שלו", () => {
-    // ביחס למשבצת, לא ביחס למסך: משבצות העמודות מסובבות וגם התוויות שלהן,
-    // וחייל זקוף על מסך נראה לידן שוכב.
-    for (let pos = 0; pos < SQUARE_COUNT; pos++) {
-      expect(standRotation(pos)).toBe(labelRotation(cellFor(pos).side));
-    }
-    expect(standRotation(5)).toBe(0);     // שורה תחתונה
-    expect(standRotation(15)).toBe(90);   // עמודה שמאלית
-    expect(standRotation(25)).toBe(0);    // שורה עליונה
-    expect(standRotation(35)).toBe(-90);  // עמודה ימנית
   });
 
   it("בעמודות הפרישה אנכית ולא אופקית", () => {

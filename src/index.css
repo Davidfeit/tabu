@@ -45,12 +45,10 @@
   .tabu-token[data-walking="true"] {
     transition-timing-function: linear;
   }
-  .tabu-token[data-walking="true"] .tabu-token__inner {
-    animation: tabu-hop 105ms ease-in-out;
-  }
-  @keyframes tabu-hop {
-    50% { transform: translateY(-3px) scale(1.04); }
-  }
+  /* אין קפיצה אנכית בהליכה.
+     ההנפשה התחילה מחדש בכל צעד, ודי בעיכוב זעיר של פריים אחד כדי שצעד
+     ייקטע באמצע הקפיצה — וזו בדיוק ה"קפיצה מדי פעם" שדווחה. החלקה נקייה
+     קוראת טוב יותר, ואין בה מה שיישבר. */
 
   /* ── הקוביות ──
      מתגלגלות בזמן שהשרת כבר החזיר את התוצאה. זו הנפשה, לא הגרלה: הערך

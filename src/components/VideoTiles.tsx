@@ -99,9 +99,16 @@ export function SeatTile({ name, seat, token, stream, mirrored, active, dimmed, 
                      ${active ? "border-amber-400/80 ring-2 ring-amber-400/35"
                               : "border-white/10"}`}>
       {stream ? <VideoFrame stream={stream} mirrored={mirrored} /> : (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-1.5">
-          <Token token={token} seat={seat} size="26%" dimmed={dimmed} />
-          {hint && <span className="text-[0.6rem] text-parchment/40">{hint}</span>}
+        <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-2">
+          <Token token={token} seat={seat} size="22%" dimmed={dimmed} />
+          {/* קריא בצילום מסך, בכוונה: זו השורה שאומרת למה אין וידאו, ובלי
+              שאפשר לקרוא אותה היא לא שווה כלום. */}
+          {hint && (
+            <span className="max-w-full rounded bg-black/70 px-2 py-1 text-center
+                             text-[0.8rem] leading-snug text-amber-200/95">
+              {hint}
+            </span>
+          )}
         </div>
       )}
       <span className="absolute inset-x-0 bottom-0 truncate bg-black/60 px-1.5 py-0.5

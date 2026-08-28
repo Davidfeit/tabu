@@ -203,7 +203,7 @@ function halfCell(pos: number): Point {
 export function standFor(pos: number, indexInCell: number, total: number): Point {
   const c = cellCenter(pos);
   const { row, col } = cellFor(pos);
-  const { w, h } = tokenSize(total);
+  const { w } = tokenSize(total);
   const half = halfCell(pos);
   const spread = (indexInCell - (total - 1) / 2) * w * 0.75;
 
@@ -216,13 +216,14 @@ export function standFor(pos: number, indexInCell: number, total: number): Point
     const sy = row === GRID ? -1 : 1;
     return {
       xPct: c.xPct + sx * (half.xPct + w / 2) + spread,
-      yPct: c.yPct + sy * half.yPct + (sy > 0 ? h : 0),
+      yPct: c.yPct + sy * half.yPct,
     };
   }
 
-  // שורה עליונה: הטבעת נמצאת *מתחת* למשבצת, ולכן קו הרצפה יורד בגובה
-  // חייל שלם — אחרת הגוף היה עולה בחזרה על המשבצת.
-  if (row === 1) return { xPct: c.xPct + spread, yPct: c.yPct + half.yPct + h };
+  // כפות הרגליים תמיד על הצלע הפנימית של המשבצת עצמה. הכיוון שאליו הגוף
+  // יוצא נקבע בסיבוב (standRotation), ולא בהיסט — כך התחתית נשענת על
+  // המשבצת בכל ארבע הצלעות.
+  if (row === 1) return { xPct: c.xPct + spread, yPct: c.yPct + half.yPct };
   if (row === GRID) return { xPct: c.xPct + spread, yPct: c.yPct - half.yPct };
 
   // עמודות: כפות הרגליים על הצלע הפנימית עצמה. הגוף יוצא ממנה פנימה
@@ -234,12 +235,15 @@ export function standFor(pos: number, indexInCell: number, total: number): Point
 /**
  * סיבוב החייל, במעלות.
  *
- * החייל עומד ביחס למשבצת שלו, לא ביחס למסך. משבצות העמודות מסובבות —
- * גם התוויות שלהן — וחייל זקוף על מסך נראה לידן שוכב. אותו סיבוב בדיוק
- * כמו התווית, ולכן שניהם מסכימים על מה נחשב "למעלה" במשבצת הזו.
+ * הכלל אחד: תחתית החייל נשענת על המשבצת שלו, והגוף יוצא ממנה החוצה אל
+ * טבעת הלבד. לכן הסיבוב נגזר מהצלע שעליה המשבצת יושבת — בשורה העליונה
+ * החייל הפוך, כי שם "החוצה" הוא כלפי מטה.
  */
 export function standRotation(pos: number): number {
-  return labelRotation(cellFor(pos).side);
+  const { row, col } = cellFor(pos);
+  if (row === GRID) return 0;      // שורה תחתונה ופינותיה — הגוף כלפי מעלה
+  if (row === 1) return 180;       // שורה עליונה ופינותיה — הגוף כלפי מטה
+  return col === 1 ? 90 : -90;     // עמודות — הגוף פנימה
 }
 
 /**

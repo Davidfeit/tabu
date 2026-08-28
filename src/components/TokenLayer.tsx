@@ -47,9 +47,9 @@ export function TokenLayer({ state }: { state: GameState }) {
                  top: `${yPct}%`,
                  // ההעברה על left/top ולא על transform, כדי ש-transform
                  // יישאר פנוי לקפיצה האנכית של ההליכה.
-                 // בדיוק אורך הצעד: מרווח בין המעברים מייצר עצירה זעירה
-                 // בכל משבצת, וזה מה שנקרא קופצני.
-                 transitionDuration: m?.walking ? `${STEP_MS}ms` : "260ms",
+                 // מעט יותר מאורך הצעד, כדי שהמעברים יחפפו: משך שווה בדיוק
+                 // מסתמך על תזמון מושלם, וכל עיכוב של פריים מייצר עצירה.
+                 transitionDuration: m?.walking ? `${Math.round(STEP_MS * 1.35)}ms` : "260ms",
                  zIndex: isTurn ? 3 : 2,
                  // הסיבוב סביב כפות הרגליים, לא סביב המרכז — אחרת החייל
                  // היה נודד מהמשבצת שלו בכל סיבוב שאינו 0.

@@ -90,7 +90,7 @@ export function Lobby({ onJoined, onBack, invite }: {
   const settings: Partial<Settings> = { mode: "quick", auctions: true };
 
   return (
-    <div dir="rtl" className="mx-auto max-w-md space-y-5 py-10">
+    <div dir="rtl" className="mx-auto max-w-md space-y-5 px-4 py-10">
       <header className="text-center">
         <h1 className="font-logo text-5xl text-parchment">טאבו</h1>
         <p className="mt-1 text-sm text-parchment/50">משחק אונליין עם וידאו</p>

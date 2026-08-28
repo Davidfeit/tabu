@@ -7,6 +7,7 @@ import { LocalGameProvider, useGame } from "@/ui/GameContext";
 import { RemoteGameProvider } from "@/ui/RemoteGameProvider";
 import { useMesh } from "@/ui/useMesh";
 import { MotionProvider } from "@/ui/MotionContext";
+import { useIsPhone } from "@/ui/useIsPhone";
 import { BankCard } from "@/components/BankCard";
 import { AuctionPanel } from "@/components/AuctionPanel";
 import { Board } from "@/components/Board";
@@ -18,6 +19,7 @@ import { inviteCode, Lobby, type JoinedRoom } from "@/components/Lobby";
 import { ManagePanel } from "@/components/ManagePanel";
 import { MoneyFlow } from "@/components/MoneyFlow";
 import { MediaPrompt } from "@/components/MediaPrompt";
+import { PhoneController } from "@/components/PhoneController";
 import { PlayerPanel } from "@/components/PlayerPanel";
 import { ViewControls } from "@/components/ViewControls";
 import { SetupScreen } from "@/components/SetupScreen";
@@ -127,30 +129,51 @@ function GameScreen({ onRestart, videoTiles }: {
 function OnlineGame({ room, initial, version, onLeave }: {
   room: JoinedRoom; initial: GameState; version: number; onLeave: () => void;
 }) {
+  // בטלפון אין לוח ואין וידאו: הלוח על המסך המשותף שכולם רואים, וכולם
+  // באותו חדר. הטלפון הוא שלט — ולכן גם לא מבקשים ממנו מצלמה.
+  const phone = useIsPhone();
   const [videoOn, setVideoOn] = useState<boolean | null>(null);
   const peerIds = initial.players.map((p) => p.userId).filter((id) => id !== room.userId);
   // התעבורה נוצרת רק אחרי אישור המצלמה, כדי לא לפתוח ערוצים לחינם.
   const transport = useMemo(
-    () => (videoOn ? new SupabaseTransport(supabase().realtime as never) : null),
-    [videoOn]);
+    () => (videoOn && !phone ? new SupabaseTransport(supabase().realtime as never) : null),
+    [videoOn, phone]);
   const mesh = useMesh(room.userId, peerIds, transport);
 
   return (
     <RemoteGameProvider roomId={room.roomId} mySeat={room.seat}
                         initialState={initial} initialVersion={version}>
       <ErrorToast />
-      {videoOn === null && (
-        <MediaPrompt onAllow={() => setVideoOn(true)} onSkip={() => setVideoOn(false)} />
+      {phone ? (
+        <PhoneController onLeave={onLeave} />
+      ) : (
+        <>
+          {videoOn === null && (
+            <MediaPrompt onAllow={() => setVideoOn(true)} onSkip={() => setVideoOn(false)} />
+          )}
+          <GameScreen
+            onRestart={onLeave}
+            videoTiles={videoOn ? (
+              <VideoTilesBridge local={mesh.local} peers={mesh.peers} error={mesh.error}
+                                mySeat={room.seat} />
+            ) : undefined}
+          />
+        </>
       )}
-      <GameScreen
-        onRestart={onLeave}
-        videoTiles={videoOn ? (
-          <VideoTilesBridge local={mesh.local} peers={mesh.peers} error={mesh.error}
-                            mySeat={room.seat} />
-        ) : undefined}
-      />
     </RemoteGameProvider>
   );
+}
+
+/**
+ * במשחק מקומי גם הטלפון מקבל שלט.
+ *
+ * לוח שלם על 390 פיקסלים אינו קריא ממילא, ובמשחק מקומי השלט הוא בדיוק
+ * "מעבירים את הטלפון" — כל שחקן מקבל את הפעולות שלו בתורו.
+ */
+function LocalBody({ onLeave }: { onLeave: () => void }) {
+  return useIsPhone()
+    ? <PhoneController onLeave={onLeave} />
+    : <GameScreen onRestart={onLeave} />;
 }
 
 function VideoTilesBridge(props: Omit<Parameters<typeof VideoTiles>[0], "state">) {
@@ -169,7 +192,7 @@ type Screen =
 
 function Home({ onLocal, onOnline }: { onLocal: () => void; onOnline: () => void }) {
   return (
-    <div dir="rtl" className="mx-auto max-w-sm space-y-6 py-20 text-center">
+    <div dir="rtl" className="mx-auto max-w-sm space-y-6 px-4 py-20 text-center">
       <h1 className="font-logo text-6xl text-parchment">טאבו</h1>
       <p className="text-sm text-parchment/50">משחק הנדל״ן הישראלי</p>
       <div className="flex flex-col gap-2">
@@ -222,7 +245,7 @@ export default function App() {
       {screen.kind === "local" && screen.seats.length > 0 && (
         <LocalGameProvider key={screen.key} seats={screen.seats} settings={screen.settings}>
           <ErrorToast />
-          <GameScreen onRestart={toHome} />
+          <LocalBody onLeave={toHome} />
         </LocalGameProvider>
       )}
 
