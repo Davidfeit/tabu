@@ -11,7 +11,10 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const CORS = {
   "Access-Control-Allow-Origin": Deno.env.get("ALLOWED_ORIGIN") ?? "*",
-  "Access-Control-Allow-Headers": "authorization, content-type",
+  // supabase-js מוסיף x-client-info ו-apikey מעבר לשתי הברורות. כותרת
+  // שלא ברשימה מפילה את הבקשה המקדימה, והדפדפן מוותר על הקריאה עצמה
+  // לפני שהיא יוצאת — מה שנראה ללקוח כמו נפילת רשת.
+  "Access-Control-Allow-Headers": "authorization, content-type, x-client-info, apikey",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
@@ -40,7 +43,18 @@ Deno.serve(async (req) => {
 });
 
 async function handle(req: Request): Promise<Response> {
-  if (req.method === "OPTIONS") return new Response(null, { headers: CORS });
+  if (req.method === "OPTIONS") {
+    // מחזירים בדיוק את מה שהדפדפן ביקש: רשימה קבועה מתיישנת ברגע
+    // ש-supabase-js מוסיף כותרת, וזה כשל שקט שקשה לאתר.
+    const asked = req.headers.get("access-control-request-headers");
+    return new Response(null, {
+      headers: {
+        ...CORS,
+        ...(asked ? { "Access-Control-Allow-Headers": asked } : {}),
+        "Access-Control-Max-Age": "86400",
+      },
+    });
+  }
 
   // רק משתמש מזוהה. אחרת זהו ממסר חינמי לכל מי שמוצא את הכתובת.
   const auth = req.headers.get("authorization");
