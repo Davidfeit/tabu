@@ -1,6 +1,9 @@
+import { useEffect, useState } from "react";
 import type { PeerState } from "@/net/mesh";
 import type { MediaErrorKind } from "@/net/media";
+import type { SignalStats } from "@/net/transport";
 import type { GameState } from "@/engine/types";
+import { diagLines, needsDiag } from "./videoDiag";
 import { seatColor, Token } from "./Token";
 import { VideoFrame } from "./VideoPanel";
 
@@ -26,7 +29,7 @@ export const VIDEO_SEATS = [0, 1, 2, 3];
  * מושב ריק נשאר ריק.
  */
 export function VideoTiles({
-  state, mySeat, local, peers, error, relayError,
+  state, mySeat, local, peers, error, relayError, wanted = [], selfId = "", stats,
 }: {
   state: GameState;
   mySeat: number | null;
@@ -35,6 +38,10 @@ export function VideoTiles({
   error: MediaErrorKind | null;
   /** תקלה בממסר הסיגנלינג, אם הייתה. */
   relayError?: string | null;
+  /** מי אמור להיות מחובר, לפי המצב החי. לאבחון. */
+  wanted?: string[];
+  selfId?: string;
+  stats?: SignalStats;
 }) {
   const byUser = new Map(peers.map((p) => [p.id, p]));
 
@@ -60,6 +67,11 @@ export function VideoTiles({
           );
         })}
       </div>
+
+      {needsDiag({ wanted, peers }) && (
+        <VideoDiag selfId={selfId} wanted={wanted} peers={peers}
+                   stats={stats} relayError={relayError} />
+      )}
 
       {error && (
         <p className="pointer-events-none absolute inset-x-[8%] bottom-[2%] rounded
@@ -131,6 +143,33 @@ export function EmptySeat() {
     <div className="flex min-h-0 min-w-0 items-center justify-center rounded-lg border
                     border-dashed border-white/10 text-[0.66rem] text-parchment/25">
       מושב פנוי
+    </div>
+  );
+}
+
+/**
+ * אבחון חי מתחת לחלונות.
+ *
+ * המונים משתנים מחוץ ל-React (הם נכתבים בתעבורה עצמה), ולכן רענון בשעון.
+ * זה בסדר גמור: זו תצוגת אבחון שנעלמת ברגע שהווידאו זורם.
+ */
+function VideoDiag({ selfId, wanted, peers, stats, relayError }: {
+  selfId: string; wanted: string[]; peers: PeerState[];
+  stats?: SignalStats; relayError?: string | null;
+}) {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => tick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  return (
+    <div dir="rtl" className="pointer-events-none absolute inset-x-0 bottom-0 space-y-0.5
+                              bg-black/70 px-2 py-1 text-[0.6rem] leading-tight
+                              text-amber-200/90">
+      {diagLines({ selfId, wanted, peers, stats, relayError }).map((l) => (
+        <div key={l} style={{ unicodeBidi: "plaintext" }}>{l}</div>
+      ))}
     </div>
   );
 }

@@ -7,6 +7,17 @@ import { PeerMesh, type PeerState } from "@/net/mesh";
 import { iceServers } from "@/net/supabase";
 import type { SignalTransport } from "@/net/transport";
 
+/**
+ * מי אמור להיות מחובר בווידאו, לפי מצב המשחק *החי*.
+ *
+ * מהמצב ולא מרשימת הפתיחה: שחקן שנכנס אחרי שהמסך עלה חייב להיכנס לרשת,
+ * אחרת שני הצדדים רואים ריבוע שחור — הצד החדש מציע חיבור, והצד הוותיק
+ * לא יודע שיש למי לענות.
+ */
+export function meshPeers(players: { userId: string }[], selfId: string): string[] {
+  return players.map((p) => p.userId).filter((id) => id && id !== selfId);
+}
+
 export interface MeshStatus {
   local: MediaStream | null;
   peers: PeerState[];

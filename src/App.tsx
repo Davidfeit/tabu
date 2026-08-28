@@ -2,10 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { SeatSpec } from "@/engine/setup";
 import type { GameState, Settings } from "@/engine/types";
 import { api, CONFIG_PROBLEM, ONLINE_ENABLED, staleServer, supabase } from "@/net/supabase";
-import { RoomTransport } from "@/net/transport";
+import { RoomTransport, type SignalTransport } from "@/net/transport";
 import { LocalGameProvider, useGame } from "@/ui/GameContext";
 import { RemoteGameProvider } from "@/ui/RemoteGameProvider";
-import { useMesh } from "@/ui/useMesh";
+import { meshPeers, useMesh } from "@/ui/useMesh";
 import { MotionProvider } from "@/ui/MotionContext";
 import { useIsPhone } from "@/ui/useIsPhone";
 import { BankCard } from "@/components/BankCard";
@@ -122,7 +122,6 @@ function OnlineGame({ room, initial, version, onLeave }: {
   // באותו חדר. הטלפון הוא שלט — ולכן גם לא מבקשים ממנו מצלמה.
   const phone = useIsPhone();
   const [videoOn, setVideoOn] = useState<boolean | null>(null);
-  const peerIds = initial.players.map((p) => p.userId).filter((id) => id !== room.userId);
   // התעבורה נוצרת רק אחרי אישור המצלמה, כדי לא לפתוח ערוצים לחינם.
   const [relayError, setRelayError] = useState<string | null>(null);
 
@@ -139,7 +138,6 @@ function OnlineGame({ room, initial, version, onLeave }: {
                           setRelayError)
       : null),
     [videoOn, phone, room.roomId]);
-  const mesh = useMesh(room.userId, peerIds, transport);
 
   return (
     <RemoteGameProvider roomId={room.roomId} mySeat={room.seat}
@@ -161,16 +159,44 @@ function OnlineGame({ room, initial, version, onLeave }: {
           {videoOn === null && (
             <MediaPrompt onAllow={() => setVideoOn(true)} onSkip={() => setVideoOn(false)} />
           )}
-          <GameScreen
-            onRestart={onLeave}
-            videoTiles={videoOn ? (
-              <VideoTilesBridge local={mesh.local} peers={mesh.peers} error={mesh.error}
-                                relayError={relayError} mySeat={room.seat} />
-            ) : undefined}
-          />
+          <OnlineBody room={room} onLeave={onLeave} videoOn={videoOn}
+                      transport={transport} relayError={relayError} />
         </>
       )}
     </RemoteGameProvider>
+  );
+}
+
+/**
+ * גוף המשחק המקוון — *בתוך* הספק, ולכן רואה את המצב החי.
+ *
+ * רשימת העמיתים נגזרה קודם מ-initial, המצב שהיה בזמן הטעינה. כלומר מי
+ * שהצטרף אחרי שהמסך הזה עלה לא נכנס לרשת הווידאו לעולם, וזה בדיוק המצב
+ * שבו יושבים: פותחים את המשחק, ורק אז החבר נכנס דרך הקישור. הצד השני
+ * כן היה יוצר חיבור, אבל בלי שהצד הזה יענה אין וידאו לאף אחד.
+ */
+function OnlineBody({ room, onLeave, videoOn, transport, relayError }: {
+  room: JoinedRoom;
+  onLeave: () => void;
+  videoOn: boolean | null;
+  transport: SignalTransport | null;
+  relayError: string | null;
+}) {
+  const { state } = useGame();
+  const peerIds = useMemo(() => meshPeers(state.players, room.userId),
+                          [state.players, room.userId]);
+  const mesh = useMesh(room.userId, peerIds, transport);
+
+  return (
+    <GameScreen
+      onRestart={onLeave}
+      videoTiles={videoOn ? (
+        <VideoTilesBridge local={mesh.local} peers={mesh.peers} error={mesh.error}
+                          relayError={relayError} mySeat={room.seat}
+                          wanted={peerIds} selfId={room.userId}
+                          stats={transport?.stats} />
+      ) : undefined}
+    />
   );
 }
 

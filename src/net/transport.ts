@@ -9,6 +9,17 @@ import type { SignalMessage } from "./signaling";
  * בין כרטיסיות באותו דפדפן — ובלי התעבורה המקומית, קוד ה-mesh היה נבדק
  * לראשונה רק בפרודקשן.
  */
+/** מוני סיגנלינג, לאבחון. כשאין וידאו הם ההבדל בין שלוש תקלות שונות. */
+export interface SignalStats {
+  /** הודעות שנשלחו החוצה (כולל כאלה שנכשלו). */
+  sent: number;
+  failed: number;
+  /** שידורי signal שהתקבלו על ערוץ החדר, לכל נמען. */
+  received: number;
+  /** מתוכם, כאלה שממוענים אליי. */
+  forMe: number;
+}
+
 export interface SignalTransport {
   /** שולח הודעה לעמית יחיד. */
   send(peerId: string, message: SignalMessage): void;
@@ -17,6 +28,8 @@ export interface SignalTransport {
   /** מודיע על נוכחות ומדווח מי עוד נוכח. מחזיר פונקציית ניתוק. */
   presence(selfId: string, onPeers: (ids: string[]) => void): () => void;
   close(): void;
+  /** לאבחון בלבד. */
+  readonly stats?: SignalStats;
 }
 
 type Envelope =
@@ -124,6 +137,7 @@ export class BroadcastTransport implements SignalTransport {
  */
 export class RoomTransport implements SignalTransport {
   private handle: RoomChannelHandle | null = null;
+  readonly stats: SignalStats = { sent: 0, failed: 0, received: 0, forMe: 0 };
 
   constructor(
     private readonly sb: RealtimeLike,
@@ -134,7 +148,9 @@ export class RoomTransport implements SignalTransport {
   ) {}
 
   send(peerId: string, message: SignalMessage): void {
+    this.stats.sent++;
     void this.relay(peerId, message).catch((e: unknown) => {
+      this.stats.failed++;
       // כשל בודד אינו קטלני — perfect negotiation מתאושש — אבל כשל *קבוע*
       // (שרת ישן שלא מכיר את הפעולה) נראה בדיוק כמו בעיית רשת, ולכן הוא
       // חייב לצוף.
@@ -151,8 +167,9 @@ export class RoomTransport implements SignalTransport {
     const h = roomChannel(this.sb, this.roomId);
     h.on("signal", (payload) => {
       const p = payload as { to?: string; message?: SignalMessage } | undefined;
+      this.stats.received++;
       // השידור מגיע לכל חברי החדר; הנמען מסונן כאן.
-      if (p?.to === selfId && p.message) onMessage(p.message);
+      if (p?.to === selfId && p.message) { this.stats.forMe++; onMessage(p.message); }
     });
     void h.join();
     this.handle = h;

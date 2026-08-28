@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { PeerState } from "@/net/mesh";
+import { meshPeers } from "@/ui/useMesh";
 
 /**
  * השיוך המקוון: משבצת → עמית, לפי מזהה המשתמש.
@@ -61,5 +62,31 @@ describe("שיוך זרמים למושבים במשחק מקוון", () => {
       peer("u-bob", null), peer("u-carol", stream("carol")),
     ], 0, null);
     expect(got[1]).toBeNull();
+  });
+});
+
+/**
+ * מי נכנס לרשת הווידאו.
+ *
+ * הבאג שהיה כאן: הרשימה נגזרה מ-initial, המצב שנטען כשהמסך עלה. שחקן
+ * שנכנס אחר כך — וזה בדיוק מה שקורה כשפותחים משחק ואז שולחים קישור —
+ * לא נכנס לרשת אף פעם.
+ */
+describe("רשימת העמיתים לווידאו", () => {
+  const p = (userId: string) => ({ userId });
+
+  it("כוללת את כל השאר, בלי עצמי", () => {
+    expect(meshPeers([p("a"), p("b"), p("c")], "b")).toEqual(["a", "c"]);
+  });
+
+  it("קולטת מצטרף חדש ברגע שהוא במצב", () => {
+    const before = meshPeers([p("a")], "a");
+    const after = meshPeers([p("a"), p("b")], "a");
+    expect(before).toEqual([]);
+    expect(after).toEqual(["b"]);
+  });
+
+  it("מסננת מזהים ריקים — שחקן בלי משתמש אינו עמית", () => {
+    expect(meshPeers([p("a"), p(""), p("c")], "a")).toEqual(["c"]);
   });
 });
