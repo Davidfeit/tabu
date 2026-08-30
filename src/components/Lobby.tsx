@@ -93,27 +93,27 @@ export function Lobby({ onJoined, onBack, invite }: {
   return (
     <div dir="rtl" className="mx-auto max-w-md space-y-5 px-4 py-10">
       <header className="text-center">
-        <h1 className="font-logo text-5xl text-parchment">טאבו</h1>
-        <p className="mt-1 text-sm text-parchment/50">משחק אונליין עם וידאו</p>
+        <h1 className="toy-title font-logo text-6xl">טאבו</h1>
+        <p className="mt-2 font-display text-base text-ink/70">משחק אונליין עם וידאו</p>
       </header>
 
-      <section className="space-y-3 rounded-lg bg-black/25 p-4 ring-1 ring-white/10">
+      <section className="toy-card space-y-3 p-4">
         <label className="block">
-          <span className="mb-1 block text-[0.78rem] text-parchment/60">השם שלך</span>
+          <span className="mb-1 block text-[0.8rem] font-semibold text-ink/70">השם שלך</span>
           <input value={name} maxLength={14} onChange={(e) => setName(e.target.value)}
-                 className="w-full rounded-md bg-black/40 px-3 py-2 text-sm text-parchment
-                            ring-1 ring-white/10 focus:outline-none focus:ring-2
-                            focus:ring-amber-400/60" />
+                 className="toy-input w-full px-3 py-2 text-sm" />
         </label>
 
         <div>
-          <span className="mb-1.5 block text-[0.78rem] text-parchment/60">החייל שלך</span>
+          <span className="mb-1.5 block text-[0.8rem] font-semibold text-ink/70">החייל שלך</span>
           <div className="flex flex-wrap gap-1.5">
             {TOKENS.map((t, i) => (
               <button key={t.key} onClick={() => setTokenIdx(i)} title={t.name}
                       aria-label={t.name} aria-pressed={i === tokenIdx}
-                      className={`rounded-md p-1 ring-1 transition
-                        ${i === tokenIdx ? "ring-2 ring-amber-400" : "ring-white/10"}`}>
+                      className={`rounded-full bg-white p-1.5 transition
+                        ${i === tokenIdx
+                          ? "ring-[3px] ring-toy-sun shadow-[0_3px_0_#d3a63a]"
+                          : "ring-2 ring-toy-edge"}`}>
                 <Token token={t.key} seat={i} size={26} />
               </button>
             ))}
@@ -121,12 +121,12 @@ export function Lobby({ onJoined, onBack, invite }: {
         </div>
       </section>
 
-      <section className="space-y-2 rounded-lg bg-black/25 p-4 ring-1 ring-white/10">
+      <section className="toy-card space-y-2 p-4">
         {invite ? (
           <>
-            <p className="text-center text-[0.8rem] text-parchment/70">
+            <p className="text-center text-[0.85rem] text-ink/75">
               הוזמנתם לחדר{" "}
-              <span className="font-mono tracking-[0.2em] text-parchment"
+              <span className="font-mono font-bold tracking-[0.2em] text-ink"
                     style={{ direction: "ltr", unicodeBidi: "isolate" }}>{invite}</span>
             </p>
             <Button variant="primary" disabled={!ready || busy} className="w-full !py-2"
@@ -150,18 +150,17 @@ export function Lobby({ onJoined, onBack, invite }: {
           פתיחת חדר חדש
         </Button>
 
-        <div className="flex items-center gap-2 py-1 text-[0.7rem] text-parchment/30">
-          <span className="h-px flex-1 bg-white/10" />או<span className="h-px flex-1 bg-white/10" />
+        <div className="flex items-center gap-2 py-1 text-[0.72rem] text-ink/40">
+          <span className="h-0.5 flex-1 rounded bg-toy-edge" />או
+          <span className="h-0.5 flex-1 rounded bg-toy-edge" />
         </div>
 
         <div className="flex gap-2">
           <input value={code} maxLength={6} placeholder="קוד חדר"
                  onChange={(e) => setCode(e.target.value.toUpperCase())}
                  aria-label="קוד חדר"
-                 className="min-w-0 flex-1 rounded-md bg-black/40 px-3 py-2 text-center
-                            font-mono text-lg tracking-[0.3em] text-parchment
-                            ring-1 ring-white/10 focus:outline-none focus:ring-2
-                            focus:ring-amber-400/60"
+                 className="toy-input min-w-0 flex-1 px-3 py-2 text-center
+                            font-mono text-lg tracking-[0.3em]"
                  style={{ direction: "ltr" }} />
           <Button disabled={!ready || busy || code.trim().length < 4}
                   onClick={() => run(async () => {
@@ -178,12 +177,13 @@ export function Lobby({ onJoined, onBack, invite }: {
       </section>
 
       {error && (
-        <div role="alert" className="space-y-1.5 rounded-md bg-red-500/15 px-3 py-2
-                                     text-center text-[0.8rem] text-red-200">
-          <p>{error.text}</p>
-          {error.hint && <p className="text-red-200/70">{error.hint}</p>}
+        <div role="alert" className="space-y-1.5 rounded-2xl border-2 border-red-200
+                                     bg-red-50 px-3 py-2.5 text-center text-[0.8rem]
+                                     text-red-700">
+          <p className="font-semibold">{error.text}</p>
+          {error.hint && <p className="text-red-700/80">{error.hint}</p>}
           {error.raw && (
-            <p dir="ltr" className="font-mono text-[0.68rem] text-red-200/45">
+            <p dir="ltr" className="font-mono text-[0.68rem] text-red-700/50">
               {error.raw}
             </p>
           )}
@@ -192,7 +192,7 @@ export function Lobby({ onJoined, onBack, invite }: {
 
       <div className="text-center">
         <button onClick={onBack}
-                className="text-[0.78rem] text-parchment/40 underline-offset-4 hover:underline">
+                className="text-[0.8rem] text-ink/50 underline-offset-4 hover:underline">
           חזרה למשחק מקומי
         </button>
       </div>

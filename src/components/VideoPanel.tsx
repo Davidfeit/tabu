@@ -168,9 +168,7 @@ export function LocalVideo() {
       </div>
 
       <button onClick={() => setOn((v) => !v)}
-              className="absolute right-1 top-1 z-10 rounded-md bg-neutral-950/75 px-2 py-1
-                         text-[0.66rem] text-parchment/70 ring-1 ring-white/15
-                         hover:text-parchment">
+              className="toy-btn absolute right-1 top-1 z-10 !px-2.5 !py-1 !text-[0.66rem]">
         {on ? "כיבוי מצלמה" : "הפעלת מצלמה"}
       </button>
 

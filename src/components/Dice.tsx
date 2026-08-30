@@ -39,10 +39,19 @@ function Die({ value, size, rolling, delay }: {
          aria-label={`קוביה: ${value}`} className="tabu-die"
          data-rolling={rolling ? "true" : undefined}
          style={{ animationDelay: `${delay}ms` }}>
-      <rect x="4" y="4" width="92" height="92" rx="18"
-            fill="#f5f0e4" stroke="rgba(0,0,0,.35)" strokeWidth="4" />
+      {/* פאה עגולה עם הבהוב אור למעלה — קובייה של צעצוע, לא ריבוע. */}
+      <rect x="4" y="4" width="92" height="92" rx="24" fill="#ffffff" />
+      <rect x="4" y="4" width="92" height="92" rx="24"
+            fill="url(#toy-die-gloss)" stroke="#e3d8f7" strokeWidth="4" />
+      <defs>
+        <linearGradient id="toy-die-gloss" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#ffffff" />
+          <stop offset="55%" stopColor="#ffffff" />
+          <stop offset="100%" stopColor="#efe8fb" />
+        </linearGradient>
+      </defs>
       {PIPS[face]?.map(([cx, cy], i) => (
-        <circle key={i} cx={cx} cy={cy} r="9" fill="#1a1a1a" />
+        <circle key={i} cx={cx} cy={cy} r="9.5" fill="#2f2450" />
       ))}
     </svg>
   );
@@ -75,8 +84,8 @@ export function Dice({ dice, size = 34 }: {
       <Die value={a} size={size} rolling={rolling} delay={0} />
       <Die value={b} size={size} rolling={rolling} delay={90} />
       {a === b && !rolling && (
-        <span className="rounded bg-amber-400/20 px-1.5 py-0.5 text-[0.65rem]
-                         font-semibold text-amber-200">
+        <span className="toy-chip border-toy-sun bg-toy-sun/35 px-2 py-0.5
+                         text-[0.66rem] font-bold text-amber-900">
           כפולים
         </span>
       )}

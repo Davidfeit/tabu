@@ -42,11 +42,11 @@ export function WaitingRoom({ room, onStart }: {
 
   return (
     <div dir="rtl" className="mx-auto max-w-md space-y-5 py-12 text-center">
-      <h1 className="font-logo text-4xl text-parchment">חדר המתנה</h1>
+      <h1 className="toy-title font-logo text-5xl">חדר המתנה</h1>
 
-      <div className="rounded-lg bg-black/30 p-4 ring-1 ring-white/10">
-        <div className="text-[0.75rem] text-parchment/50">קוד החדר</div>
-        <div className="mt-1 font-mono text-4xl tracking-[0.35em] text-amber-300"
+      <div className="toy-card p-4">
+        <div className="text-[0.78rem] font-semibold text-ink/60">קוד החדר</div>
+        <div className="mt-1 font-mono text-4xl font-bold tracking-[0.35em] text-toy-grape"
              style={{ direction: "ltr" }}>
           {room.code}
         </div>
@@ -64,21 +64,20 @@ export function WaitingRoom({ room, onStart }: {
       <ul className="space-y-1.5">
         {seats.map((s) => (
           <li key={s.user_id}
-              className="flex items-center gap-2.5 rounded-md bg-black/25 px-3 py-2
-                         ring-1 ring-white/10">
+              className="toy-card toy-card--flat flex items-center gap-2.5 px-3 py-2">
             <Token token={s.token} seat={s.seat} size={22} />
             <span className="min-w-0 flex-1 truncate text-right text-sm font-medium"
                   style={{ color: seatColor(s.seat), unicodeBidi: "plaintext" }}>
               {s.display_name}
             </span>
             {s.user_id === room.userId && (
-              <span className="text-[0.68rem] text-parchment/40">את/ה</span>
+              <span className="toy-chip px-2 py-0.5 text-[0.66rem]">את/ה</span>
             )}
           </li>
         ))}
         {seats.length < 2 && (
-          <li className="rounded-md border border-dashed border-white/10 px-3 py-2
-                         text-[0.78rem] text-parchment/35">
+          <li className="rounded-2xl border-[3px] border-dashed border-white/70 px-3 py-2.5
+                         text-[0.8rem] text-ink/45">
             ממתינים לשחקן נוסף…
           </li>
         )}
@@ -97,10 +96,10 @@ export function WaitingRoom({ room, onStart }: {
           התחלת המשחק
         </Button>
       ) : (
-        <p className="text-[0.8rem] text-parchment/45">ממתינים שהמארח יתחיל…</p>
+        <p className="text-[0.85rem] text-ink/60">ממתינים שהמארח יתחיל…</p>
       )}
 
-      {error && <p role="alert" className="text-[0.8rem] text-red-300">{error}</p>}
+      {error && <p role="alert" className="text-[0.85rem] font-semibold text-red-600">{error}</p>}
     </div>
   );
 }

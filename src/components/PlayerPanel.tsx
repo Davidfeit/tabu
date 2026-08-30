@@ -9,7 +9,7 @@ import { seatColor, Token } from "./Token";
 function Holdings({ state, seat }: { state: GameState; seat: number }) {
   const owned = DEED_POSITIONS.filter((p) => state.deeds[p]!.owner === seat);
   if (owned.length === 0) {
-    return <div className="text-[0.68rem] text-parchment/35">אין נכסים</div>;
+    return <div className="text-[0.68rem] text-ink/40">אין נכסים</div>;
   }
   return (
     <div className="flex flex-wrap gap-1">
@@ -20,10 +20,8 @@ function Holdings({ state, seat }: { state: GameState; seat: number }) {
         return (
           <span key={pos}
                 title={`${sq.name} — ${shekelShort("price" in sq ? sq.price : 0)}`}
-                className={`rounded px-1 py-0.5 text-[0.62rem] leading-tight ring-1
-                            ${d.mortgaged
-                              ? "bg-neutral-700/50 text-parchment/40 line-through ring-white/5"
-                              : "bg-black/25 text-parchment/85 ring-white/10"}`}>
+                className={`toy-chip px-1.5 py-0.5 text-[0.62rem] leading-tight
+                            ${d.mortgaged ? "toy-chip--muted line-through" : ""}`}>
             {sq.name}{mark && <span className="mr-0.5 text-[0.55rem]">{mark}</span>}
           </span>
         );
@@ -58,7 +56,7 @@ function useCashFlash(seat: number, cash: number): "up" | "down" | null {
 function CashLine({ seat, cash }: { seat: number; cash: number }) {
   const flash = useCashFlash(seat, cash);
   return (
-    <span className={`tabular-nums font-display text-base font-bold text-parchment
+    <span className={`tabular-nums font-display text-base font-bold text-ink
                       ${flash === "up" ? "tabu-cash-up" : flash === "down" ? "tabu-cash-down" : ""}`}>
       <bdi>{shekel(cash)}</bdi>
     </span>
@@ -84,10 +82,8 @@ export function PlayerPanel({ state, showWorth, seats }: {
         return (
           <article key={p.seat}
                    data-money={`seat-${p.seat}`}
-                   className={`rounded-lg p-2.5 ring-1 transition-colors
-                     ${p.bankrupt ? "bg-black/30 opacity-45 ring-white/5"
-                       : active ? "bg-black/40 ring-2 ring-amber-400/70"
-                       : "bg-black/25 ring-white/10"}`}>
+                   className={`toy-card p-2.5
+                     ${p.bankrupt ? "opacity-45 grayscale" : active ? "toy-card--turn" : ""}`}>
             <header className="flex items-center gap-2">
               <Token token={p.token} seat={p.seat} size={22} dimmed={p.bankrupt} />
               <span className="min-w-0 flex-1 truncate font-display text-sm font-bold"
@@ -95,26 +91,26 @@ export function PlayerPanel({ state, showWorth, seats }: {
                 {p.name}
               </span>
               {p.inJail && (
-                <span className="rounded bg-red-500/20 px-1.5 py-0.5 text-[0.6rem]
-                                 font-medium text-red-200">
+                <span className="toy-chip border-red-200 bg-red-100 px-1.5 py-0.5
+                                 text-[0.6rem] font-medium text-red-700">
                   מעצר בית {p.jailTurns > 0 && `(${p.jailTurns}/3)`}
                 </span>
               )}
               {p.getOutCards > 0 && (
-                <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[0.6rem]
-                                 text-emerald-200" title="כרטיס יציאה ממעצר בית">
+                <span className="toy-chip border-emerald-200 bg-emerald-100 px-1.5 py-0.5
+                                 text-[0.6rem] text-emerald-700" title="כרטיס יציאה ממעצר בית">
                   🔑{p.getOutCards > 1 && p.getOutCards}
                 </span>
               )}
               {p.bankrupt && (
-                <span className="text-[0.62rem] text-parchment/50">פשט רגל</span>
+                <span className="text-[0.62rem] text-ink/50">פשט רגל</span>
               )}
             </header>
 
             <div className="mt-1.5 flex items-baseline justify-between gap-2">
               <CashLine seat={p.seat} cash={p.cash} />
               {showWorth && (
-                <span className="tabular-nums text-[0.68rem] text-parchment/50">
+                <span className="tabular-nums text-[0.68rem] text-ink/55">
                   שווי נקי <bdi>{shekelShort(netWorth(state, p.seat))}</bdi>
                 </span>
               )}

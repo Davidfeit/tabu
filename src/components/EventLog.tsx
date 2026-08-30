@@ -8,17 +8,17 @@ export function EventLog({ events, state }: { events: GameEvent[]; state: GameSt
 
   return (
     <section dir="rtl" aria-label="יומן המשחק" aria-live="polite"
-             className="flex max-h-64 flex-col gap-1 overflow-y-auto rounded-lg bg-black/25
-                        p-2.5 text-[0.72rem] leading-relaxed ring-1 ring-white/10">
+             className="toy-card toy-card--flat flex max-h-64 flex-col gap-1
+                        overflow-y-auto p-2.5 text-[0.72rem] leading-relaxed">
       {shown.length === 0 && (
-        <div className="text-parchment/35">המשחק מתחיל…</div>
+        <div className="text-ink/40">המשחק מתחיל…</div>
       )}
       {shown.map((e) => (
         <div key={e.seq} className="tabu-log-in flex gap-1.5">
           <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full"
                 style={{ backgroundColor: e.seat === null ? "#666" : seatColor(e.seat) }}
                 aria-hidden="true" />
-          <span className="text-parchment/75">{eventText(e, nameOf)}</span>
+          <span className="text-ink/80">{eventText(e, nameOf)}</span>
         </div>
       ))}
     </section>

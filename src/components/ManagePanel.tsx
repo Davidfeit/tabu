@@ -25,13 +25,13 @@ export function ManagePanel({ seat }: { seat: number }) {
     reduce(state, action, { seat, now: Date.now(), seed: "dry-run" }).ok;
 
   return (
-    <section dir="rtl" className="space-y-2 rounded-lg bg-black/25 p-3 ring-1 ring-white/10"
+    <section dir="rtl" className="toy-card space-y-2 p-3"
              aria-label={`ניהול נכסים של ${player.name}`}>
       <header className="flex items-baseline justify-between">
         <h3 className="font-display text-sm font-bold" style={{ color: seatColor(seat) }}>
           הנכסים של {player.name}
         </h3>
-        <span className="text-[0.66rem] text-parchment/40">
+        <span className="text-[0.66rem] text-ink/50">
           בבנק <bdi>{state.bank.houses}</bdi> בתים · <bdi>{state.bank.hotels}</bdi> מלונות
         </span>
       </header>
@@ -48,12 +48,12 @@ export function ManagePanel({ seat }: { seat: number }) {
 
           return (
             <div key={pos}
-                 className="flex items-center gap-1.5 rounded bg-black/25 px-2 py-1">
+                 className="flex items-center gap-1.5 rounded-xl bg-toy-grape/10 px-2 py-1">
               <span className={`min-w-0 flex-1 truncate text-[0.74rem]
-                                ${d.mortgaged ? "text-parchment/35 line-through" : "text-parchment/85"}`}>
+                                ${d.mortgaged ? "text-ink/40 line-through" : "text-ink/90"}`}>
                 {sq.name}
                 {units > 0 && (
-                  <span className="mr-1 text-[0.62rem] text-parchment/50">
+                  <span className="mr-1 text-[0.62rem] text-ink/55">
                     {d.hotel ? "מלון" : `${d.houses} בתים`}
                   </span>
                 )}

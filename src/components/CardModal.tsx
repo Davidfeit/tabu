@@ -23,14 +23,14 @@ export function CardModal() {
 
   return (
     <div dir="rtl" role="dialog" aria-modal="true" aria-label={style.label}
-         className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 p-6">
-      <div className="tabu-pop w-full max-w-sm overflow-hidden rounded-xl bg-parchment shadow-2xl">
-        <div className="px-4 py-2.5 text-center font-logo text-lg text-white"
+         className="toy-overlay absolute inset-0 z-40 flex items-center justify-center p-6">
+      <div className="tabu-pop toy-modal w-full max-w-sm overflow-hidden">
+        <div className="px-4 py-3 text-center font-logo text-xl text-white"
              style={{ backgroundColor: style.bg }}>
           {style.label}
         </div>
         <p className="px-5 py-6 text-center font-display text-base leading-relaxed
-                      text-neutral-900">
+                      text-ink">
           {def?.text}
         </p>
         <div className="px-5 pb-5 text-center">

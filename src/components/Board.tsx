@@ -17,8 +17,11 @@ export function Board({ state, center }: {
   return (
     // הריבועיות נקבעת בהורה (aspectRatio), והלוח פשוט ממלא אותו. הגדרת
     // aspect-square גם כאן מול הורה שכבר ריבועי יצרה תלות מעגלית.
-    <div className="board relative h-full w-full select-none rounded-lg
-                    bg-felt p-[6px] shadow-2xl ring-1 ring-black/40"
+    // הלוח עצמו לא משתנה — רק יושב על הנוף כמו לוח על שולחן: פינות
+    // מעוגלות מעט יותר, מסגרת בהירה וצל רך מתחת.
+    <div className="board relative h-full w-full select-none rounded-2xl
+                    bg-felt p-[6px] ring-4 ring-white/85
+                    shadow-[0_18px_40px_-18px_rgba(30,20,70,0.75)]"
          style={{ direction: "ltr", unicodeBidi: "isolate" } as React.CSSProperties}>
       <div className="grid h-full w-full gap-[3px]"
            role="grid"

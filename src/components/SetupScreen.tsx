@@ -25,14 +25,14 @@ export function SetupScreen({ onStart }: {
   const ready = filled.length >= BOARD.meta.minPlayers;
 
   return (
-    <div dir="rtl" className="mx-auto max-w-lg space-y-6 py-10">
+    <div dir="rtl" className="mx-auto max-w-lg space-y-6 px-4 py-10">
       <header className="text-center">
-        <h1 className="font-logo text-5xl text-parchment">טאבו</h1>
-        <p className="mt-1 text-sm text-parchment/50">משחק הנדל״ן הישראלי</p>
+        <h1 className="toy-title font-logo text-6xl">טאבו</h1>
+        <p className="mt-2 font-display text-base text-ink/70">משחק הנדל״ן הישראלי</p>
       </header>
 
-      <section className="space-y-2 rounded-lg bg-black/25 p-4 ring-1 ring-white/10">
-        <h2 className="font-display text-sm font-bold text-parchment">שחקנים</h2>
+      <section className="toy-card space-y-2 p-4">
+        <h2 className="font-display text-base font-bold text-ink">שחקנים</h2>
         {names.map((n, i) => (
           <div key={i} className="flex items-center gap-2">
             <Token token={TOKENS[i]!.key} seat={i} size={22} dimmed={!n.trim()} />
@@ -42,30 +42,29 @@ export function SetupScreen({ onStart }: {
               placeholder={i < 2 ? "שם השחקן" : "ריק = לא משחק"}
               maxLength={14}
               aria-label={`שם שחקן ${i + 1}`}
-              className="min-w-0 flex-1 rounded-md bg-black/40 px-3 py-1.5 text-sm
-                         text-parchment ring-1 ring-white/10 placeholder:text-parchment/25
-                         focus:outline-none focus:ring-2 focus:ring-amber-400/60"
+              className="toy-input min-w-0 flex-1 px-3 py-1.5 text-sm"
               style={{ borderInlineStartColor: seatColor(i) }}
             />
-            <span className="w-16 shrink-0 text-[0.66rem] text-parchment/35">
+            <span className="w-16 shrink-0 text-[0.66rem] text-ink/45">
               {TOKENS[i]!.name}
             </span>
           </div>
         ))}
       </section>
 
-      <section className="space-y-2 rounded-lg bg-black/25 p-4 ring-1 ring-white/10">
-        <h2 className="font-display text-sm font-bold text-parchment">מצב משחק</h2>
+      <section className="toy-card space-y-2 p-4">
+        <h2 className="font-display text-base font-bold text-ink">מצב משחק</h2>
         {MODES.map((m) => (
           <label key={m.key}
-                 className={`flex cursor-pointer items-start gap-2.5 rounded-md p-2 ring-1
-                             ${mode === m.key ? "bg-amber-400/10 ring-amber-400/50"
-                                              : "bg-black/20 ring-white/5"}`}>
+                 className={`flex cursor-pointer items-start gap-2.5 rounded-2xl p-2.5
+                             ${mode === m.key
+                               ? "bg-toy-sun/25 ring-[3px] ring-toy-sun"
+                               : "bg-toy-grape/10 ring-2 ring-toy-edge"}`}>
             <input type="radio" name="mode" checked={mode === m.key} className="mt-1"
                    onChange={() => setMode(m.key)} />
             <span className="min-w-0">
-              <span className="block text-sm font-semibold text-parchment">{m.label}</span>
-              <span className="block text-[0.68rem] text-parchment/45">{m.hint}</span>
+              <span className="block text-sm font-bold text-ink">{m.label}</span>
+              <span className="block text-[0.68rem] text-ink/55">{m.hint}</span>
             </span>
           </label>
         ))}
@@ -84,7 +83,7 @@ export function SetupScreen({ onStart }: {
           התחל משחק
         </Button>
         {!ready && (
-          <p className="mt-2 text-[0.7rem] text-parchment/40">
+          <p className="mt-2 text-[0.72rem] text-ink/50">
             צריך לפחות <bdi>{BOARD.meta.minPlayers}</bdi> שחקנים
           </p>
         )}

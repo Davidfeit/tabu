@@ -16,9 +16,8 @@ export function BankCard() {
 
   return (
     <div data-money="bank"
-         className="tabu-bank flex items-center gap-3 rounded-lg px-4 py-2
-                    ring-1 ring-amber-200/25">
-      <svg viewBox="0 0 32 32" className="h-8 w-8 shrink-0 text-amber-200/85"
+         className="tabu-bank flex items-center gap-3 px-4 py-2.5">
+      <svg viewBox="0 0 32 32" className="h-8 w-8 shrink-0 text-amber-900/70"
            fill="none" stroke="currentColor" strokeWidth="1.7"
            strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         {/* גג משולש על עמודים — מבנה בנק */}
@@ -28,16 +27,16 @@ export function BankCard() {
       </svg>
 
       <div className="text-right leading-tight">
-        <div className="font-display text-sm font-bold text-amber-100">הבנק</div>
-        <div className="tabular-nums text-[0.63rem] text-amber-100/45">
+        <div className="font-display text-sm font-bold text-amber-950">הבנק</div>
+        <div className="tabular-nums text-[0.63rem] text-amber-900/60">
           <bdi>{state.bank.houses}</bdi> בתים · <bdi>{state.bank.hotels}</bdi> מלונות
           {free > 0 && <> · <bdi>{free}</bdi> נכסים פנויים</>}
         </div>
       </div>
 
-      <div className="mr-1 border-r border-amber-200/15 pr-3 text-right">
-        <div className="text-[0.58rem] text-amber-100/40">בקופה</div>
-        <div className="tabular-nums font-display text-sm font-bold text-amber-100/80">
+      <div className="mr-1 border-r border-amber-800/20 pr-3 text-right">
+        <div className="text-[0.58rem] text-amber-900/55">בקופה</div>
+        <div className="tabular-nums font-display text-sm font-bold text-amber-950">
           <bdi>{state.settings.eilatJackpot ? shekelShort(state.pot) : "∞"}</bdi>
         </div>
       </div>

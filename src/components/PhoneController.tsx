@@ -28,40 +28,38 @@ export function PhoneController({ onLeave }: { onLeave: () => void }) {
 
   return (
     <div dir="rtl" className="mx-auto flex min-h-[100dvh] max-w-md flex-col gap-3 p-3">
-      <header className="flex items-center gap-2.5 rounded-lg bg-black/30 p-3
-                         ring-1 ring-white/10">
+      <header className="toy-card flex items-center gap-2.5 p-3">
         <Token token={me.token} seat={seat} size={34} dimmed={me.bankrupt} />
         <div className="min-w-0 flex-1">
           <div className="truncate font-display text-base font-bold"
                style={{ color: seatColor(seat) }}>{me.name}</div>
-          <div className="tabular-nums font-display text-xl font-bold text-parchment">
+          <div className="tabular-nums font-display text-xl font-bold text-ink">
             <bdi>{shekel(me.cash)}</bdi>
           </div>
         </div>
-        <div className="text-left text-[0.7rem] leading-tight text-parchment/45">
+        <div className="text-left text-[0.7rem] leading-tight text-ink/55">
           שווי נקי
-          <div className="tabular-nums text-parchment/70">
+          <div className="tabular-nums text-ink/80">
             <bdi>{shekel(netWorth(state, seat))}</bdi>
           </div>
         </div>
       </header>
 
       {/* התור והפעולות — הלב של המסך הזה, ולכן למעלה ובגדול. */}
-      <section className={`flex flex-col items-center gap-3 rounded-lg p-4 ring-1
-                           ${myTurn ? "bg-amber-400/10 ring-amber-400/50"
-                                    : "bg-black/25 ring-white/10"}`}>
+      <section className={`toy-card flex flex-col items-center gap-3 p-4
+                           ${myTurn ? "toy-card--turn" : ""}`}>
         <TurnBar />
         <Dice dice={state.dice} size={46} />
         <div className="w-full [&_button]:!px-4 [&_button]:!py-3 [&_button]:!text-base">
           <Actions />
         </div>
         {!myTurn && state.phase !== "finished" && !state.debt && (
-          <p className="text-[0.75rem] text-parchment/40">ממתינים לתורכם</p>
+          <p className="text-[0.78rem] text-ink/50">ממתינים לתורכם</p>
         )}
       </section>
 
       {mine.length === 0 && (
-        <p className="rounded-lg bg-black/20 p-3 text-center text-[0.8rem] text-parchment/35">
+        <p className="toy-card toy-card--flat p-3 text-center text-[0.82rem] text-ink/45">
           עדיין אין נכסים
         </p>
       )}
@@ -72,15 +70,15 @@ export function PhoneController({ onLeave }: { onLeave: () => void }) {
       {/* מי שנכנס מהטלפון כדי *לשחק* מרחוק, ולא כדי לשבת מול המסך
           המשותף, מקבל כאן מסך בלי וידאו ולא מבין למה. שורה אחת חוסכת
           את זה, ומצביעה על הדרך החוצה. */}
-      <p className="rounded-lg bg-black/20 p-2.5 text-center text-[0.7rem]
-                    leading-relaxed text-parchment/35">
+      <p className="toy-card toy-card--flat p-2.5 text-center text-[0.72rem]
+                    leading-relaxed text-ink/50">
         מצב שלט — הלוח והווידאו על המסך המשותף.
         <br />
         לשחק מהטלפון עם לוח ווידאו: הוסיפו <code>?controller=0</code> לכתובת.
       </p>
 
       <button onClick={onLeave}
-              className="mt-auto py-3 text-[0.8rem] text-parchment/35 underline-offset-4">
+              className="mt-auto py-3 text-[0.82rem] text-ink/50 underline-offset-4">
         יציאה מהמשחק
       </button>
     </div>

@@ -1,9 +1,17 @@
 type Variant = "primary" | "ghost" | "danger";
 
+/**
+ * כפתור צעצוע.
+ *
+ * העומק אינו קישוט: שפה תחתונה מלאה שהכפתור יורד אליה בלחיצה נותנת
+ * משוב מגע ברור בלי אנימציה ובלי צבע נוסף — וזה בדיוק מה שילד מחפש
+ * כשהוא לא בטוח אם הלחיצה נקלטה. הצורה חיה ב-CSS (.toy-btn), כדי שגם
+ * כפתורים שאינם דרך הרכיב הזה ייראו אותו דבר.
+ */
 const STYLES: Record<Variant, string> = {
-  primary: "bg-amber-400 text-neutral-900 hover:bg-amber-300 shadow",
-  ghost: "bg-white/10 text-parchment hover:bg-white/20 ring-1 ring-white/15",
-  danger: "bg-red-500/85 text-white hover:bg-red-500",
+  primary: "toy-btn--primary",
+  ghost: "",
+  danger: "toy-btn--danger",
 };
 
 export function Button({
@@ -12,9 +20,7 @@ export function Button({
   return (
     <button
       {...rest}
-      className={`rounded-md px-3 py-1.5 font-display text-[0.8rem] font-semibold
-                  transition-colors disabled:cursor-not-allowed disabled:opacity-35
-                  ${STYLES[variant]} ${className}`}
+      className={`toy-btn text-[0.82rem] ${STYLES[variant]} ${className}`}
     />
   );
 }

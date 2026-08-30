@@ -76,9 +76,7 @@ export function VideoTiles({
 
       {onToggleVideo && (
         <button onClick={onToggleVideo}
-                className="absolute right-1 top-1 z-10 rounded-md bg-neutral-950/75 px-2 py-1
-                           text-[0.66rem] text-parchment/70 ring-1 ring-white/15
-                           hover:text-parchment">
+                className="toy-btn absolute right-1 top-1 z-10 !px-2.5 !py-1 !text-[0.66rem]">
           {videoOn ? "כיבוי מצלמה" : "הפעלת מצלמה"}
         </button>
       )}
@@ -128,10 +126,11 @@ export function SeatTile({ name, seat, token, stream, mirrored, active, dimmed, 
   active: boolean; dimmed?: boolean; hint?: string;
 }) {
   return (
-    <div className={`relative min-h-0 min-w-0 overflow-hidden rounded-lg border bg-black/45
+    <div className={`relative min-h-0 min-w-0 overflow-hidden rounded-2xl border-[3px]
+                     bg-black/45 shadow-[0_6px_14px_-6px_rgba(0,0,0,0.6)]
                      ${dimmed ? "opacity-40" : ""}
-                     ${active ? "border-amber-400/80 ring-2 ring-amber-400/35"
-                              : "border-white/10"}`}>
+                     ${active ? "border-toy-sun ring-4 ring-toy-sun/40"
+                              : "border-white/85"}`}>
       {stream ? <VideoFrame stream={stream} mirrored={mirrored} /> : (
         <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-2">
           <Token token={token} seat={seat} size="22%" dimmed={dimmed} />
@@ -145,8 +144,8 @@ export function SeatTile({ name, seat, token, stream, mirrored, active, dimmed, 
           )}
         </div>
       )}
-      <span className="absolute inset-x-0 bottom-0 truncate bg-black/60 px-1.5 py-0.5
-                       text-center text-[0.68rem] font-medium"
+      <span className="absolute inset-x-0 bottom-0 truncate bg-black/65 px-1.5 py-1
+                       text-center font-display text-[0.7rem] font-bold"
             style={{ color: seatColor(seat), unicodeBidi: "plaintext" }}>
         {name}
       </span>
@@ -156,8 +155,8 @@ export function SeatTile({ name, seat, token, stream, mirrored, active, dimmed, 
 
 export function EmptySeat() {
   return (
-    <div className="flex min-h-0 min-w-0 items-center justify-center rounded-lg border
-                    border-dashed border-white/10 text-[0.66rem] text-parchment/25">
+    <div className="flex min-h-0 min-w-0 items-center justify-center rounded-2xl border-[3px]
+                    border-dashed border-white/40 text-[0.68rem] text-white/45">
       מושב פנוי
     </div>
   );

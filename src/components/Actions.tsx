@@ -26,11 +26,11 @@ export function TurnBar() {
   return (
     <div className="flex items-baseline gap-2">
       <span className="font-display text-sm font-bold"
-            style={{ color: state.debt ? "#fca5a5" : seatColor(state.currentSeat) }}>
+            style={{ color: state.debt ? "#dc2626" : seatColor(state.currentSeat) }}>
         {label}
       </span>
       {seconds !== null && state.phase !== "finished" && (
-        <span className={`tabular-nums text-[0.7rem] ${urgent ? "text-red-300" : "text-parchment/40"}`}>
+        <span className={`tabular-nums text-[0.7rem] ${urgent ? "text-red-500" : "text-ink/45"}`}>
           <bdi>{seconds}</bdi>ש׳
         </span>
       )}
@@ -101,11 +101,11 @@ function DebtActions() {
 
   return (
     <div className="flex flex-col items-center gap-1.5">
-      <span className="text-[0.72rem] text-red-200">
+      <span className="text-[0.72rem] font-semibold text-red-600">
         חייב <bdi>{shekel(debt.amount)}</bdi>
         {debt.creditorSeat !== null && ` ל${state.players[debt.creditorSeat]!.name}`}
       </span>
-      <span className="max-w-[16rem] text-[0.66rem] leading-snug text-parchment/45">
+      <span className="max-w-[16rem] text-[0.66rem] leading-snug text-ink/55">
         {canPay
           ? <>מכרו או משכנו נכסים — יש <bdi>{shekel(liquidValue(state, debt.debtorSeat))}</bdi> לממש</>
           : "אין די נכסים לכסות את החוב"}

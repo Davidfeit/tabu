@@ -9,9 +9,26 @@
     font-size: 17px;
   }
 
+  /* ── עולם הצעצוע ──
+     הלוח עצמו נשאר בדיוק כפי שהוא — לבד ירוק וקלפי קלף. כל מה שסביבו
+     עובר לשפה אחרת: שמיים, פלסטיק מבריק, וקצוות עבים. שני העולמות
+     נפגשים היטב דווקא כי הלוח נראה כמו לוח אמיתי שמונח על שולחן. */
+  :root {
+    --ink: #2f2450;
+    --toy-edge: #d9cbf5;       /* קצה סגלגל, ה"עובי" של הפלסטיק */
+    --toy-edge-dark: #b9a4e6;
+  }
+
   body {
-    @apply bg-neutral-900 font-sans text-neutral-100 antialiased;
+    @apply font-sans antialiased;
+    color: var(--ink);
     line-height: 1.65; /* עברית צריכה יותר אוויר מ-1.5 הלטיני */
+    background:
+      /* שמש חמה בפינה */
+      radial-gradient(38rem 26rem at 82% -12%, rgb(255 240 170 / 0.95), rgb(255 240 170 / 0) 62%),
+      /* שמיים */
+      linear-gradient(180deg, #6cc9ff 0%, #9fe0ff 38%, #cdf1ff 68%, #eafbff 100%);
+    background-attachment: fixed;
   }
 
   /* לעברית אין איטליק אמיתי — הדפדפן יסנתז עיוות משופע. מדגישים במשקל או בצבע. */
@@ -53,7 +70,10 @@
   /* ── הקוביות ──
      מתגלגלות בזמן שהשרת כבר החזיר את התוצאה. זו הנפשה, לא הגרלה: הערך
      נקבע במנוע ומוצג בסוף. */
-  .tabu-die { transition: transform 140ms ease-out; }
+  .tabu-die {
+    transition: transform 140ms ease-out;
+    filter: drop-shadow(0 3px 0 rgb(185 164 230 / 0.9)) drop-shadow(0 6px 6px rgb(60 35 110 / 0.25));
+  }
   .tabu-die[data-rolling="true"] { animation: tabu-tumble 480ms linear; }
   @keyframes tabu-tumble {
     0%   { transform: rotate(0deg)    scale(1);    }
@@ -81,10 +101,13 @@
      גימור מתכתי חם שמבדיל אותו מכרטיסי השחקנים, כדי שיהיה ברור שזה
      צד אחר בעסקה ולא עוד משתתף. */
   .tabu-bank {
-    background:
-      linear-gradient(155deg, rgb(120 90 30 / 0.55), rgb(60 45 15 / 0.75)),
-      radial-gradient(120% 140% at 20% 0%, rgb(255 220 140 / 0.14), transparent 60%);
-    box-shadow: inset 0 1px 0 rgb(255 230 160 / 0.18), 0 6px 14px rgb(0 0 0 / 0.4);
+    border-radius: 1.15rem;
+    border: 2px solid #fff5d0;
+    background: linear-gradient(180deg, #ffe9a8 0%, #f7cf6a 100%);
+    box-shadow:
+      inset 0 2px 0 rgb(255 255 255 / 0.75),
+      0 5px 0 #d3a63a,
+      0 14px 24px -12px rgb(120 80 0 / 0.55);
   }
 
   /* ── שטר מעופף בין חשבונות ──
@@ -158,5 +181,162 @@
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+
+/* ══ עולם הצעצוע: רקע, כרטיסים, כפתורים ══════════════════════════════════
+   הכול ב-CSS ובלי תמונות: הרקע חייב להימתח לכל מסך ולהיטען מיד, ותמונה
+   הייתה מוסיפה בקשה, משקל, ושוליים שלא מתאימים בין יחסי מסך. */
+@layer components {
+
+  /* ── הנוף ──
+     גבעות ועננים מאחורי הכול. pointer-events: none כדי שלא ייגעו בשום
+     לחיצה, ו-fixed כדי שלא יזוזו עם גלילה של פאנל צדדי. */
+  .toy-scene::before,
+  .toy-scene::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+  /* ענני צמר גפן */
+  .toy-scene::before {
+    background-image:
+      radial-gradient(4.2rem 2.6rem at 12% 16%, #fff 60%, rgb(255 255 255 / 0) 62%),
+      radial-gradient(3rem 2rem at 17% 19%, #fff 60%, rgb(255 255 255 / 0) 62%),
+      radial-gradient(3.4rem 2.2rem at 8%  20%, #fff 60%, rgb(255 255 255 / 0) 62%),
+      radial-gradient(5rem 3rem   at 74% 12%, #fff 60%, rgb(255 255 255 / 0) 62%),
+      radial-gradient(3.6rem 2.4rem at 80% 15%, #fff 60%, rgb(255 255 255 / 0) 62%),
+      radial-gradient(3.2rem 2rem at 45% 8%,  #fff 60%, rgb(255 255 255 / 0) 62%);
+    opacity: 0.9;
+    filter: drop-shadow(0 10px 12px rgb(80 140 200 / 0.18));
+  }
+  /* גבעות — שתי שכבות, כדי שיהיה עומק ולא פס */
+  .toy-scene::after {
+    background-image:
+      radial-gradient(60% 16rem at 22% 108%, #7fd48d 0 99%, transparent 100%),
+      radial-gradient(70% 14rem at 78% 110%, #63c176 0 99%, transparent 100%),
+      radial-gradient(120% 9rem at 50% 118%, #4fae65 0 99%, transparent 100%);
+  }
+  /* התוכן עצמו מעל הנוף */
+  .toy-scene > * { position: relative; z-index: 1; }
+
+  /* ── כרטיס ──
+     ה"עובי" הוא הצל הכפול: קו מלא מתחת (הצד של הפלסטיק) ומטושטש רחוק
+     יותר (הצל על הרצפה). בלי הראשון זה נראה שטוח, בלי השני זה נראה מודבק. */
+  .toy-card {
+    background: linear-gradient(180deg, #ffffff 0%, #f8f3ff 100%);
+    border: 2px solid #ffffff;
+    border-radius: 1.15rem;
+    color: var(--ink);
+    box-shadow:
+      inset 0 2px 0 rgb(255 255 255 / 0.9),
+      0 5px 0 var(--toy-edge),
+      0 14px 24px -12px rgb(60 35 110 / 0.55);
+  }
+  /* התור הנוכחי — טבעת שמש, ונשימה עדינה כדי שהעין תמצא אותה */
+  .toy-card--turn {
+    box-shadow:
+      inset 0 2px 0 rgb(255 255 255 / 0.9),
+      0 5px 0 #e0a92a,
+      0 0 0 4px rgb(255 194 60 / 0.85),
+      0 16px 26px -12px rgb(120 80 0 / 0.5);
+    animation: toy-breathe 2.6s ease-in-out infinite;
+  }
+  @keyframes toy-breathe {
+    50% { transform: translateY(-2px); }
+  }
+  .toy-card--flat { box-shadow: inset 0 2px 0 rgb(255 255 255 / 0.9), 0 3px 0 var(--toy-edge); }
+
+  /* ── כפתור ──
+     גוף עגול לגמרי עם שפה תחתונה מלאה, ולחיצה שמורידה אותו אליה. זו כל
+     התחושה התלת-מימדית, והיא שווה יותר מכל צל מטושטש. */
+  .toy-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 0.35rem;
+    border-radius: 999px;
+    padding: 0.5rem 1.15rem;
+    font-family: theme("fontFamily.display");
+    font-weight: 700;
+    line-height: 1.2;
+    color: var(--ink);
+    background: linear-gradient(180deg, #ffffff, #efe7ff);
+    box-shadow: inset 0 1px 0 #fff, 0 4px 0 var(--toy-edge-dark),
+                0 9px 14px -8px rgb(60 35 110 / 0.6);
+    transition: transform 90ms ease, box-shadow 90ms ease, filter 150ms ease;
+  }
+  .toy-btn:hover:not(:disabled) { filter: brightness(1.04); }
+  .toy-btn:active:not(:disabled) {
+    transform: translateY(4px);
+    box-shadow: inset 0 1px 0 #fff, 0 0 0 var(--toy-edge-dark),
+                0 4px 8px -6px rgb(60 35 110 / 0.6);
+  }
+  .toy-btn:disabled { filter: grayscale(0.55); opacity: 0.5; cursor: not-allowed; }
+  .toy-btn--primary {
+    color: #4a2c00;
+    background: linear-gradient(180deg, #ffe08a, #ffb62e);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.8), 0 4px 0 #cf8a10,
+                0 10px 16px -8px rgb(150 90 0 / 0.65);
+  }
+  .toy-btn--primary:active:not(:disabled) {
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.8), 0 0 0 #cf8a10,
+                0 4px 8px -6px rgb(150 90 0 / 0.6);
+  }
+  .toy-btn--danger {
+    color: #fff;
+    background: linear-gradient(180deg, #ff8f8f, #ef4b4b);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), 0 4px 0 #b32626,
+                0 10px 16px -8px rgb(140 20 20 / 0.6);
+  }
+  .toy-btn--danger:active:not(:disabled) {
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.55), 0 0 0 #b32626,
+                0 4px 8px -6px rgb(140 20 20 / 0.6);
+  }
+
+  /* ── שדה קלט ── */
+  .toy-input {
+    border-radius: 0.9rem;
+    background: #fff;
+    border: 2px solid #e8def9;
+    color: var(--ink);
+    box-shadow: inset 0 2px 4px rgb(70 45 120 / 0.12);
+  }
+  .toy-input::placeholder { color: rgb(106 95 140 / 0.55); }
+  .toy-input:focus {
+    outline: none;
+    border-color: #ffc23c;
+    box-shadow: inset 0 2px 4px rgb(70 45 120 / 0.12), 0 0 0 4px rgb(255 194 60 / 0.4);
+  }
+
+  /* ── תגית קטנה: נכס, מצב, אזהרה ── */
+  .toy-chip {
+    display: inline-flex; align-items: center; gap: 0.2rem;
+    border-radius: 999px;
+    background: #f4eeff;
+    border: 1.5px solid #e4d8ff;
+    color: #4c4070;
+    box-shadow: inset 0 1px 0 #fff;
+  }
+  .toy-chip--muted { background: #eeeaf4; border-color: #e0dae8; color: #8a83a0; }
+
+  /* ── חלון קופץ ── */
+  .toy-overlay { background: rgb(50 30 95 / 0.55); backdrop-filter: blur(3px); }
+  .toy-modal {
+    background: linear-gradient(180deg, #ffffff, #f6f0ff);
+    border: 3px solid #fff;
+    border-radius: 1.6rem;
+    color: var(--ink);
+    box-shadow: 0 8px 0 var(--toy-edge), 0 30px 50px -20px rgb(40 20 80 / 0.7);
+  }
+
+  /* ── כותרת ראשית ──
+     שכבות צל במקום מתאר: -webkit-text-stroke עושה לעברית קצוות מרוססים
+     בגדלים גדולים, והשכבות נותנות את אותו רושם מודפס בלי לפגוע באות. */
+  .toy-title {
+    color: #fff;
+    text-shadow:
+      0 2px 0 #8b5cf6, 0 4px 0 #7c3aed, 0 6px 0 #6d28d9,
+      0 12px 22px rgb(40 20 90 / 0.45);
   }
 }

@@ -1,9 +1,7 @@
 import { useFullscreen } from "@/ui/useFullscreen";
 
-const BTN = `flex h-8 w-8 items-center justify-center rounded-md bg-black/45
-             text-parchment/70 ring-1 ring-white/10 backdrop-blur
-             transition-colors hover:bg-black/70 hover:text-parchment
-             focus-visible:outline focus-visible:outline-2 focus-visible:outline-amber-400`;
+const BTN = `toy-btn !h-9 !w-9 !p-0
+             focus-visible:outline focus-visible:outline-2 focus-visible:outline-toy-sun`;
 
 /** בקרות תצוגה. צפות בפינה כדי לא לגזול מקום מהלוח. */
 export function ViewControls({ bare, onToggleBare }: {
@@ -15,7 +13,7 @@ export function ViewControls({ bare, onToggleBare }: {
     <div className="absolute bottom-2 left-2 z-40 flex items-center gap-1.5" dir="ltr">
       {/* מזהה הבנייה. קטן ודהוי, אבל עונה בוודאות על "האם הגרסה החדשה
           באוויר" — שאלה שאי אפשר היה לענות עליה בלי לנחש. */}
-      <span className="select-all font-mono text-[0.6rem] text-parchment/25"
+      <span className="select-all font-mono text-[0.6rem] text-ink/35"
             title="מזהה הבנייה שמוגשת כרגע">
         {__BUILD_ID__}
       </span>

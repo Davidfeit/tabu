@@ -37,8 +37,9 @@ function ErrorToast() {
   if (!error) return null;
   return (
     <div dir="rtl" role="status" aria-live="assertive"
-         className="fixed inset-x-0 top-4 z-50 mx-auto w-fit rounded-lg bg-red-500/90
-                    px-4 py-2 text-sm font-medium text-white shadow-lg">
+         className="tabu-pop fixed inset-x-0 top-4 z-50 mx-auto w-fit rounded-full
+                    border-[3px] border-white bg-[#ef4b4b] px-5 py-2 text-sm font-bold
+                    text-white shadow-[0_5px_0_#b32626,0_16px_26px_-12px_rgba(140,20,20,0.7)]">
       {error}
     </div>
   );
@@ -233,23 +234,27 @@ type Screen =
 
 function Home({ onLocal, onOnline }: { onLocal: () => void; onOnline: () => void }) {
   return (
-    <div dir="rtl" className="mx-auto max-w-sm space-y-6 px-4 py-20 text-center">
-      <h1 className="font-logo text-6xl text-parchment">טאבו</h1>
-      <p className="text-sm text-parchment/50">משחק הנדל״ן הישראלי</p>
-      <div className="flex flex-col gap-2">
-        <Button variant="primary" className="!py-2.5 !text-base" onClick={onOnline}
+    <div dir="rtl" className="mx-auto max-w-sm space-y-7 px-4 py-16 text-center">
+      <div>
+        <h1 className="toy-title font-logo text-7xl">טאבו</h1>
+        <p className="mt-2 font-display text-base text-ink/70">משחק הנדל״ן הישראלי</p>
+      </div>
+      <div className="flex flex-col items-stretch gap-3">
+        <Button variant="primary" className="!py-3 !text-lg" onClick={onOnline}
                 disabled={!ONLINE_ENABLED}>
-          משחק אונליין עם וידאו
+          🎥 משחק אונליין עם וידאו
         </Button>
-        <Button className="!py-2.5" onClick={onLocal}>משחק מקומי על מסך אחד</Button>
+        <Button className="!py-3 !text-base" onClick={onLocal}>
+          🎲 משחק מקומי על מסך אחד
+        </Button>
       </div>
       {!ONLINE_ENABLED && (
-        <div className="space-y-1 text-[0.7rem] leading-relaxed text-parchment/35">
+        <div className="toy-card space-y-1 p-3 text-[0.72rem] leading-relaxed text-ink/60">
           <p>משחק אונליין דורש הגדרת Supabase.</p>
-          <p className="font-mono text-parchment/55" dir="ltr">{CONFIG_PROBLEM}</p>
+          <p className="font-mono text-ink" dir="ltr">{CONFIG_PROBLEM}</p>
           <p>
             הערכים מוטמעים בזמן הבנייה — אחרי שינוי בלוח הבקרה צריך
-            פריסה מחדש. ראו <code className="text-parchment/50">docs/deploy.md</code>.
+            פריסה מחדש. ראו <code>docs/deploy.md</code>.
           </p>
         </div>
       )}
@@ -271,8 +276,9 @@ export default function App() {
       setScreen({ kind: "online", room, state: state as GameState, version }), []);
 
   return (
-    <div dir="rtl" className="min-h-screen bg-neutral-900 bg-gradient-to-br
-                              from-neutral-900 via-neutral-900 to-neutral-950">
+    // toy-scene מצייר את השמיים, העננים והגבעות מאחורי הכול. הלוח עצמו
+    // לא משתנה — הוא פשוט מונח על הנוף הזה, כמו לוח על שולחן בחצר.
+    <div dir="rtl" className="toy-scene min-h-screen">
       {screen.kind === "home" && (
         <Home onLocal={() => setScreen({ kind: "local", seats: [], settings: {}, key: 0 })}
               onOnline={() => setScreen({ kind: "lobby" })} />
