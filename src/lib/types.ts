@@ -90,11 +90,9 @@ export interface BoardMode {
   name?: string;
   auctions?: boolean;
   hotelThreshold?: number;
-  turnSeconds?: number;
   hardLimitMinutes?: number | null;
   startingCash?: number;
   passStartBonus?: number;
-  dealtProperties?: number;
   rentSurgeAfterMinutes?: number;
   rentSurgeMultiplier?: number;
 }

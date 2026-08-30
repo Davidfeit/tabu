@@ -27,11 +27,12 @@ describe("הקמה", () => {
     expect(new Set(a).size).toBe(4);
   });
 
-  it("מחלקת נכסים בפתיחה רק במצבים מקוצרים", () => {
-    const full = newGame(4);
-    expect(Object.values(full.deeds).filter((d) => d.owner !== null)).toHaveLength(0);
-    const quick = newGame(4, { mode: "quick" });
-    expect(Object.values(quick.deeds).filter((d) => d.owner !== null)).toHaveLength(8);
+  it("לא מחלקת נכסים בפתיחה, בשום מצב", () => {
+    // החלוקה נועדה לקצר את שלב האיסוף, ולקחה ממנו בדיוק את מה שמהנה בו.
+    for (const mode of ["full", "quick", "blitz"] as const) {
+      const s = newGame(4, { mode });
+      expect(Object.values(s.deeds).filter((d) => d.owner !== null)).toHaveLength(0);
+    }
   });
 });
 

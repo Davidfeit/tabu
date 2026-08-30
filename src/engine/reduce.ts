@@ -39,6 +39,12 @@ function timeExpired(s: GameState, now: number): boolean {
   return limit !== null && now - s.startedAt >= limit * 60_000;
 }
 
+/** מה מותר בזמן שכרטיס פתוח: אישורו עצמו, וניהול נכסים. */
+const CARD_SAFE = new Set([
+  "acknowledge_card", "build_house", "sell_house", "mortgage", "unmortgage",
+  "claim_timeout", "add_player",
+]);
+
 function nextTurn(s: GameState, events: GameEvent[], now: number): void {
   if (checkVictory(s, events)) return;
   if (timeExpired(s, now)) { finishOnTime(s, events, now); return; }
@@ -222,6 +228,14 @@ export function reduce(state: GameState, action: Action, ctx: Ctx): Result {
     applyTimeout(s, events, now, ctx.seed);
     if (phaseOf(s) === "finished") return { ok: true, state: s, events };
   }
+
+  // כרטיס פתוח עוצר את המשחק עד שמאשרים אותו.
+  //
+  // עד כאן זה נאכף במסך בלבד — המודאל כיסה את הלוח, ולכן לא היה במה
+  // ללחוץ. בטלפון אין מודאל, וכך שחקן קיבל "גלגל קוביות" בזמן שכרטיס
+  // עוד תלוי, וגלגל שוב בלי שהגיע לו תור. חוק שנאכף בתצוגה בלבד אינו
+  // חוק. ניהול נכסים נשאר פתוח — הוא מותר תמיד, גם לגיוס חירום.
+  if (s.drawnCard && !CARD_SAFE.has(action.type)) return err("WRONG_PHASE");
 
   const isCurrent = seat === s.currentSeat;
 

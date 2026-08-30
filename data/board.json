@@ -119,8 +119,8 @@
     { "key": "hat",     "name": "כובע טמבל" }
   ],
   "modes": {
-    "full":  { "name": "משחק מלא", "auctions": true,  "hotelThreshold": 4, "turnSeconds": 60, "hardLimitMinutes": null },
-    "quick": { "name": "מהיר",     "auctions": false, "hotelThreshold": 3, "turnSeconds": 30, "hardLimitMinutes": 60, "startingCash": 1200, "passStartBonus": 250, "dealtProperties": 2, "rentSurgeAfterMinutes": 45, "rentSurgeMultiplier": 1.5 },
-    "blitz": { "name": "בזק",      "auctions": false, "hotelThreshold": 2, "turnSeconds": 20, "hardLimitMinutes": 30, "startingCash": 1200, "passStartBonus": 300, "dealtProperties": 3, "rentSurgeAfterMinutes": 20, "rentSurgeMultiplier": 1.5 }
+    "full":  { "name": "משחק מלא", "auctions": true,  "hotelThreshold": 4, "hardLimitMinutes": null },
+    "quick": { "name": "מהיר",     "auctions": false, "hotelThreshold": 3, "hardLimitMinutes": 60, "startingCash": 1200, "passStartBonus": 250, "rentSurgeAfterMinutes": 45, "rentSurgeMultiplier": 1.5 },
+    "blitz": { "name": "בזק",      "auctions": false, "hotelThreshold": 2, "hardLimitMinutes": 30, "startingCash": 1200, "passStartBonus": 300, "rentSurgeAfterMinutes": 20, "rentSurgeMultiplier": 1.5 }
   }
 }

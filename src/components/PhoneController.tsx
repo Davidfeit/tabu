@@ -3,6 +3,7 @@ import { netWorth } from "@/engine/selectors";
 import { DEED_POSITIONS } from "@/engine/setup";
 import { useGame } from "@/ui/GameContext";
 import { Actions, TurnBar } from "./Actions";
+import { CardModal } from "./CardModal";
 import { Dice } from "./Dice";
 import { ManagePanel } from "./ManagePanel";
 import { seatColor, Token } from "./Token";
@@ -27,7 +28,12 @@ export function PhoneController({ onLeave }: { onLeave: () => void }) {
   const myTurn = state.currentSeat === seat && !me.bankrupt;
 
   return (
-    <div dir="rtl" className="mx-auto flex min-h-[100dvh] max-w-md flex-col gap-3 p-3">
+    // relative: הכרטיס נפתח כשכבה מוחלטת בתוך המסך הזה. בלעדיו הוא היה
+    // נתלה על אב קדמון אקראי — או לא נראה בכלל, וזה מה שקרה: מי ששיחק
+    // מהטלפון קיבל צו עיקול שהוצג רק על המסך המשותף, בלי דרך לאשר אותו.
+    <div dir="rtl"
+         className="relative mx-auto flex min-h-[100dvh] max-w-md flex-col gap-3 p-3">
+      <CardModal />
       <header className="toy-card flex items-center gap-2.5 p-3">
         <Token token={me.token} seat={seat} size={34} dimmed={me.bankrupt} />
         <div className="min-w-0 flex-1">

@@ -22,18 +22,17 @@ const MODE_DEFAULTS: Record<Settings["mode"], Partial<Settings>> = {
  * בשקט: הלוח אמר 1,500 והמנוע המשיך לחלק 1,500,000. מקור אמת אחד מונע את
  * החזרה של זה.
  */
-const MODE_CASH: Record<Settings["mode"], { cash: number; pass: number; dealt: number }> = {
+const MODE_CASH: Record<Settings["mode"], { cash: number; pass: number }> = {
   full:  modeCash("full"),
   quick: modeCash("quick"),
   blitz: modeCash("blitz"),
 };
 
-function modeCash(mode: Settings["mode"]): { cash: number; pass: number; dealt: number } {
+function modeCash(mode: Settings["mode"]): { cash: number; pass: number } {
   const m = BOARD.modes[mode] ?? {};
   return {
     cash: m.startingCash ?? BOARD.meta.startingCash,
     pass: m.passStartBonus ?? BOARD.meta.passStartBonus,
-    dealt: m.dealtProperties ?? 0,
   };
 }
 
@@ -82,7 +81,7 @@ export function createGame(
     throw new RangeError(`מספר שחקנים לא חוקי: ${seats.length}`);
   }
   const order = shuffle(seats, seed, 1);
-  const { cash, dealt } = MODE_CASH[settings.mode];
+  const { cash } = MODE_CASH[settings.mode];
 
   const players: Player[] = order.map((s, i) => ({
     seat: i, userId: s.userId, name: s.name, token: s.token,
@@ -93,13 +92,8 @@ export function createGame(
   const deeds: GameState["deeds"] = {};
   for (const pos of DEED_POSITIONS) deeds[pos] = { owner: null, houses: 0, hotel: false, mortgaged: false };
 
-  // מצבים מקוצרים מחלקים נכסים בפתיחה כדי לקצר את שלב האיסוף.
-  if (dealt > 0) {
-    const pool = shuffle(DEED_POSITIONS, seed, 2);
-    for (let i = 0; i < dealt * players.length && i < pool.length; i++) {
-      deeds[pool[i]!]!.owner = players[i % players.length]!.seat;
-    }
-  }
+  // אין חלוקת נכסים בפתיחה. היא נועדה לקצר את שלב האיסוף, ובפועל לקחה
+  // ממנו את מה שמהנה בו: כולם מתחילים מאותו מקום, וכל נכס נקנה.
 
   const decks = {} as Record<DeckKey, string[]>;
   for (const key of ["kupat_gemel", "yad_hagoral"] as DeckKey[]) {
