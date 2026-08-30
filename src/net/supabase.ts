@@ -92,7 +92,11 @@ async function call<T>(op: string, body: Record<string, unknown> = {}): Promise<
   return data as T;
 }
 
-export interface RoomHandle { roomId: string; code?: string; seat?: number }
+export interface RoomHandle {
+  roomId: string; code?: string; seat?: number;
+  /** האם הקורא הוא המארח. חסר בשרת ישן — ראה החזרה ל-seat 0 בלקוח. */
+  host?: boolean;
+}
 
 export const api = {
   createRoom: (name: string, token: string, settings: unknown) =>
@@ -132,13 +136,40 @@ export async function staleServer(required: string[]): Promise<string | null> {
  * שימוש כבד ב-CGNAT, ולכן להניח שכ-20% מהחיבורים יזדקקו לממסר. אישורי
  * TURN מונפקים ע"י השרת עם TTL קצר; המפתח לעולם לא מגיע לדפדפן.
  */
+/**
+ * ממסר ציבורי חינמי, כברירת מחדל.
+ *
+ * הנחת "רוב החיבורים יסתדרו ישירות" נבדקה ונפלה: ICE נתקע ב-connecting
+ * בין שני מכשירים בבית אחד, וזה תסמין של רשת שחוסמת עמית-לעמית. בלי
+ * ממסר אין וידאו, נקודה — ולכן ממסר הוא לא "אופציונלי לשיפור" אלא חלק
+ * מהמסלול הבסיסי.
+ *
+ * Open Relay של metered.ca נותן TURN פתוח בלי הרשמה. האישורים גלויים
+ * לכולם ואין עליו התחייבות זמינות, ולכן הוא הגיבוי ולא הבחירה: אם
+ * הוגדרו מפתחות Cloudflare בשרת, הם נכנסים ראשונים ברשימה ו-ICE ינסה
+ * אותם קודם. פורט 443 ו-TCP קיימים כאן בכוונה — הם עוברים גם ברשתות
+ * שחוסמות UDP, וזה בדיוק המקרה שבגללו הכול נבנה.
+ */
+const FREE_RELAY: RTCIceServer[] = [
+  { urls: "turn:openrelay.metered.ca:80",
+    username: "openrelayproject", credential: "openrelayproject" },
+  { urls: "turn:openrelay.metered.ca:443",
+    username: "openrelayproject", credential: "openrelayproject" },
+  { urls: "turn:openrelay.metered.ca:443?transport=tcp",
+    username: "openrelayproject", credential: "openrelayproject" },
+  { urls: "turn:staticauth.openrelay.metered.ca:443",
+    username: "openrelayproject", credential: "openrelayproject" },
+];
+
 export async function iceServers(): Promise<RTCIceServer[]> {
   const base: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
-  if (!ONLINE_ENABLED) return base;
+  if (!ONLINE_ENABLED) return [...base, ...FREE_RELAY];
   try {
     const sb = supabase();
     const { data } = await sb.functions.invoke("ice", { body: {} });
-    if (Array.isArray(data?.iceServers)) return [...base, ...data.iceServers];
-  } catch { /* בלי TURN עדיין עובד לרוב המשתמשים */ }
-  return base;
+    if (Array.isArray(data?.iceServers) && data.iceServers.length) {
+      return [...base, ...data.iceServers, ...FREE_RELAY];
+    }
+  } catch { /* אין אישורים פרטיים — נשארים עם הציבורי */ }
+  return [...base, ...FREE_RELAY];
 }

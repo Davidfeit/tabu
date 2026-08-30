@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { BOARD } from "@/lib/board";
 import type { Settings } from "@/engine/types";
+import { loadProfile, saveProfile } from "@/net/profile";
 import { api, signIn } from "@/net/supabase";
 import { Button } from "./Button";
 import { Token } from "./Token";
@@ -69,8 +70,11 @@ export function Lobby({ onJoined, onBack, invite }: {
   /** קוד מקישור הזמנה. כשהוא קיים, המסך הופך למסך הצטרפות בלבד. */
   invite?: string | null;
 }) {
-  const [name, setName] = useState("");
-  const [tokenIdx, setTokenIdx] = useState(0);
+  // מי שכבר שיחק לא מקליד את שמו שוב.
+  const saved = useMemo(loadProfile, []);
+  const [name, setName] = useState(saved?.name ?? "");
+  const [tokenIdx, setTokenIdx] = useState(
+    () => Math.max(0, TOKENS.findIndex((t) => t.key === saved?.token)));
   const [code, setCode] = useState(invite ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<ReturnType<typeof explain> | null>(null);
@@ -80,7 +84,11 @@ export function Lobby({ onJoined, onBack, invite }: {
 
   async function run(fn: () => Promise<JoinedRoom>) {
     setBusy(true); setError(null);
-    try { onJoined(await fn()); }
+    try {
+      const room = await fn();
+      saveProfile({ name: name.trim(), token, code: room.code, at: Date.now() });
+      onJoined(room);
+    }
     catch (e) {
       setError(explain((e as Error).message));
     }

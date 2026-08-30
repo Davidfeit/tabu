@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SeatSpec } from "@/engine/setup";
 import type { GameState, Settings } from "@/engine/types";
-import { api, CONFIG_PROBLEM, ONLINE_ENABLED, staleServer, supabase } from "@/net/supabase";
+import { api, CONFIG_PROBLEM, ONLINE_ENABLED, signIn, staleServer, supabase } from "@/net/supabase";
 import { RoomTransport, type SignalTransport } from "@/net/transport";
 import { LocalGameProvider, useGame } from "@/ui/GameContext";
 import { RemoteGameProvider } from "@/ui/RemoteGameProvider";
@@ -15,6 +15,7 @@ import { CardModal } from "@/components/CardModal";
 import { EventLog } from "@/components/EventLog";
 import { GameOver } from "@/components/GameOver";
 import { inviteCode, Lobby, type JoinedRoom } from "@/components/Lobby";
+import { forgetRoom, freshRoom, loadProfile, rememberRoom } from "@/net/profile";
 import { ManagePanel } from "@/components/ManagePanel";
 import { MoneyFlow } from "@/components/MoneyFlow";
 import { MediaPrompt } from "@/components/MediaPrompt";
@@ -23,6 +24,8 @@ import { PlayerPanel } from "@/components/PlayerPanel";
 import { ViewControls } from "@/components/ViewControls";
 import { SetupScreen } from "@/components/SetupScreen";
 import { CenterPanel } from "@/components/CenterPanel";
+import { EndGameButton } from "@/components/Actions";
+import { TradeOfferCard } from "@/components/TradePanel";
 import { VideoTiles } from "@/components/VideoTiles";
 import { WaitingRoom } from "@/components/WaitingRoom";
 
@@ -96,6 +99,7 @@ function GameScreen({ onRestart, videoTiles }: {
         <div className="relative h-full max-h-full" style={{ aspectRatio: "1 / 1" }}>
           <Board state={state} center={<CenterPanel videoTiles={videoTiles} />} />
           <CardModal />
+          <TradeOfferCard />
           <GameOver onRestart={onRestart} />
         </div>
       </div>
@@ -114,6 +118,7 @@ function GameScreen({ onRestart, videoTiles }: {
         <PlayerPanel state={state} seats={[2, 3]}
                      showWorth={nearEnd || state.phase === "finished"} />
         <BankCard />
+        <EndGameButton className="py-1" />
         <ManageColumn />
       </aside>
 
@@ -277,12 +282,55 @@ function Home({ onLocal, onOnline }: { onLocal: () => void; onOnline: () => void
 export default function App() {
   const [screen, setScreen] = useState<Screen>({ kind: "home" });
 
-  // לינק הזמנה: ‎#CODE‎ פותח ישר את הלובי עם הקוד.
+  /**
+   * חזרה אוטומטית לחדר.
+   *
+   * קוד מגיע מה-hash של קישור ההזמנה, ואם אין — מהחדר האחרון שנשמר.
+   * מי שכבר הזין שם פעם אחת לא מזין אותו שוב: הצטרפות חוזרת מחזירה את
+   * אותו מושב (השרת מזהה לפי המשתמש), ולכן רענון באמצע משחק מחזיר
+   * לאותו מקום במקום לטופס.
+   */
   useEffect(() => {
-    if (inviteCode(location.hash) && ONLINE_ENABLED) setScreen({ kind: "lobby" });
+    if (!ONLINE_ENABLED) return;
+    const me = loadProfile();
+    // מקישור הזמנה — תמיד. מזיכרון — רק אם הוא טרי: חדר של אתמול הוא
+    // זיכרון, לא כוונה, ומי שפתח את האתר היום רוצה מסך פתיחה.
+    const code = inviteCode(location.hash) ?? freshRoom(me);
+    if (!code) return;
+    if (!me) { setScreen({ kind: "lobby" }); return; }
+
+    let alive = true;
+    void (async () => {
+      try {
+        const userId = await signIn();
+        const r = await api.joinRoom(code, me.name, me.token);
+        if (!alive) return;
+        setScreen({ kind: "waiting", room: {
+          roomId: r.roomId, seat: r.seat ?? 0, code,
+          userId, isHost: r.host ?? (r.seat ?? 0) === 0,
+        } });
+      } catch {
+        // חדר שנסגר, קוד ישן, או שרת שלא ענה — הלובי יסביר.
+        if (alive) setScreen({ kind: "lobby" });
+      }
+    })();
+    return () => { alive = false; };
   }, []);
 
-  const toHome = useCallback(() => setScreen({ kind: "home" }), []);
+  // הכתובת מחזיקה את קוד החדר, כדי שרענון וקישור ששותף יובילו לאותו מקום.
+  useEffect(() => {
+    const code = screen.kind === "waiting" || screen.kind === "online"
+      ? screen.room.code : null;
+    if (code) { rememberRoom(code); history.replaceState(null, "", `#${code}`); }
+  }, [screen]);
+
+  const toHome = useCallback(() => {
+    // יציאה מכוונת: הכתובת מתנקה, והחדר נשכח — אחרת הרענון הבא היה
+    // גורר בחזרה בדיוק למשחק שממנו יצאו.
+    forgetRoom();
+    history.replaceState(null, "", location.pathname + location.search);
+    setScreen({ kind: "home" });
+  }, []);
   const startOnline = useCallback((room: JoinedRoom) =>
     (state: unknown, version: number) =>
       setScreen({ kind: "online", room, state: state as GameState, version }), []);

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { BOARD } from "@/lib/board";
 import { reduce } from "./reduce";
 import { startingCash } from "./setup";
-import { act, fail, newGame, setPhase, T0 } from "./testkit";
+import { act, fail, newGame, SEED, setPhase, T0 } from "./testkit";
 import { seatOf } from "./selectors";
 
 const joiner = { type: "add_player" as const, userId: "u-new", name: "רן", token: "boat" };
@@ -78,5 +78,36 @@ describe("מי אני בשולחן", () => {
     // במשבצת של השני.
     expect(seatOf(players, "someone-else")).toBeNull();
     expect(seatOf([], "host")).toBeNull();
+  });
+});
+
+describe("סיום מוסכם", () => {
+  it("מסיים מיד ומכתיר את בעל השווי הנקי הגבוה", () => {
+    // משחק משפחתי נגמר כשנמאס, ולא כשכולם פשטו רגל.
+    let s = newGame(3);
+    s.players[1]!.cash = 9_000;
+    const r = reduce(s, { type: "finish_now" }, { seat: 2, now: T0, seed: SEED });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.state.phase).toBe("finished");
+    expect(r.state.winnerSeat).toBe(1);
+    expect(r.events.some((e) => e.type === "game_over")).toBe(true);
+  });
+
+  it("כל שחקן רשאי — לא רק מי שבתור", () => {
+    const s = newGame(2);
+    const notMyTurn = (s.currentSeat + 1) % 2;
+    expect(reduce(s, { type: "finish_now" },
+                  { seat: notMyTurn, now: T0, seed: SEED }).ok).toBe(true);
+  });
+
+  it("אי אפשר לסיים משחק שכבר נגמר", () => {
+    const s = newGame(2);
+    const done = reduce(s, { type: "finish_now" }, { seat: 0, now: T0, seed: SEED });
+    expect(done.ok).toBe(true);
+    if (!done.ok) return;
+    const again = reduce(done.state, { type: "finish_now" },
+                         { seat: 0, now: T0, seed: SEED });
+    expect(again.ok).toBe(false);
   });
 });

@@ -42,7 +42,7 @@ function timeExpired(s: GameState, now: number): boolean {
 /** מה מותר בזמן שכרטיס פתוח: אישורו עצמו, וניהול נכסים. */
 const CARD_SAFE = new Set([
   "acknowledge_card", "build_house", "sell_house", "mortgage", "unmortgage",
-  "claim_timeout", "add_player",
+  "claim_timeout", "add_player", "finish_now",
 ]);
 
 function nextTurn(s: GameState, events: GameEvent[], now: number): void {
@@ -411,6 +411,12 @@ export function reduce(state: GameState, action: Action, ctx: Ctx): Result {
       s.pendingMove = null;
       bankrupt(s, events, seat, creditor);
       if (phaseOf(s) !== "finished" && phaseOf(s) !== "auction") nextTurn(s, events, now);
+      break;
+    }
+
+    case "finish_now": {
+      // משחק שנגמר כבר נחסם למעלה (GAME_OVER), ולכן אין כאן מה לבדוק.
+      finishOnTime(s, events, now);
       break;
     }
 

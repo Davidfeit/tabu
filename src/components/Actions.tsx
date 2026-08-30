@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { BOARD, squareAt } from "@/lib/board";
 import { shekel } from "@/lib/format";
 import { liquidValue } from "@/engine/selectors";
@@ -5,6 +6,7 @@ import { useGame } from "@/ui/GameContext";
 import { useCountdown } from "@/ui/useCountdown";
 import { Button } from "./Button";
 import { seatColor } from "./Token";
+import { TradeBuilder } from "./TradePanel";
 
 /**
  * שורת התור והפעולות.
@@ -47,9 +49,9 @@ export function Actions() {
 
   if (state.debt) return <DebtActions />;
 
-
   return (
     <div className="flex flex-wrap items-center justify-center gap-1.5">
+      <TradeButton />
       {state.phase === "awaiting_roll" && (
         <>
           {p.inJail && (
@@ -91,6 +93,62 @@ export function Actions() {
       )}
 
     </div>
+  );
+}
+
+/**
+ * מכירה והחלפה של נכסים.
+ *
+ * פתוח תמיד, גם כשזה לא תורך: עסקה היא משא ומתן בין שניים, ואין סיבה
+ * שהיא תמתין לקוביות. מי שאין לו מושב (צופה) לא רואה את הכפתור.
+ */
+function TradeButton() {
+  const { state, mySeat } = useGame();
+  const [open, setOpen] = useState(false);
+  const seat = mySeat ?? state.currentSeat;
+  const others = state.players.filter((x) => !x.bankrupt && x.seat !== seat);
+
+  if (state.phase === "finished" || others.length === 0) return null;
+  if (state.players[seat]?.bankrupt) return null;
+
+  return (
+    <>
+      <Button onClick={() => setOpen(true)} title="מכירה או החלפה של נכסים">
+        עסקה
+      </Button>
+      {open && <TradeBuilder mySeat={seat} onClose={() => setOpen(false)} />}
+    </>
+  );
+}
+
+/**
+ * סיום מוסכם.
+ *
+ * שתי לחיצות ולא אישור מהדפדפן: דיאלוג מערכת נראה כמו תקלה, ומי שלוחץ
+ * בטעות רואה מיד מה עומד לקרות ויכול פשוט לא ללחוץ שוב.
+ */
+export function EndGameButton({ className = "" }: { className?: string }) {
+  const { state, dispatch, mySeat } = useGame();
+  const [armed, setArmed] = useState(false);
+  if (state.phase === "finished") return null;
+
+  return armed ? (
+    <div className={`flex items-center justify-center gap-1.5 ${className}`}>
+      <Button variant="danger" className="!px-3 !py-1 !text-[0.72rem]"
+              onClick={() => dispatch({ type: "finish_now" }, mySeat ?? state.currentSeat)}>
+        לסיים עכשיו
+      </Button>
+      <Button className="!px-3 !py-1 !text-[0.72rem]" onClick={() => setArmed(false)}>
+        ביטול
+      </Button>
+    </div>
+  ) : (
+    <button onClick={() => setArmed(true)}
+            title="סיום המשחק וחישוב המנצח לפי השווי הנקי"
+            className={`text-[0.75rem] text-ink/45 underline-offset-4 hover:underline
+                        ${className}`}>
+      סיום משחק
+    </button>
   );
 }
 

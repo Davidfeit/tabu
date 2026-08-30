@@ -31,10 +31,9 @@ function DeedChip({ pos, state, picked, onToggle, disabled }: {
     <button type="button" onClick={onToggle} disabled={disabled}
             aria-pressed={picked}
             title={disabled ? "יש בנייה בקבוצת הצבע — צריך למכור אותה קודם" : undefined}
-            className={`rounded px-1.5 py-1 text-right text-[0.68rem] leading-tight ring-1
-                        transition-colors disabled:cursor-not-allowed disabled:opacity-30
-              ${picked ? "bg-amber-400/25 text-parchment ring-amber-400/70"
-                       : "bg-black/30 text-parchment/75 ring-white/10 hover:bg-black/50"}`}>
+            className={`toy-chip px-2 py-1 text-right text-[0.68rem] leading-tight
+                        transition disabled:cursor-not-allowed disabled:opacity-30
+              ${picked ? "!border-toy-sun !bg-toy-sun/40 !text-ink" : ""}`}>
       <span className={d.mortgaged ? "line-through opacity-60" : ""}>{sq.name}</span>
       <span className="mr-1 tabular-nums text-[0.58rem] opacity-50">
         {shekelShort("price" in sq ? sq.price : 0)}
@@ -63,34 +62,31 @@ function SideEditor({ seat, side, onChange, state, title }: {
   };
 
   return (
-    <section className="flex min-w-0 flex-1 flex-col gap-2 rounded-lg bg-black/30 p-3
-                        ring-1 ring-white/10">
+    <section className="toy-card toy-card--flat flex min-w-0 flex-1 flex-col gap-2 p-3">
       <header className="flex items-center gap-2">
         <Token token={player.token} seat={seat} size={20} />
         <h3 className="min-w-0 flex-1 truncate font-display text-sm font-bold"
             style={{ color: seatColor(seat), unicodeBidi: "plaintext" }}>
           {title}
         </h3>
-        <span className="tabular-nums text-[0.68rem] text-parchment/45">
+        <span className="tabular-nums text-[0.7rem] text-ink/60">
           <bdi>{shekel(player.cash)}</bdi>
         </span>
       </header>
 
       <label className="block">
-        <span className="mb-1 block text-[0.66rem] text-parchment/50">מזומן</span>
+        <span className="mb-1 block text-[0.68rem] font-semibold text-ink/65">מזומן</span>
         <input type="number" min={0} max={player.cash} step={10} value={side.cash}
                onChange={(e) => onChange({
                  ...side,
                  cash: Math.max(0, Math.min(player.cash, Math.round(+e.target.value || 0))),
                })}
                aria-label={`מזומן מ${title}`}
-               className="w-full rounded bg-black/45 px-2 py-1 text-right tabular-nums
-                          text-sm text-parchment ring-1 ring-white/10 focus:outline-none
-                          focus:ring-2 focus:ring-amber-400/60" />
+               className="toy-input w-full px-2 py-1 text-right tabular-nums text-sm" />
       </label>
 
       {player.getOutCards > 0 && (
-        <label className="flex items-center gap-2 text-[0.7rem] text-parchment/70">
+        <label className="flex items-center gap-2 text-[0.72rem] text-ink/75">
           <input type="checkbox" checked={side.jailCards > 0}
                  onChange={(e) => onChange({ ...side, jailCards: e.target.checked ? 1 : 0 })} />
           כרטיס יציאה ממעצר בית
@@ -98,11 +94,11 @@ function SideEditor({ seat, side, onChange, state, title }: {
       )}
 
       <div className="min-h-0 flex-1">
-        <span className="mb-1 block text-[0.66rem] text-parchment/50">
+        <span className="mb-1 block text-[0.68rem] font-semibold text-ink/65">
           נכסים <span className="opacity-60">({owned.length})</span>
         </span>
         {owned.length === 0 ? (
-          <p className="text-[0.66rem] text-parchment/30">אין נכסים</p>
+          <p className="text-[0.68rem] text-ink/40">אין נכסים</p>
         ) : (
           <div className="flex flex-wrap gap-1">
             {owned.map((pos) => (
@@ -153,19 +149,17 @@ export function TradeBuilder({ mySeat, onClose }: { mySeat: number; onClose: () 
 
   return (
     <div dir="rtl" role="dialog" aria-modal="true" aria-label="הצעת עסקה"
-         className="absolute inset-0 z-40 flex items-center justify-center bg-black/75 p-6">
-      <div className="tabu-pop flex w-full max-w-2xl flex-col gap-3 rounded-xl
-                      bg-neutral-900 p-5 ring-1 ring-white/15">
+         className="toy-overlay absolute inset-0 z-40 flex items-center justify-center p-6">
+      <div className="tabu-pop toy-modal flex w-full max-w-2xl flex-col gap-3 p-5">
         <header className="flex items-center gap-3">
-          <h2 className="flex-1 font-logo text-2xl text-parchment">הצעת עסקה</h2>
+          <h2 className="flex-1 font-logo text-2xl text-ink">מכירה או החלפה</h2>
           {others.length > 1 && (
-            <label className="flex items-center gap-2 text-[0.72rem] text-parchment/50">
+            <label className="flex items-center gap-2 text-[0.75rem] text-ink/60">
               עם
               <select value={target} onChange={(e) => { setTarget(+e.target.value);
                                                         setReceive(emptySide()); }}
                       aria-label="עם מי לסחור"
-                      className="rounded bg-black/45 px-2 py-1 text-sm text-parchment
-                                 ring-1 ring-white/10">
+                      className="toy-input px-2 py-1 text-sm">
                 {others.map((p) => (
                   <option key={p.seat} value={p.seat}>{p.name}</option>
                 ))}
@@ -182,13 +176,13 @@ export function TradeBuilder({ mySeat, onClose }: { mySeat: number; onClose: () 
         </div>
 
         {/* הערכת שווי — עזר בלבד, לא חוק. עסקה לא שוויונית עדיין חוקית. */}
-        <div className="flex items-center justify-center gap-3 text-[0.7rem] text-parchment/45">
+        <div className="flex items-center justify-center gap-3 text-[0.72rem] text-ink/55">
           <span className="tabular-nums"><bdi>{shekel(giveValue)}</bdi></span>
           <span aria-hidden="true">↔</span>
           <span className="tabular-nums"><bdi>{shekel(receiveValue)}</bdi></span>
           {giveValue > 0 && receiveValue > 0 && (
             <span className={Math.abs(giveValue - receiveValue) / Math.max(giveValue, receiveValue) > 0.4
-                             ? "text-amber-300/70" : ""}>
+                             ? "font-semibold text-amber-600" : ""}>
               {giveValue === receiveValue ? "שווה"
                 : giveValue > receiveValue ? "לטובת הצד השני" : "לטובתך"}
             </span>
@@ -196,8 +190,8 @@ export function TradeBuilder({ mySeat, onClose }: { mySeat: number; onClose: () 
         </div>
 
         {check && (
-          <p role="alert" className="rounded bg-red-500/15 px-3 py-1.5 text-center
-                                     text-[0.75rem] text-red-200">{check}</p>
+          <p role="alert" className="rounded-xl border-2 border-red-200 bg-red-50 px-3
+                                     py-1.5 text-center text-[0.78rem] text-red-700">{check}</p>
         )}
 
         <footer className="flex justify-center gap-2">
@@ -223,14 +217,14 @@ export function TradeOfferCard() {
   const mine = canControl(offer.toSeat);
 
   const list = (side: Side, who: string) => (
-    <div className="min-w-0 flex-1 rounded-lg bg-black/30 p-2.5 ring-1 ring-white/10">
-      <div className="mb-1 text-[0.68rem] text-parchment/45">{who} נותן</div>
-      <ul className="space-y-0.5 text-[0.72rem] text-parchment/85">
+    <div className="toy-card toy-card--flat min-w-0 flex-1 p-2.5">
+      <div className="mb-1 text-[0.68rem] text-ink/55">{who} נותן</div>
+      <ul className="space-y-0.5 text-[0.74rem] text-ink/85">
         {side.cash > 0 && <li className="tabular-nums"><bdi>{shekel(side.cash)}</bdi></li>}
         {side.deeds.map((pos) => <li key={pos}>{squareAt(pos).name}</li>)}
         {side.jailCards > 0 && <li>כרטיס יציאה ממעצר בית</li>}
         {side.cash === 0 && side.deeds.length === 0 && side.jailCards === 0 && (
-          <li className="text-parchment/30">כלום</li>
+          <li className="text-ink/35">כלום</li>
         )}
       </ul>
     </div>
@@ -238,10 +232,9 @@ export function TradeOfferCard() {
 
   return (
     <div dir="rtl" role="dialog" aria-modal="true" aria-label="הצעת עסקה נכנסת"
-         className="absolute inset-0 z-40 flex items-center justify-center bg-black/70 p-6">
-      <div className="tabu-pop w-full max-w-md space-y-3 rounded-xl bg-neutral-900 p-5
-                      ring-1 ring-white/15">
-        <h2 className="text-center font-display text-base font-bold text-parchment">
+         className="toy-overlay absolute inset-0 z-40 flex items-center justify-center p-6">
+      <div className="tabu-pop toy-modal w-full max-w-md space-y-3 p-5">
+        <h2 className="text-center font-display text-base font-bold text-ink">
           <span style={{ color: seatColor(from.seat), unicodeBidi: "plaintext" }}>{from.name}</span>
           {" מציע עסקה ל"}
           <span style={{ color: seatColor(to.seat), unicodeBidi: "plaintext" }}>{to.name}</span>

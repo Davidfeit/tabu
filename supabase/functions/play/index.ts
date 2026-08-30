@@ -112,8 +112,11 @@ async function relaySignal(userId: string, body: Record<string, unknown>) {
 
 async function joinRoom(userId: string, body: Record<string, unknown>) {
   const { data: room } = await admin.from("game_rooms")
-    .select("id, status, max_players").eq("code", String(body.code ?? "")).single();
+    .select("id, status, max_players, host_id").eq("code", String(body.code ?? "")).single();
   if (!room) return json({ ok: false, error: "NO_ROOM" }, 404);
+  // מי שחוזר צריך לדעת אם הוא המארח: בלי זה מארח שרענן לפני שהמשחק
+  // התחיל חוזר לחדר המתנה בלי כפתור התחלה, וזו דרך ללא מוצא.
+  const host = room.host_id === userId;
 
   const { data: players } = await admin.from("game_room_players")
     .select("user_id, seat").eq("room_id", room.id).order("seat");
@@ -122,7 +125,7 @@ async function joinRoom(userId: string, body: Record<string, unknown>) {
   // הלשונית באמצע משחק חזר קודם ל-ALREADY_STARTED והיה צריך להתחיל מחדש,
   // בזמן שהמושב שלו והנכסים שלו ממתינים לו בחדר.
   const mine = players?.find((p) => p.user_id === userId);
-  if (mine) return json({ ok: true, roomId: room.id, seat: mine.seat });
+  if (mine) return json({ ok: true, roomId: room.id, seat: mine.seat, host });
 
   if (room.status === "finished") {
     return json({ ok: false, error: "ALREADY_STARTED" }, 409);
@@ -158,7 +161,7 @@ async function joinRoom(userId: string, body: Record<string, unknown>) {
     }
   }
 
-  return json({ ok: true, roomId: room.id, seat });
+  return json({ ok: true, roomId: room.id, seat, host });
 }
 
 async function startGame(userId: string, roomId: string) {

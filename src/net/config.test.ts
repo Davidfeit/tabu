@@ -30,3 +30,18 @@ describe("אבחון הגדרת Supabase", () => {
   it("כתובת של פרויקט אחר לגמרי נפסלת", () =>
     expect(problem("https://example.com", REAL_KEY)).toMatch(/אינו כתובת/));
 });
+
+describe("שרתי ICE", () => {
+  it("כוללים ממסר גם כשאין הגדרת שרת", async () => {
+    // ההנחה ש"רוב החיבורים יסתדרו ישירות" נבדקה ונפלה: בלי ממסר
+    // ICE נתקע ב-connecting, ואין וידאו בכלל.
+    const { iceServers } = await import("./supabase");
+    const list = await iceServers();
+    const urls = list.flatMap((s) =>
+      typeof s.urls === "string" ? [s.urls] : s.urls);
+    expect(urls.some((u) => u.startsWith("stun:"))).toBe(true);
+    expect(urls.some((u) => u.startsWith("turn:"))).toBe(true);
+    // גם מסלול TCP/443, שעובר ברשתות שחוסמות UDP.
+    expect(urls.some((u) => u.includes("transport=tcp"))).toBe(true);
+  });
+});

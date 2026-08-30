@@ -4,6 +4,8 @@ import { DEED_POSITIONS } from "@/engine/setup";
 import { useGame } from "@/ui/GameContext";
 import { Actions, TurnBar } from "./Actions";
 import { CardModal } from "./CardModal";
+import { EndGameButton } from "./Actions";
+import { TradeOfferCard } from "./TradePanel";
 import { Dice } from "./Dice";
 import { ManagePanel } from "./ManagePanel";
 import { seatColor, Token } from "./Token";
@@ -34,6 +36,7 @@ export function PhoneController({ onLeave }: { onLeave: () => void }) {
     <div dir="rtl"
          className="relative mx-auto flex min-h-[100dvh] max-w-md flex-col gap-3 p-3">
       <CardModal />
+      <TradeOfferCard />
       <header className="toy-card flex items-center gap-2.5 p-3">
         <Token token={me.token} seat={seat} size={34} dimmed={me.bankrupt} />
         <div className="min-w-0 flex-1">
@@ -83,10 +86,12 @@ export function PhoneController({ onLeave }: { onLeave: () => void }) {
         לשחק מהטלפון עם לוח ווידאו: הוסיפו <code>?controller=0</code> לכתובת.
       </p>
 
-      <button onClick={onLeave}
-              className="mt-auto py-3 text-[0.82rem] text-ink/50 underline-offset-4">
-        יציאה מהמשחק
-      </button>
+      <div className="mt-auto flex items-center justify-between gap-3 py-3">
+        <button onClick={onLeave} className="text-[0.82rem] text-ink/50 underline-offset-4">
+          יציאה מהמשחק
+        </button>
+        <EndGameButton />
+      </div>
     </div>
   );
 }
