@@ -39,6 +39,8 @@ export interface PeerState {
   polite: boolean;
   in: SignalCount;
   out: SignalCount;
+  /** מועמדי ICE שנדחו. בודדים הם שגרה; רבים פירושם מסלול שלא נבדק. */
+  iceDropped: number;
   /**
    * השגיאה האחרונה בטיפול בהודעה.
    *
@@ -71,6 +73,7 @@ interface Peer {
   relayed: boolean;
   in: SignalCount;
   out: SignalCount;
+  iceDropped: number;
   lastError: string | null;
   /**
    * מועמדי ICE שהגיעו לפני התיאור המרוחק.
@@ -91,6 +94,8 @@ interface Peer {
    */
   deferred: RTCSessionDescriptionInit | null;
   glareTimer: ReturnType<typeof setTimeout> | null;
+  /** ממתין לראות אם ניתוק זמני מתאושש מעצמו לפני שמאתחלים ICE. */
+  dropTimer: ReturnType<typeof setTimeout> | null;
 }
 
 /** כמה להמתין לתשובה לפני שהצד הלא-מנומס נסוג בעצמו. */
@@ -142,8 +147,8 @@ export class PeerMesh {
     const peer: Peer = {
       pc, polite: isPolite(this.opts.selfId, peerId),
       makingOffer: false, ignoreOffer: false, stream: null, relayed: false,
-      in: noCount(), out: noCount(), lastError: null, pendingIce: [],
-      deferred: null, glareTimer: null,
+      in: noCount(), out: noCount(), iceDropped: 0, lastError: null, pendingIce: [],
+      deferred: null, glareTimer: null, dropTimer: null,
     };
     this.peers.set(peerId, peer);
 
@@ -162,7 +167,13 @@ export class PeerMesh {
     };
 
     pc.onicecandidate = ({ candidate }) => {
-      if (candidate) this.batcher.add(peerId, candidate.toJSON());
+      if (!candidate) return;
+      // usernameFragment נזרק בכוונה. הוא מקשר את המועמד לסבב משא ומתן
+      // מסוים, ואחרי גלגול לאחור (התנגשות) הסבב אצל הצד השני כבר אחר —
+      // ואז addIceCandidate זורק "Error processing ICE candidate" ומסלול
+      // תקין לגמרי נזרק. בלעדיו המועמד מוחל על הסבב הנוכחי.
+      const { usernameFragment: _drop, ...c } = candidate.toJSON();
+      this.batcher.add(peerId, c);
     };
 
     pc.onnegotiationneeded = async () => {
@@ -179,6 +190,18 @@ export class PeerMesh {
 
     pc.onconnectionstatechange = () => {
       if (pc.connectionState === "failed") pc.restartIce();
+
+      // "disconnected" הוא לרוב זמני ומתאושש לבד, ולכן לא מאתחלים מיד —
+      // אבל אם הוא נשאר, אף אחד לא יעשה זאת במקומנו, והמסך פשוט קופא
+      // על תמונה מתה. שנייתיים המתנה, ואז אתחול ICE.
+      if (peer.dropTimer) { clearTimeout(peer.dropTimer); peer.dropTimer = null; }
+      if (pc.connectionState === "disconnected") {
+        peer.dropTimer = setTimeout(() => {
+          peer.dropTimer = null;
+          if (pc.connectionState === "disconnected") pc.restartIce();
+        }, 2500);
+      }
+
       void this.checkRelay(peerId, peer);
       this.emit();
     };
@@ -288,10 +311,17 @@ export class PeerMesh {
     this.emit();
   }
 
+  /**
+   * מועמד שנדחה אינו תקלה שמפילה חיבור — הוא מסלול אחד פחות.
+   *
+   * הוא נספר ולא נרשם כשגיאה: שורת שגיאה אדומה על כל מועמד שנדחה הצביעה
+   * על הבעיה הלא נכונה בדיוק כשהחיבור עצמו הצליח. מונה מבדיל בין "אחד
+   * או שניים" (שגרה) לבין "כולם" (מסלול שלא נבדק בכלל).
+   */
   private async addIce(peer: Peer, candidates: RTCIceCandidateInit[]): Promise<void> {
     for (const c of candidates) {
       try { await peer.pc.addIceCandidate(c); }
-      catch (e) { if (!peer.ignoreOffer) peer.lastError = `ICE נדחה: ${errText(e)}`; }
+      catch { peer.iceDropped++; }
     }
   }
 
@@ -324,6 +354,7 @@ export class PeerMesh {
     peer.pc.onicecandidate = null;
     peer.pc.onnegotiationneeded = null;
     peer.pc.onconnectionstatechange = null;
+    if (peer.dropTimer) { clearTimeout(peer.dropTimer); peer.dropTimer = null; }
     this.disarmGlare(peer);
     peer.pc.close();
     this.peers.delete(peerId);
@@ -338,7 +369,8 @@ export class PeerMesh {
     return [...this.peers.entries()].map(([id, p]) => ({
       id, stream: p.stream, connection: p.pc.connectionState, relayed: p.relayed,
       signaling: p.pc.signalingState, polite: p.polite,
-      in: { ...p.in }, out: { ...p.out }, lastError: p.lastError,
+      in: { ...p.in }, out: { ...p.out }, iceDropped: p.iceDropped,
+      lastError: p.lastError,
       video: videoInfo(p.stream),
     }));
   }

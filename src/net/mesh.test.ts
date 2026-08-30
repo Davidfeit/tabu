@@ -102,7 +102,9 @@ class FakePC {
   }
 
   emitCandidate(id: string) {
-    this.onicecandidate?.({ candidate: { toJSON: () => ({ candidate: id }) } as RTCIceCandidate });
+    this.onicecandidate?.({ candidate: {
+      toJSON: () => ({ candidate: id, sdpMid: "0", usernameFragment: "abcd" }),
+    } as unknown as RTCIceCandidate });
   }
 
   async getStats() { return new Map(); }
@@ -272,5 +274,48 @@ describe("התנגשות שבה הצד השני לא עונה", () => {
     expect(after.out.answer).toBe(0);          // אין צורך — התשובה הגיעה
     expect(after.lastError).toBeNull();
     expect(after.connection).toBe("connecting");
+  });
+});
+
+describe("מועמדי ICE", () => {
+  it("נשלחים בלי usernameFragment", async () => {
+    // הוא קושר את המועמד לסבב משא ומתן מסוים, ואחרי גלגול לאחור הסבב
+    // בצד השני כבר אחר — ואז מסלול תקין נזרק עם שגיאה.
+    const sent: SignalMessage[] = [];
+    const mesh = new PeerMesh({
+      selfId: "a", localStream: stream(), iceServers: [], iceBatchMs: 0,
+      send: (_to, m) => sent.push(m), onPeersChanged: () => {},
+    });
+    mesh.sync(["b"]);
+    await settle();
+    FakePC.instances[0]!.emitCandidate("c-1");
+    await new Promise((r) => setTimeout(r, 5));
+
+    const ice = sent.find((m) => m.kind === "ice");
+    expect(ice).toBeTruthy();
+    const c = (ice as { candidates: Record<string, unknown>[] }).candidates[0]!;
+    expect(c.candidate).toBe("c-1");
+    expect(c.sdpMid).toBe("0");
+    expect("usernameFragment" in c).toBe(false);
+  });
+
+  it("מועמד שנדחה נספר ואינו נרשם כשגיאה", async () => {
+    // שורה אדומה על כל מועמד שנדחה הצביעה על הבעיה הלא נכונה בדיוק
+    // כשהחיבור עצמו הצליח.
+    const states: PeerState[][] = [];
+    const mesh = new PeerMesh({
+      selfId: "a", localStream: stream(), iceServers: [], iceBatchMs: 0,
+      send: () => {}, onPeersChanged: (p) => states.push(p),
+    });
+    mesh.sync(["b"]);
+    await settle();
+    const pc = FakePC.instances[0]!;
+    pc.remoteDescription = { type: "offer", sdp: "x" };   // כדי שלא ייכנס לתור
+    pc.addIceCandidate = async () => { throw new Error("Error processing ICE candidate"); };
+
+    await mesh.handle({ kind: "ice", from: "b", candidates: [{ candidate: "bad" }] });
+    const st = states[states.length - 1]![0]!;
+    expect(st.iceDropped).toBe(1);
+    expect(st.lastError).toBeNull();
   });
 });
