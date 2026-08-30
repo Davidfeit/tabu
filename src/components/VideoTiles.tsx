@@ -55,7 +55,9 @@ export function VideoTiles({
         {VIDEO_SEATS.map((seat) => {
           const p = state.players[seat];
           if (!p) return <EmptySeat key={seat} />;
-          const isMe = p.seat === mySeat;
+          // לפי מזהה ולא לפי מושב: כשהמספור מתפצל, "אני" נופל על המשבצת
+          // של מישהו אחר — ואז המצלמה שלי מוצגת שם, והזרם שלו לא מוצג בכלל.
+          const isMe = selfId ? p.userId === selfId : p.seat === mySeat;
           const peer = byUser.get(p.userId);
           const stream = isMe ? local : peer?.stream ?? null;
           return (

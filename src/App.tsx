@@ -140,7 +140,7 @@ function OnlineGame({ room, initial, version, onLeave }: {
     [videoOn, phone, room.roomId]);
 
   return (
-    <RemoteGameProvider roomId={room.roomId} mySeat={room.seat}
+    <RemoteGameProvider roomId={room.roomId} userId={room.userId} mySeat={room.seat}
                         initialState={initial} initialVersion={version}>
       <ErrorToast />
       {stale && (

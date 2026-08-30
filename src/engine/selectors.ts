@@ -161,3 +161,18 @@ export const START_BONUS_POS = 0;
 export const JAIL_POS = 10;
 export const GOTO_JAIL_POS = 30;
 export const BOARD_SIZE = BOARD.board.length;
+
+/**
+ * המושב של משתמש, לפי המצב עצמו.
+ *
+ * שני מספורים חיים במקביל: המושב בטבלת החדר, והאינדקס במערך השחקנים
+ * שנבנה ממנה. הם מסכימים רק כל עוד המושבים רצופים מאפס — ורגע שהם
+ * מתפצלים, הלקוח משחק בשם שחקן אחר ורואה את הווידאו של עצמו במשבצת שלו.
+ * מזהה המשתמש הוא היחיד שאינו תלוי במספור, ולכן הוא הקובע.
+ */
+export function seatOf(
+  players: readonly { userId: string; seat: number }[], userId: string,
+): number | null {
+  const me = players.find((p) => p.userId === userId);
+  return me ? me.seat : null;
+}

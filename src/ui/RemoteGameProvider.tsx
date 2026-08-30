@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { reduce } from "@/engine/reduce";
+import { seatOf } from "@/engine/selectors";
 import type { Action, GameEvent, GameState } from "@/engine/types";
 import { errorText } from "@/lib/messages";
 import { roomChannel, type RealtimeLike } from "@/net/roomChannel";
@@ -22,15 +23,21 @@ const MAX_LOG = 200;
  * מהלך, ואז טוענים מחדש. בלי זה, ניתוק של שנייה משאיר לוח שקרי.
  */
 export function RemoteGameProvider({
-  roomId, mySeat, initialState, initialVersion, children,
+  roomId, userId, mySeat: claimedSeat, initialState, initialVersion, children,
 }: {
   roomId: string;
+  /** מי אני. זה, ולא מספר המושב, מה שמזהה אותי במצב. */
+  userId: string;
   mySeat: number;
   initialState: GameState;
   initialVersion: number;
   children: React.ReactNode;
 }) {
   const [state, setState] = useState<GameState>(initialState);
+  // המושב נלקח מהמצב לפי מזהה המשתמש, ורק בהיעדרו נופלים למה שהשרת
+  // אמר בהצטרפות. שני המספורים יכולים להתפצל, ואז השחקן פועל בשם מישהו
+  // אחר ורואה את הווידאו שלו במשבצת שלו — בלי שום סימן שמשהו לא בסדר.
+  const mySeat = seatOf(state.players, userId) ?? claimedSeat;
   // ה-catch של השליחה רץ אחרי הרינדור, ולכן הוא צריך את המצב העדכני
   // ולא את זה שנתפס בסגירה.
   const stateRef = useRef(initialState);

@@ -3,6 +3,7 @@ import { BOARD } from "@/lib/board";
 import { reduce } from "./reduce";
 import { startingCash } from "./setup";
 import { act, fail, newGame, setPhase, T0 } from "./testkit";
+import { seatOf } from "./selectors";
 
 const joiner = { type: "add_player" as const, userId: "u-new", name: "רן", token: "boat" };
 
@@ -57,5 +58,25 @@ describe("הצטרפות למשחק שכבר התחיל", () => {
       s = act(setPhase(s, "awaiting_end"), { type: "end_turn" }, s.currentSeat);
     }
     expect([...seen].sort()).toEqual([0, 1, 2]);
+  });
+});
+
+describe("מי אני בשולחן", () => {
+  const players = [
+    { userId: "host", seat: 0 },
+    { userId: "guest", seat: 1 },
+  ];
+
+  it("לפי מזהה, ולא לפי מיקום במערך", () => {
+    expect(seatOf(players, "guest")).toBe(1);
+    expect(seatOf([{ userId: "guest", seat: 3 }], "guest")).toBe(3);
+  });
+
+  it("מי שאינו בשולחן מקבל null, ולא מושב של מישהו אחר", () => {
+    // זו הנקודה: null אומר "אין לי מושב", ואילו 0 היה שולח אותי לשחק
+    // בשם השחקן הראשון — בדיוק התקלה שבה כל צד ראה את המצלמה של עצמו
+    // במשבצת של השני.
+    expect(seatOf(players, "someone-else")).toBeNull();
+    expect(seatOf([], "host")).toBeNull();
   });
 });
