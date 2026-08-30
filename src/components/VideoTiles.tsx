@@ -4,7 +4,7 @@ import { useDiag } from "@/ui/useDiag";
 import type { MediaErrorKind } from "@/net/media";
 import type { SignalStats } from "@/net/transport";
 import type { GameState } from "@/engine/types";
-import { diagLines, needsDiag } from "./videoDiag";
+import { diagLines, mediaBlocked, needsDiag } from "./videoDiag";
 import { seatColor, Token } from "./Token";
 import { VideoFrame } from "./VideoPanel";
 
@@ -120,7 +120,10 @@ export function peerHint(peer: PeerState | undefined, relayError?: string | null
   if (relayError) return relayError;
   if (!peer) return "מתחבר…";
   switch (peer.connection) {
-    case "connected":    return "המצלמה שלו כבויה";
+    case "connected":
+      // ההבחנה היחידה שהמדידה קונה לנו, והיא שווה אמירה: אנחנו משדרים
+      // ולא מגיע דבר, כלומר הרשת חוסמת ולא המצלמה שלו.
+      return mediaBlocked(peer) ? "הרשת חוסמת את הווידאו" : "המצלמה שלו כבויה";
     case "failed":       return "אין חיבור וידאו";
     case "disconnected": return "החיבור נותק";
     case "closed":       return "אין וידאו";

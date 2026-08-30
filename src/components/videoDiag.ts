@@ -28,6 +28,17 @@ export interface DiagInput {
  */
 export const short = (id: string): string => id.slice(0, 6);
 
+/**
+ * אנחנו משדרים, ולא מגיע דבר.
+ *
+ * זה התסמין המובהק של מדיה שנחסמת בדרך — ICE הצליח (הוא עובר בחבילות
+ * קטנות), וזרם הווידאו עצמו נופל. זה בדיוק מה שממסר TURN פותר, ואי אפשר
+ * להסיק את זה משום מצב חיבור.
+ */
+export function mediaBlocked(p: PeerState): boolean {
+  return p.connection === "connected" && p.flow.outBytes > 20_000 && p.flow.inBytes === 0;
+}
+
 export function diagLines(d: DiagInput): string[] {
   const lines: string[] = [];
   lines.push(`אני ${short(d.selfId)} · מבוקשים: ${
@@ -62,12 +73,22 @@ export function diagLines(d: DiagInput): string[] {
                ` · ↓ הצעה ${p.in.offer} תשובה ${p.in.answer} ICE ${p.in.ice}` +
                (p.iceDropped ? ` · ${p.iceDropped} מועמדים נדחו` : "") +
                (p.resets ? ` · הוקם מחדש ${p.resets}` : ""));
+    // המדידה שקובעת: יוצא ולא נכנס = הרשת חוסמת את המדיה, ודרוש ממסר.
+    // לא יוצא בכלל = התקלה אצלנו. שני המצבים נראים זהים בלעדיה.
+    const kb = (n: number) => `${Math.round(n / 1024)} ק״ב`;
+    if (p.flow.outBytes || p.flow.inBytes || p.flow.path) {
+      lines.push(`   זרימה: יוצא ${kb(p.flow.outBytes)} · נכנס ${kb(p.flow.inBytes)}` +
+                 ` · פריימים ${p.flow.framesDecoded}` +
+                 (p.flow.path ? ` · מסלול ${p.flow.path}` : ""));
+    }
     if (p.lastError) lines.push(`   ✗ ${p.lastError}`);
     // חיבור מוצלח שלא מציג כלום הוא תקלה אחרת לגמרי מכל מה שמעליו:
     // המשא ומתן הצליח, והבעיה היא בצד המשדר או בניגון אצלנו.
     if (p.connection === "connected" && p.stream && p.video.muted) {
-      lines.push("   החיבור תקין והמסלול ריק — המצלמה שלו כבויה, "
-        + "או שהחלון שלו ברקע ובלי מצלמה פעילה");
+      lines.push(mediaBlocked(p)
+        ? "   וידאו יוצא ולא נכנס — הרשת חוסמת את המדיה, ודרוש ממסר TURN"
+        : "   החיבור תקין והמסלול ריק — המצלמה שלו כבויה, "
+          + "או שהחלון שלו ברקע ובלי מצלמה פעילה");
     }
     // תיאור מרוחק שלא הוחל הוא הגבול המדויק בין סיגנלינג ל-ICE.
     if (p.connection === "new" && p.in.offer + p.in.answer > 0 && !p.lastError) {
@@ -87,9 +108,12 @@ export function diagLines(d: DiagInput): string[] {
       // אז הוא בבירור מריץ, ומה שחסר זו רק ההכרזה, כלומר גרסה ישנה אצלו.
       const heard = d.peers.find((p) => p.id === id);
       const talking = heard && heard.in.offer + heard.in.answer + heard.in.ice > 0;
-      lines.push(talking
-        ? `${short(id)} שולח אבל לא מכריז נוכחות — גרסה ישנה אצלו, שירענן`
-        : `${short(id)} לא מריץ וידאו — הוא לא אישר מצלמה, או שהוא במצב שלט בטלפון`);
+      // מי שההודעות שלו מגיעות — מריץ וידאו, נקודה. היעדר הכרזת נוכחות
+      // אינו עדות לכלום: היא נחסמה במדיניות במשך ימים, והשורה הזו שלחה
+      // אותנו פעמיים לחפש "גרסה ישנה" שלא הייתה שם.
+      if (!talking) {
+        lines.push(`${short(id)} לא מריץ וידאו — הוא לא אישר מצלמה, או שהוא במצב שלט בטלפון`);
+      }
     }
     lines.push(`סיגנלינג: נשלחו ${sent}${failed ? `, נכשלו ${failed}` : ""}` +
                ` · התקבלו ${received} (אליי ${forMe})`);

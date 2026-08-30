@@ -4,6 +4,7 @@ import type { PeerState } from "./mesh";
 export const fakePeer = (p: Partial<PeerState> & { id: string }): PeerState => ({
   stream: null, connection: "new", relayed: false, signaling: "stable",
   polite: false, in: { offer: 0, answer: 0, ice: 0 },
-  out: { offer: 0, answer: 0, ice: 0 }, iceDropped: 0, resets: 0, lastError: null,
+  out: { offer: 0, answer: 0, ice: 0 }, iceDropped: 0, resets: 0,
+  flow: { inBytes: 0, outBytes: 0, framesDecoded: 0, path: "" }, lastError: null,
   video: { tracks: 1, live: true, muted: false }, ...p,
 });

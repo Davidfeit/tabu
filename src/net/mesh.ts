@@ -25,6 +25,26 @@ import { IceBatcher, isPolite, type SignalMessage } from "./signaling";
  */
 export interface VideoTrackInfo { tracks: number; live: boolean; muted: boolean }
 
+/**
+ * מה באמת עובר בחוט.
+ *
+ * connectionState אומר שה-ICE הצליח, ו-track.muted אומר שאין פריימים —
+ * אבל שניהם לא מבדילים בין "הוא לא שולח" לבין "הוא שולח וזה לא מגיע".
+ * זו ההבחנה שקובעת אם צריך ממסר TURN או שהתקלה בכלל בצד השני, ואין
+ * דרך להסיק אותה; רק למדוד. הערכים מ-getStats.
+ */
+export interface FlowInfo {
+  /** בייטים של וידאו שהתקבלו מהעמית. */
+  inBytes: number;
+  /** בייטים של וידאו שנשלחו אליו. */
+  outBytes: number;
+  framesDecoded: number;
+  /** סוג זוג המועמדים שנבחר, למשל "host↔srflx". ריק אם עוד לא נבחר. */
+  path: string;
+}
+
+const noFlow = (): FlowInfo => ({ inBytes: 0, outBytes: 0, framesDecoded: 0, path: "" });
+
 /** ספירת הודעות סיגנלינג לפי סוג, לכיוון אחד. */
 export interface SignalCount { offer: number; answer: number; ice: number }
 
@@ -43,6 +63,7 @@ export interface PeerState {
   iceDropped: number;
   /** כמה פעמים החיבור הוקם מחדש אחרי שנתקע. */
   resets: number;
+  flow: FlowInfo;
   /**
    * השגיאה האחרונה בטיפול בהודעה.
    *
@@ -79,6 +100,7 @@ interface Peer {
   out: SignalCount;
   iceDropped: number;
   resets: number;
+  flow: FlowInfo;
   lastError: string | null;
   /**
    * מועמדי ICE שהגיעו לפני התיאור המרוחק.
@@ -138,7 +160,12 @@ export class PeerMesh {
   private batcher: IceBatcher;
   private closed = false;
 
+  private flowTimer: ReturnType<typeof setInterval> | null = null;
+
   constructor(private readonly opts: MeshOptions) {
+    if (typeof setInterval === "function") {
+      this.flowTimer = setInterval(() => void this.sampleFlow(), 2000);
+    }
     this.batcher = new IceBatcher(opts.iceBatchMs ?? 200, (peerId, candidates) => {
       const peer = this.peers.get(peerId);
       if (peer) peer.out.ice++;
@@ -165,7 +192,7 @@ export class PeerMesh {
     const peer: Peer = {
       pc, polite: isPolite(this.opts.selfId, peerId),
       makingOffer: false, ignoreOffer: false, stream: null, relayed: false,
-      in: noCount(), out: noCount(), iceDropped: 0, resets: 0,
+      in: noCount(), out: noCount(), iceDropped: 0, resets: 0, flow: noFlow(),
       lastError: null, pendingIce: [], stuckTimer: null, staleTimer: null,
       dropTimer: null,
     };
@@ -180,9 +207,11 @@ export class PeerMesh {
       peer.stream = streams[0] ?? null;
       // mute/unmute הם השינוי היחיד שמבדיל בין "מסלול קיים" לבין
       // "פריימים באמת זורמים", והם קורים אחרי ontrack.
-      track.onunmute = () => { this.disarmStale(peer); this.emit(); };
-      track.onmute = () => { this.armStale(peerId, peer); this.emit(); };
-      if (track.muted) this.armStale(peerId, peer);
+      if (track.kind === "video") {
+        track.onunmute = () => { this.disarmStale(peer); this.emit(); };
+        track.onmute = () => { this.armStale(peerId, peer); this.emit(); };
+        if (track.muted) this.armStale(peerId, peer);
+      }
       this.emit();
     };
 
@@ -370,6 +399,55 @@ export class PeerMesh {
     await this.addIce(peer, queued);
   }
 
+  /**
+   * דוגם את מוני התעבורה של כל עמית.
+   *
+   * פעם בשתי שניות, וזה זול: מדובר בכמה עשרות שורות סטטיסטיקה. התמורה
+   * היא ההבחנה היחידה שלא ניתן להסיק אותה משום מצב אחר — האם המדיה
+   * יוצאת ולא נכנסת (הרשת חוסמת, ודרוש ממסר) או שאינה יוצאת בכלל.
+   */
+  private async sampleFlow(): Promise<void> {
+    if (this.closed || this.peers.size === 0) return;
+    let changed = false;
+
+    for (const peer of this.peers.values()) {
+      if (peer.pc.connectionState === "closed") continue;
+      try {
+        const stats = await peer.pc.getStats();
+        const next = noFlow();
+        const kind = new Map<string, string>();
+
+        stats.forEach((r: Record<string, unknown> & { type: string; id: string }) => {
+          if (r.type === "local-candidate" || r.type === "remote-candidate") {
+            kind.set(r.id, String(r.candidateType ?? ""));
+          }
+        });
+        stats.forEach((r: Record<string, unknown> & { type: string }) => {
+          if (r.type === "inbound-rtp" && r.kind === "video") {
+            next.inBytes = Number(r.bytesReceived ?? 0);
+            next.framesDecoded = Number(r.framesDecoded ?? 0);
+          }
+          if (r.type === "outbound-rtp" && r.kind === "video") {
+            next.outBytes = Number(r.bytesSent ?? 0);
+          }
+          if (r.type === "candidate-pair" && r.state === "succeeded" && r.nominated) {
+            const a = kind.get(String(r.localCandidateId)) ?? "?";
+            const b = kind.get(String(r.remoteCandidateId)) ?? "?";
+            next.path = `${a}↔${b}`;
+          }
+        });
+
+        if (next.inBytes !== peer.flow.inBytes || next.outBytes !== peer.flow.outBytes
+            || next.path !== peer.flow.path) {
+          peer.flow = next;
+          changed = true;
+        }
+      } catch { /* דגימה שנכשלה אינה תקלה */ }
+    }
+
+    if (changed) this.emit();
+  }
+
   /** האם החיבור עובר דרך ממסר. המדד שקובע אם TURN מתחיל לעלות כסף. */
   private async checkRelay(peerId: string, peer: Peer): Promise<void> {
     if (peer.pc.connectionState !== "connected") return;
@@ -409,13 +487,14 @@ export class PeerMesh {
       id, stream: p.stream, connection: p.pc.connectionState, relayed: p.relayed,
       signaling: p.pc.signalingState, polite: p.polite,
       in: { ...p.in }, out: { ...p.out }, iceDropped: p.iceDropped,
-      resets: p.resets, lastError: p.lastError,
+      resets: p.resets, flow: { ...p.flow }, lastError: p.lastError,
       video: videoInfo(p.stream),
     }));
   }
 
   close(): void {
     this.closed = true;
+    if (this.flowTimer) { clearInterval(this.flowTimer); this.flowTimer = null; }
     this.batcher.dispose();
     for (const id of [...this.peers.keys()]) this.drop(id);
     this.peers.clear();
