@@ -60,7 +60,8 @@ export function diagLines(d: DiagInput): string[] {
     // עניתי" הן שתי תקלות הפוכות, ובלי הפירוט הן נראות אותו דבר.
     lines.push(`   ↑ הצעה ${p.out.offer} תשובה ${p.out.answer} ICE ${p.out.ice}` +
                ` · ↓ הצעה ${p.in.offer} תשובה ${p.in.answer} ICE ${p.in.ice}` +
-               (p.iceDropped ? ` · ${p.iceDropped} מועמדים נדחו` : ""));
+               (p.iceDropped ? ` · ${p.iceDropped} מועמדים נדחו` : "") +
+               (p.resets ? ` · הוקם מחדש ${p.resets}` : ""));
     if (p.lastError) lines.push(`   ✗ ${p.lastError}`);
     // חיבור מוצלח שלא מציג כלום הוא תקלה אחרת לגמרי מכל מה שמעליו:
     // המשא ומתן הצליח, והבעיה היא בצד המשדר או בניגון אצלנו.

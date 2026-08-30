@@ -85,7 +85,7 @@ select coalesce(
     where schemaname = 'realtime' and tablename = 'messages'),
   '(אין מדיניות על realtime.messages)');
 SQL
-printf '   דרושות: tabu_broadcast_read, tabu_signal_read, tabu_signal_write\n'
+printf '   דרושות: tabu_broadcast_read, tabu_presence_write, tabu_signal_read, tabu_signal_write\n'
 
 step "בודק שהשידור מה-DB אכן מגיע ליעד"
 # שתי הנחות נושאות, ואף אחת מהן לא מתועדת אצל Supabase:

@@ -41,6 +41,8 @@ export interface PeerState {
   out: SignalCount;
   /** מועמדי ICE שנדחו. בודדים הם שגרה; רבים פירושם מסלול שלא נבדק. */
   iceDropped: number;
+  /** כמה פעמים החיבור הוקם מחדש אחרי שנתקע. */
+  resets: number;
   /**
    * השגיאה האחרונה בטיפול בהודעה.
    *
@@ -60,8 +62,8 @@ export interface MeshOptions {
   send: (peerId: string, message: SignalMessage) => void;
   onPeersChanged: (peers: PeerState[]) => void;
   iceBatchMs?: number;
-  /** כמה להמתין לתשובה לפני נסיגה מהתנגשות. לבדיקות. */
-  glareMs?: number;
+  /** כמה להמתין לתשובה לפני הקמה מחדש. לבדיקות. */
+  stuckMs?: number;
 }
 
 interface Peer {
@@ -74,6 +76,7 @@ interface Peer {
   in: SignalCount;
   out: SignalCount;
   iceDropped: number;
+  resets: number;
   lastError: string | null;
   /**
    * מועמדי ICE שהגיעו לפני התיאור המרוחק.
@@ -84,22 +87,31 @@ interface Peer {
    */
   pendingIce: RTCIceCandidateInit[];
   /**
-   * הצעה שהתעלמנו ממנה בהתנגשות, ומתי לחזור אליה.
+   * שעון תקיעה: הצעה יצאה ולא חזר עליה כלום.
    *
-   * הדפוס אומר שהצד הלא-מנומס מתעלם והמנומס נסוג — וזה נכון *כל עוד*
-   * המנומס באמת עונה. אם הוא לא (גרסה ישנה, דפדפן שלא מגלגל לאחור,
-   * הודעה שאבדה) שני הצדדים נשארים עם הצעה מקומית פתוחה לנצח, ואין
-   * וידאו לאף אחד. אז שומרים, וממתינים רגע, ואם לא הגיעה תשובה —
-   * מגלגלים לאחור ועונים בעצמנו.
+   * הניסיון הקודם כאן היה לגלגל את ההצעה שלנו לאחור ולענות על שלו. זו
+   * הייתה טעות: התשובה שלו *כן* בדרך, רק אטית — הממסר עובר Edge Function
+   * ובסיס נתונים — וכשהיא הגיעה כבר היינו stable. אז כל צד החזיק תיאור
+   * אחר של אותו חיבור, ולא הייתה דרך לתקן.
+   *
+   * מה שבטוח במקום זה: להקים את החיבור מחדש. אין מצב ביניים שאפשר
+   * להיתקע בו, שני הצדדים מתחילים מאותו מקום, וזה עובד גם כשהצד השני
+   * מתנהג אחרת ממה שהנחנו.
    */
-  deferred: RTCSessionDescriptionInit | null;
-  glareTimer: ReturnType<typeof setTimeout> | null;
+  stuckTimer: ReturnType<typeof setTimeout> | null;
   /** ממתין לראות אם ניתוק זמני מתאושש מעצמו לפני שמאתחלים ICE. */
   dropTimer: ReturnType<typeof setTimeout> | null;
 }
 
-/** כמה להמתין לתשובה לפני שהצד הלא-מנומס נסוג בעצמו. */
-export const GLARE_MS = 2500;
+/**
+ * כמה להמתין לתשובה לפני הקמה מחדש.
+ *
+ * הרבה יותר מזמן הלוך-ושוב של הממסר (נמדד: עד ~3 שניות), כי כל המתנה
+ * שנקטעת מוקדם מדי מייצרת בדיוק את התקלה שהיא נועדה לפתור.
+ */
+export const STUCK_MS = 8000;
+/** אחרי כמה הקמות מחדש מפסיקים לנסות ואומרים את זה. */
+const MAX_RESETS = 2;
 
 export function videoInfo(stream: MediaStream | null): VideoTrackInfo {
   const tracks = stream?.getVideoTracks?.() ?? [];
@@ -147,8 +159,8 @@ export class PeerMesh {
     const peer: Peer = {
       pc, polite: isPolite(this.opts.selfId, peerId),
       makingOffer: false, ignoreOffer: false, stream: null, relayed: false,
-      in: noCount(), out: noCount(), iceDropped: 0, lastError: null, pendingIce: [],
-      deferred: null, glareTimer: null, dropTimer: null,
+      in: noCount(), out: noCount(), iceDropped: 0, resets: 0,
+      lastError: null, pendingIce: [], stuckTimer: null, dropTimer: null,
     };
     this.peers.set(peerId, peer);
 
@@ -184,6 +196,7 @@ export class PeerMesh {
         this.opts.send(peerId, {
           kind: "offer", from: this.opts.selfId, sdp: pc.localDescription!.sdp,
         });
+        this.armStuck(peerId, peer);
       } catch (e) { peer.lastError = `הצעה נכשלה: ${errText(e)}`; }
       finally { peer.makingOffer = false; this.emit(); }
     };
@@ -237,15 +250,11 @@ export class PeerMesh {
 
       if (message.kind === "offer") {
         peer.in.offer++;
-        // glare: שני הצדדים הציעו. המנומס נסוג, הלא-מנומס מתעלם.
+        // glare: שני הצדדים הציעו. המנומס נסוג, הלא-מנומס מתעלם וממתין
+        // לתשובה על ההצעה שלו.
         const collision = peer.makingOffer || pc.signalingState !== "stable";
         peer.ignoreOffer = !peer.polite && collision;
-        if (peer.ignoreOffer) {
-          peer.deferred = description;
-          this.armGlare(peerId, peer);
-          this.emit();
-          return;
-        }
+        if (peer.ignoreOffer) { this.emit(); return; }
         await pc.setRemoteDescription(description);
         await this.drainIce(peer);
         await pc.setLocalDescription();
@@ -253,11 +262,17 @@ export class PeerMesh {
         this.opts.send(peerId, {
           kind: "answer", from: this.opts.selfId, sdp: pc.localDescription!.sdp,
         });
+        this.disarmStuck(peer);
       } else {
         peer.in.answer++;
-        this.disarmGlare(peer);
+        // תשובה שאיחרה למסיבה: ההצעה שלה כבר לא קיימת (הוקם חיבור חדש,
+        // או שהמשא ומתן נסגר בדרך אחרת). החלתה תזרוק "wrong state" ותשאיר
+        // את שני הצדדים עם תיאור שונה של אותו חיבור — גרוע בהרבה
+        // מהתעלמות שקטה.
+        if (pc.signalingState !== "have-local-offer") { this.emit(); return; }
         await pc.setRemoteDescription(description);
         await this.drainIce(peer);
+        this.disarmStuck(peer);
       }
       peer.lastError = null;
     } catch (e) {
@@ -268,56 +283,35 @@ export class PeerMesh {
   }
 
   /**
-   * ההצעה נדחתה בהתנגשות — נותנים לצד השני רגע לענות, ואם לא, נסוגים.
+   * הצעה יצאה — עכשיו מצפים לתשובה.
    *
-   * זה מה שהופך את המשא ומתן לעמיד: הוא כבר לא מניח שהצד השני מתנהג
-   * נכון, אלא רק שהוא מדבר.
+   * אם לא הגיעה כלום אחרי STUCK_MS, החיבור מוקם מחדש. לא מגלגלים לאחור
+   * ולא עונים במקומו: כל תיקון חלקי כזה משאיר את שני הצדדים עם תיאור
+   * שונה של אותו חיבור, ואין ממנו דרך חזרה. התחלה נקייה תמיד עובדת.
    */
-  private armGlare(peerId: string, peer: Peer): void {
-    if (peer.glareTimer) return;
-    peer.glareTimer = setTimeout(() => {
-      peer.glareTimer = null;
-      void this.resolveGlare(peerId, peer);
-    }, this.opts.glareMs ?? GLARE_MS);
+  private armStuck(peerId: string, peer: Peer): void {
+    if (peer.stuckTimer) return;
+    peer.stuckTimer = setTimeout(() => {
+      peer.stuckTimer = null;
+      if (this.closed || peer.pc.remoteDescription) return;
+      if (peer.resets >= MAX_RESETS) {
+        peer.lastError = "לא הצלחנו להקים חיבור אחרי כמה ניסיונות";
+        this.emit();
+        return;
+      }
+      const resets = peer.resets + 1;
+      this.drop(peerId);
+      this.connect(peerId);
+      const fresh = this.peers.get(peerId);
+      if (fresh) fresh.resets = resets;
+      this.emit();
+    }, this.opts.stuckMs ?? STUCK_MS);
   }
 
-  private disarmGlare(peer: Peer): void {
-    if (peer.glareTimer) { clearTimeout(peer.glareTimer); peer.glareTimer = null; }
-    peer.deferred = null;
+  private disarmStuck(peer: Peer): void {
+    if (peer.stuckTimer) { clearTimeout(peer.stuckTimer); peer.stuckTimer = null; }
   }
 
-  private async resolveGlare(peerId: string, peer: Peer): Promise<void> {
-    const offer = peer.deferred;
-    peer.deferred = null;
-    // תשובה הגיעה בינתיים, או שהחיבור כבר התקדם — אין מה לתקן.
-    if (!offer || this.closed || peer.pc.remoteDescription) return;
-
-    try {
-      // גלגול ההצעה המקומית לאחור מחזיר אותנו ל-stable, וממנו אפשר
-      // לקבל את ההצעה שלו ולענות עליה כרגיל.
-      await peer.pc.setLocalDescription({ type: "rollback" });
-      peer.ignoreOffer = false;
-      await peer.pc.setRemoteDescription(offer);
-      await this.drainIce(peer);
-      await peer.pc.setLocalDescription();
-      peer.out.answer++;
-      this.opts.send(peerId, {
-        kind: "answer", from: this.opts.selfId, sdp: peer.pc.localDescription!.sdp,
-      });
-      peer.lastError = null;
-    } catch (e) {
-      peer.lastError = `נסיגה מהתנגשות נכשלה: ${errText(e)}`;
-    }
-    this.emit();
-  }
-
-  /**
-   * מועמד שנדחה אינו תקלה שמפילה חיבור — הוא מסלול אחד פחות.
-   *
-   * הוא נספר ולא נרשם כשגיאה: שורת שגיאה אדומה על כל מועמד שנדחה הצביעה
-   * על הבעיה הלא נכונה בדיוק כשהחיבור עצמו הצליח. מונה מבדיל בין "אחד
-   * או שניים" (שגרה) לבין "כולם" (מסלול שלא נבדק בכלל).
-   */
   private async addIce(peer: Peer, candidates: RTCIceCandidateInit[]): Promise<void> {
     for (const c of candidates) {
       try { await peer.pc.addIceCandidate(c); }
@@ -355,7 +349,7 @@ export class PeerMesh {
     peer.pc.onnegotiationneeded = null;
     peer.pc.onconnectionstatechange = null;
     if (peer.dropTimer) { clearTimeout(peer.dropTimer); peer.dropTimer = null; }
-    this.disarmGlare(peer);
+    this.disarmStuck(peer);
     peer.pc.close();
     this.peers.delete(peerId);
     this.batcher.flush(peerId);
@@ -370,7 +364,7 @@ export class PeerMesh {
       id, stream: p.stream, connection: p.pc.connectionState, relayed: p.relayed,
       signaling: p.pc.signalingState, polite: p.polite,
       in: { ...p.in }, out: { ...p.out }, iceDropped: p.iceDropped,
-      lastError: p.lastError,
+      resets: p.resets, lastError: p.lastError,
       video: videoInfo(p.stream),
     }));
   }

@@ -124,14 +124,14 @@ beforeEach(() => {
 afterEach(() => vi.unstubAllGlobals());
 
 /** זוג רשתות שמדברות זו עם זו, עם שליטה על סדר המסירה. */
-function pair(opts: { deliver?: boolean; glareMs?: number } = {}) {
+function pair(opts: { deliver?: boolean; stuckMs?: number } = {}) {
   const queue: { to: string; msg: SignalMessage }[] = [];
   const meshes: Record<string, PeerMesh> = {};
   const states: Record<string, PeerState[]> = { a: [], b: [] };
 
   const make = (id: string) => new PeerMesh({
     selfId: id, localStream: stream(), iceServers: [],
-    iceBatchMs: 0, glareMs: opts.glareMs ?? 20,
+    iceBatchMs: 0, stuckMs: opts.stuckMs ?? 5000,
     send: (to, msg) => {
       queue.push({ to, msg });
       if (opts.deliver !== false) void flush();
@@ -223,57 +223,80 @@ describe("משא ומתן בין שני עמיתים", () => {
   });
 });
 
-describe("התנגשות שבה הצד השני לא עונה", () => {
-  it("הצד הלא-מנומס נסוג בעצמו ועונה, במקום להיתקע לנצח", async () => {
-    // בדיוק מה שנראה על המסך: שני הצדדים עם הצעה מקומית פתוחה, אף אחד
-    // לא ענה, והחיבור נשאר new. הדפוס הקלאסי מניח שהמנומס יענה — וכשהוא
-    // לא (גרסה ישנה, הודעה שאבדה), זה תקוע לתמיד.
-    const sent: { to: string; msg: SignalMessage }[] = [];
+describe("הצעה שלא חוזרת עליה תשובה", () => {
+  it("החיבור מוקם מחדש, ולא מגלגלים לאחור", async () => {
+    // הניסיון הקודם היה לגלגל לאחור ולענות במקומו, וזה שבר את שני
+    // הצדדים כשהתשובה שלו הגיעה שנייה אחר כך: כל צד החזיק תיאור אחר
+    // של אותו חיבור. הקמה מחדש היא היחידה שאין בה מצב ביניים.
+    const sent: SignalMessage[] = [];
     const states: PeerState[][] = [];
     const mesh = new PeerMesh({
-      selfId: "d189", localStream: stream(), iceServers: [], iceBatchMs: 0, glareMs: 10,
-      send: (to, msg) => sent.push({ to, msg }),
+      selfId: "d189", localStream: stream(), iceServers: [], iceBatchMs: 0, stuckMs: 15,
+      send: (_to, m) => sent.push(m),
       onPeersChanged: (p) => states.push(p),
     });
 
     mesh.sync(["35eb"]);                       // "35eb" < "d189" → אני לא מנומס
     await settle();
-    expect(sent.filter((m) => m.msg.kind === "offer")).toHaveLength(1);
-
     await mesh.handle({ kind: "offer", from: "35eb", sdp: "his-offer" });
-    const ignored = states[states.length - 1]![0]!;
-    expect(ignored.in.offer).toBe(1);
-    expect(ignored.out.answer).toBe(0);        // התעלמנו, כמצופה
+    expect(states[states.length - 1]![0]!.out.answer).toBe(0);   // התעלמנו, כמצופה
+    const before = FakePC.instances.length;
 
-    await new Promise((r) => setTimeout(r, 40));
+    await new Promise((r) => setTimeout(r, 25));
     await settle();
+    expect(FakePC.instances.length).toBe(before + 1);            // חיבור חדש
+    expect(states[states.length - 1]![0]!.resets).toBe(1);
+    expect(sent.filter((m) => m.kind === "offer").length).toBeGreaterThan(1);
 
-    const after = states[states.length - 1]![0]!;
-    expect(after.out.answer).toBe(1);          // נסוגנו וענינו
-    expect(after.lastError).toBeNull();
-    expect(sent.some((m) => m.msg.kind === "answer")).toBe(true);
+    // ולא עד אינסוף: אחרי מספר ניסיונות זה נעצר ואומר את זה, במקום
+    // להקים חיבורים בלולאה בשקט.
+    await new Promise((r) => setTimeout(r, 80));
+    await settle();
+    const last = states[states.length - 1]![0]!;
+    expect(last.resets).toBe(2);
+    expect(last.lastError).toContain("לא הצלחנו להקים חיבור");
   });
 
-  it("תשובה שהגיעה בזמן מבטלת את הנסיגה", async () => {
-    const sent: { to: string; msg: SignalMessage }[] = [];
+  it("תשובה שהגיעה בזמן מבטלת את ההקמה מחדש", async () => {
     const states: PeerState[][] = [];
     const mesh = new PeerMesh({
-      selfId: "d189", localStream: stream(), iceServers: [], iceBatchMs: 0, glareMs: 10,
-      send: (to, msg) => sent.push({ to, msg }),
-      onPeersChanged: (p) => states.push(p),
+      selfId: "d189", localStream: stream(), iceServers: [], iceBatchMs: 0, stuckMs: 15,
+      send: () => {}, onPeersChanged: (p) => states.push(p),
     });
     mesh.sync(["35eb"]);
     await settle();
 
-    await mesh.handle({ kind: "offer", from: "35eb", sdp: "his-offer" });
     await mesh.handle({ kind: "answer", from: "35eb", sdp: "his-answer" });
+    const created = FakePC.instances.length;
     await new Promise((r) => setTimeout(r, 40));
     await settle();
 
-    const after = states[states.length - 1]![0]!;
-    expect(after.out.answer).toBe(0);          // אין צורך — התשובה הגיעה
-    expect(after.lastError).toBeNull();
-    expect(after.connection).toBe("connecting");
+    expect(FakePC.instances.length).toBe(created);               // לא הוקם מחדש
+    expect(states[states.length - 1]![0]!.resets).toBe(0);
+    expect(states[states.length - 1]![0]!.connection).toBe("connecting");
+  });
+
+  it("תשובה שאיחרה נבלעת בשקט, ולא משאירה שני תיאורים שונים", async () => {
+    // בדיוק מה שנראה על המסך: "Failed to set remote answer sdp: Called
+    // in wrong state: stable".
+    const states: PeerState[][] = [];
+    const mesh = new PeerMesh({
+      selfId: "a", localStream: stream(), iceServers: [], iceBatchMs: 0, stuckMs: 5000,
+      send: () => {}, onPeersChanged: (p) => states.push(p),
+    });
+    mesh.sync(["b"]);                          // "a" < "b" → אני מנומס
+    await settle();
+
+    // הצעה נכנסת נענית, ואנחנו ב-stable.
+    await mesh.handle({ kind: "offer", from: "b", sdp: "his-offer" });
+    await settle();
+    expect(FakePC.instances[0]!.signalingState).toBe("stable");
+
+    // ועכשיו מגיעה תשובה מאוחרת להצעה שכבר לא קיימת.
+    await mesh.handle({ kind: "answer", from: "b", sdp: "late" });
+    const st = states[states.length - 1]![0]!;
+    expect(st.lastError).toBeNull();
+    expect(st.in.answer).toBe(1);              // נספרה, ולא הוחלה
   });
 });
 

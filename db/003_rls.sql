@@ -94,11 +94,27 @@ begin
   end if;
 
   execute $p$drop policy if exists tabu_broadcast_read on realtime.messages$p$;
+  -- presence ולא רק broadcast: נוכחות היא הודעה משלה על אותה טבלה, וכשהיא
+  -- חסומה כל לקוח רואה רק את עצמו בערוץ — בלי שגיאה, ובלי דרך להבדיל בין
+  -- "הצד השני לא כאן" לבין "אסור לי לראות אותו".
   execute $p$
     create policy tabu_broadcast_read on realtime.messages
       for select to authenticated
       using (
-        extension = 'broadcast'
+        extension in ('broadcast', 'presence')
+        and realtime.topic() like 'room:%'
+        and public.is_room_member(
+              replace(realtime.topic(), 'room:', '')::uuid, auth.uid())
+      )$p$;
+
+  -- נוכחות נכתבת ע"י הלקוח עצמו (track), ולכן דרושה גם הרשאת כתיבה —
+  -- רק לערוץ של חדר שהוא חבר בו.
+  execute $p$drop policy if exists tabu_presence_write on realtime.messages$p$;
+  execute $p$
+    create policy tabu_presence_write on realtime.messages
+      for insert to authenticated
+      with check (
+        extension = 'presence'
         and realtime.topic() like 'room:%'
         and public.is_room_member(
               replace(realtime.topic(), 'room:', '')::uuid, auth.uid())
