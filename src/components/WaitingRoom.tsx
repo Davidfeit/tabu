@@ -25,10 +25,13 @@ export function WaitingRoom({ room, onStart }: {
         .select("user_id, seat, display_name, token").eq("room_id", room.roomId).order("seat");
       if (alive && data) setSeats(data as Seat[]);
     };
-    // מי שאינו המארח מגלה שהמשחק התחיל בכך שנוצר מצב לחדר.
+    // משחק שכבר רץ מזוהה בכך שיש לחדר מצב — וזה נכון גם למארח.
+    //
+    // הבדיקה דילגה עליו בכוונה ("הוא זה שמתחיל"), אבל מארח שרענן את
+    // הדף חזר בדיוק לכאן: לחדר המתנה של משחק שכבר רץ, מול כפתור התחלה
+    // שייכשל. הדרך היחידה חזרה הייתה משחק חדש.
     const watch = async () => {
       await load();
-      if (room.isHost) return;
       const { data } = await sb.rpc("get_game_state", { p_room: room.roomId });
       if (alive && data?.state) onStart(data.state, data.version);
     };
@@ -36,7 +39,7 @@ export function WaitingRoom({ room, onStart }: {
     // Presence לא מספיק כאן: ה-heartbeat הוא 25 שניות, וזה מרגיש תקוע.
     const id = setInterval(watch, 2500);
     return () => { alive = false; clearInterval(id); };
-  }, [room.roomId, room.isHost, onStart]);
+  }, [room.roomId, onStart]);
 
   const link = `${location.origin}${location.pathname}#${room.code}`;
 

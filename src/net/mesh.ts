@@ -64,6 +64,8 @@ export interface MeshOptions {
   iceBatchMs?: number;
   /** כמה להמתין לתשובה לפני הקמה מחדש. לבדיקות. */
   stuckMs?: number;
+  /** כמה לסבול חיבור בלי פריימים. לבדיקות. */
+  staleMs?: number;
 }
 
 interface Peer {
@@ -99,6 +101,8 @@ interface Peer {
    * מתנהג אחרת ממה שהנחנו.
    */
   stuckTimer: ReturnType<typeof setTimeout> | null;
+  /** חיבור מוצלח שלא זורמים בו פריימים — ראה armStale. */
+  staleTimer: ReturnType<typeof setTimeout> | null;
   /** ממתין לראות אם ניתוק זמני מתאושש מעצמו לפני שמאתחלים ICE. */
   dropTimer: ReturnType<typeof setTimeout> | null;
 }
@@ -110,6 +114,8 @@ interface Peer {
  * שנקטעת מוקדם מדי מייצרת בדיוק את התקלה שהיא נועדה לפתור.
  */
 export const STUCK_MS = 8000;
+/** כמה זמן לסבול חיבור מחובר שאין בו פריימים לפני הקמה מחדש. */
+export const STALE_MS = 10_000;
 /** אחרי כמה הקמות מחדש מפסיקים לנסות ואומרים את זה. */
 const MAX_RESETS = 2;
 
@@ -160,7 +166,8 @@ export class PeerMesh {
       pc, polite: isPolite(this.opts.selfId, peerId),
       makingOffer: false, ignoreOffer: false, stream: null, relayed: false,
       in: noCount(), out: noCount(), iceDropped: 0, resets: 0,
-      lastError: null, pendingIce: [], stuckTimer: null, dropTimer: null,
+      lastError: null, pendingIce: [], stuckTimer: null, staleTimer: null,
+      dropTimer: null,
     };
     this.peers.set(peerId, peer);
 
@@ -173,8 +180,9 @@ export class PeerMesh {
       peer.stream = streams[0] ?? null;
       // mute/unmute הם השינוי היחיד שמבדיל בין "מסלול קיים" לבין
       // "פריימים באמת זורמים", והם קורים אחרי ontrack.
-      track.onunmute = () => this.emit();
-      track.onmute = () => this.emit();
+      track.onunmute = () => { this.disarmStale(peer); this.emit(); };
+      track.onmute = () => { this.armStale(peerId, peer); this.emit(); };
+      if (track.muted) this.armStale(peerId, peer);
       this.emit();
     };
 
@@ -213,6 +221,13 @@ export class PeerMesh {
           peer.dropTimer = null;
           if (pc.connectionState === "disconnected") pc.restartIce();
         }, 2500);
+      }
+
+      // מחובר אבל שקט — ראה armStale.
+      if (pc.connectionState === "connected" && videoInfo(peer.stream).muted) {
+        this.armStale(peerId, peer);
+      } else if (pc.connectionState !== "connected") {
+        this.disarmStale(peer);
       }
 
       void this.checkRelay(peerId, peer);
@@ -294,18 +309,47 @@ export class PeerMesh {
     peer.stuckTimer = setTimeout(() => {
       peer.stuckTimer = null;
       if (this.closed || peer.pc.remoteDescription) return;
-      if (peer.resets >= MAX_RESETS) {
-        peer.lastError = "לא הצלחנו להקים חיבור אחרי כמה ניסיונות";
-        this.emit();
-        return;
-      }
-      const resets = peer.resets + 1;
-      this.drop(peerId);
-      this.connect(peerId);
-      const fresh = this.peers.get(peerId);
-      if (fresh) fresh.resets = resets;
-      this.emit();
+      this.resetPeer(peerId, peer);
     }, this.opts.stuckMs ?? STUCK_MS);
+  }
+
+  /**
+   * חיבור שהצליח אבל לא מגיעים בו פריימים.
+   *
+   * זה נראה על המסך בדיוק כמו כשלון חיבור — ריבוע שחור — אבל מבפנים
+   * הכול "תקין": ICE הצליח, יש מסלול, והוא פשוט שקט. קורה אחרי משא ומתן
+   * חוזר או אחרי אתחול ICE שלא הביא מדיה. אף אחד לא יתקן את זה מעצמו,
+   * ולכן אחרי STALE_MS מקימים מחדש — עד תקרת הניסיונות, כדי שמצלמה
+   * שכבויה בכוונה בצד השני לא תייצר לולאה.
+   */
+  private armStale(peerId: string, peer: Peer): void {
+    if (peer.staleTimer) return;
+    peer.staleTimer = setTimeout(() => {
+      peer.staleTimer = null;
+      if (this.closed) return;
+      if (peer.pc.connectionState !== "connected") return;
+      if (!videoInfo(peer.stream).muted) return;      // בינתיים התחיל לזרום
+      this.resetPeer(peerId, peer);
+    }, this.opts.staleMs ?? STALE_MS);
+  }
+
+  private disarmStale(peer: Peer): void {
+    if (peer.staleTimer) { clearTimeout(peer.staleTimer); peer.staleTimer = null; }
+  }
+
+  /** הקמה מחדש מאפס. אין בה מצב ביניים, ולכן היא בטוחה מכל תיקון חלקי. */
+  private resetPeer(peerId: string, peer: Peer): void {
+    if (peer.resets >= MAX_RESETS) {
+      peer.lastError = "לא הצלחנו להקים חיבור אחרי כמה ניסיונות";
+      this.emit();
+      return;
+    }
+    const resets = peer.resets + 1;
+    this.drop(peerId);
+    this.connect(peerId);
+    const fresh = this.peers.get(peerId);
+    if (fresh) fresh.resets = resets;
+    this.emit();
   }
 
   private disarmStuck(peer: Peer): void {
@@ -350,6 +394,7 @@ export class PeerMesh {
     peer.pc.onconnectionstatechange = null;
     if (peer.dropTimer) { clearTimeout(peer.dropTimer); peer.dropTimer = null; }
     this.disarmStuck(peer);
+    this.disarmStale(peer);
     peer.pc.close();
     this.peers.delete(peerId);
     this.batcher.flush(peerId);

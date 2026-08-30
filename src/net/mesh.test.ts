@@ -342,3 +342,65 @@ describe("מועמדי ICE", () => {
     expect(st.lastError).toBeNull();
   });
 });
+
+describe("חיבור מחובר שאין בו פריימים", () => {
+  it("מוקם מחדש מעצמו, בלי שאף אחד יבקש", async () => {
+    // התסמין על המסך זהה לכשלון חיבור — ריבוע שחור — אבל מבפנים ICE
+    // הצליח ויש מסלול, הוא פשוט שקט. אף אחד לא מתקן את זה מעצמו.
+    const states: PeerState[][] = [];
+    const mesh = new PeerMesh({
+      selfId: "a", localStream: stream(), iceServers: [], iceBatchMs: 0,
+      stuckMs: 5000, staleMs: 15,
+      send: () => {}, onPeersChanged: (p) => states.push(p),
+    });
+    mesh.sync(["b"]);
+    await settle();
+
+    const pc = FakePC.instances[0]!;
+    // מסלול שהגיע ונשאר muted: קיים, ולא זורמים בו פריימים.
+    const silent = { kind: "video", readyState: "live", muted: true,
+                     onmute: null, onunmute: null } as unknown as MediaStreamTrack;
+    pc.ontrack?.({
+      streams: [{ getVideoTracks: () => [silent] } as unknown as MediaStream],
+      track: silent,
+    });
+    pc.connectionState = "connected";
+    pc.onconnectionstatechange?.();
+    const before = FakePC.instances.length;
+
+    await new Promise((r) => setTimeout(r, 45));
+    await settle();
+
+    expect(FakePC.instances.length).toBe(before + 1);
+    expect(states[states.length - 1]![0]!.resets).toBe(1);
+  });
+
+  it("מסלול שהתחיל לזרום מבטל את ההקמה מחדש", async () => {
+    const mesh = new PeerMesh({
+      selfId: "a", localStream: stream(), iceServers: [], iceBatchMs: 0,
+      stuckMs: 5000, staleMs: 15,
+      send: () => {}, onPeersChanged: () => {},
+    });
+    mesh.sync(["b"]);
+    await settle();
+
+    const pc = FakePC.instances[0]!;
+    const track = { kind: "video", readyState: "live", muted: true,
+                    onmute: null, onunmute: null } as unknown as
+                    MediaStreamTrack & { onunmute: (() => void) | null };
+    pc.ontrack?.({
+      streams: [{ getVideoTracks: () => [track] } as unknown as MediaStream], track,
+    });
+    pc.connectionState = "connected";
+    pc.onconnectionstatechange?.();
+
+    // הפריימים התחילו לזרום לפני שהשעון הספיק.
+    (track as { muted: boolean }).muted = false;
+    track.onunmute?.();
+    const before = FakePC.instances.length;
+
+    await new Promise((r) => setTimeout(r, 45));
+    await settle();
+    expect(FakePC.instances.length).toBe(before);
+  });
+});
