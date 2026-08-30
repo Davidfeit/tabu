@@ -3,7 +3,7 @@
     "name": "טאבו",
     "locale": "he-IL",
     "currency": "ILS",
-    "startingCash": 1500,
+    "startingCash": 2000,
     "passStartBonus": 200,
     "houseSupply": 32,
     "hotelSupply": 12,
@@ -120,7 +120,7 @@
   ],
   "modes": {
     "full":  { "name": "משחק מלא", "auctions": true,  "hotelThreshold": 4, "hardLimitMinutes": null },
-    "quick": { "name": "מהיר",     "auctions": false, "hotelThreshold": 3, "hardLimitMinutes": 60, "startingCash": 1200, "passStartBonus": 250, "rentSurgeAfterMinutes": 45, "rentSurgeMultiplier": 1.5 },
-    "blitz": { "name": "בזק",      "auctions": false, "hotelThreshold": 2, "hardLimitMinutes": 30, "startingCash": 1200, "passStartBonus": 300, "rentSurgeAfterMinutes": 20, "rentSurgeMultiplier": 1.5 }
+    "quick": { "name": "מהיר",     "auctions": false, "hotelThreshold": 3, "hardLimitMinutes": 60, "startingCash": 2000, "passStartBonus": 250, "rentSurgeAfterMinutes": 45, "rentSurgeMultiplier": 1.5 },
+    "blitz": { "name": "בזק",      "auctions": false, "hotelThreshold": 2, "hardLimitMinutes": 30, "startingCash": 2000, "passStartBonus": 300, "rentSurgeAfterMinutes": 20, "rentSurgeMultiplier": 1.5 }
   }
 }
