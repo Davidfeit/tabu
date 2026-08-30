@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { squareAt } from "@/lib/board";
 import { shekel, shekelShort } from "@/lib/format";
 import { errorText } from "@/lib/messages";
@@ -9,6 +10,10 @@ import type { GameState, TradeOffer } from "@/engine/types";
 import { useGame } from "@/ui/GameContext";
 import { Button } from "./Button";
 import { seatColor, Token } from "./Token";
+
+/** מרנדר לשכבה משלו על ה-body, מחוץ לכל מסגרת שממנה נפתח. */
+const portal = (node: React.ReactNode) =>
+  typeof document === "undefined" ? node : createPortal(node, document.body);
 
 type Side = TradeOffer["give"];
 const emptySide = (): Side => ({ cash: 0, deeds: [], jailCards: 0 });
@@ -147,9 +152,15 @@ export function TradeBuilder({ mySeat, onClose }: { mySeat: number; onClose: () 
   const giveValue = sideValue(state, give);
   const receiveValue = sideValue(state, receive);
 
-  return (
+  // פורטל ו-fixed, ולא absolute.
+  //
+  // הכפתור שפותח את החלון יושב בלוח הפקדים שבמרכז הלוח — אלמנט ברוחב
+  // ~180 פיקסלים — וכל absolute נמדד מול האב הממוקם הקרוב. כלומר החלון
+  // נדחס לרוחב הכפתור שפתח אותו. שכבה משלו על ה-body מנתקת אותו מכל
+  // הקשר שממנו נפתח.
+  return portal(
     <div dir="rtl" role="dialog" aria-modal="true" aria-label="הצעת עסקה"
-         className="toy-overlay absolute inset-0 z-40 flex items-center justify-center p-6">
+         className="toy-overlay fixed inset-0 z-50 flex items-center justify-center p-6">
       <div className="tabu-pop toy-modal flex w-full max-w-2xl flex-col gap-3 p-5">
         <header className="flex items-center gap-3">
           <h2 className="flex-1 font-logo text-2xl text-ink">מכירה או החלפה</h2>
@@ -202,7 +213,7 @@ export function TradeBuilder({ mySeat, onClose }: { mySeat: number; onClose: () 
           <Button onClick={onClose}>ביטול</Button>
         </footer>
       </div>
-    </div>
+    </div>,
   );
 }
 
@@ -230,9 +241,9 @@ export function TradeOfferCard() {
     </div>
   );
 
-  return (
+  return portal(
     <div dir="rtl" role="dialog" aria-modal="true" aria-label="הצעת עסקה נכנסת"
-         className="toy-overlay absolute inset-0 z-40 flex items-center justify-center p-6">
+         className="toy-overlay fixed inset-0 z-50 flex items-center justify-center p-6">
       <div className="tabu-pop toy-modal w-full max-w-md space-y-3 p-5">
         <h2 className="text-center font-display text-base font-bold text-ink">
           <span style={{ color: seatColor(from.seat), unicodeBidi: "plaintext" }}>{from.name}</span>
@@ -257,6 +268,6 @@ export function TradeOfferCard() {
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
   );
 }
