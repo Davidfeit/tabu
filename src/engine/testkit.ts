@@ -12,8 +12,16 @@ export function seats(n: number): SeatSpec[] {
   }));
 }
 
+/**
+ * משחק לבדיקות — עם שעון תור, בכוונה.
+ *
+ * במוצר אין הגבלת זמן לתור (turnSeconds: null), אבל המנגנון קיים במנוע
+ * ויש לו חוקים משלו: אכיפה עצלה, חיסול אוטומטי, וסיום לפי שווי נקי.
+ * ברירת מחדל בלי שעון הייתה משאירה את כל אלה בלי כיסוי.
+ */
 export function newGame(n = 2, overrides: Partial<Settings> = {}): GameState {
-  return createGame(seats(n), { ...defaultSettings("full"), ...overrides }, SEED, T0);
+  return createGame(
+    seats(n), { ...defaultSettings("full"), turnSeconds: 60, ...overrides }, SEED, T0);
 }
 
 /** מריץ פעולה ומצפה להצלחה; זורק עם קוד השגיאה אם נכשלה. */

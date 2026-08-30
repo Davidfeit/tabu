@@ -2,6 +2,16 @@ import { describe, it, expect } from "vitest";
 import { BOARD } from "@/lib/board";
 import { reduce } from "./reduce";
 import { createGame, defaultSettings, DEED_POSITIONS } from "./setup";
+
+/**
+ * הגדרות עם שעון תור.
+ *
+ * במוצר אין הגבלת זמן לתור, אבל הסימולציה נשענת על claim_timeout כדי
+ * לשחרר שחקן שנתקע — ובלי דדליין אין מה לתבוע. שעון כאן שומר גם על
+ * הכיסוי של מסלול הטיימאאוט עצמו.
+ */
+const timed = (mode: Parameters<typeof defaultSettings>[0]) =>
+  ({ ...defaultSettings(mode), turnSeconds: 30 });
 import { buildingUnits } from "./selectors";
 import { seats } from "./testkit";
 import type { Action, GameState, Settings } from "./types";
@@ -156,7 +166,7 @@ describe("סימולציית משחקים שלמים", () => {
   it("שומר על כל האינוריאנטים לאורך 40 משחקים מלאים", () => {
     for (let i = 0; i < 40; i++) {
       const players = 2 + (i % 3);   // 2–4, כמספר המושבים
-      const { state } = runGame(`g${i}`, i * 7919, players, defaultSettings("full"));
+      const { state } = runGame(`g${i}`, i * 7919, players, timed("full"));
       expect(["finished", "awaiting_roll", "awaiting_end", "awaiting_buy", "auction", "debt"])
         .toContain(state.phase);
     }
@@ -165,7 +175,7 @@ describe("סימולציית משחקים שלמים", () => {
   it("משחקים מסתיימים במנצח יחיד", () => {
     let finished = 0;
     for (let i = 0; i < 25; i++) {
-      const { state } = runGame(`f${i}`, i * 104729, 2, defaultSettings("full"));
+      const { state } = runGame(`f${i}`, i * 104729, 2, timed("full"));
       if (state.phase === "finished") {
         finished++;
         expect(state.winnerSeat).not.toBeNull();
@@ -179,7 +189,7 @@ describe("סימולציית משחקים שלמים", () => {
   it("מצב מהיר נגמר בזמן ומכריז מנצח לפי שווי נקי", () => {
     let byTime = 0;
     for (let i = 0; i < 15; i++) {
-      const { state } = runGame(`q${i}`, i * 31337, 4, defaultSettings("quick"));
+      const { state } = runGame(`q${i}`, i * 31337, 4, timed("quick"));
       expect(state.phase).toBe("finished");
       expect(state.winnerSeat).not.toBeNull();
       if (state.players.filter((p) => !p.bankrupt).length > 1) byTime++;
@@ -188,8 +198,8 @@ describe("סימולציית משחקים שלמים", () => {
   });
 
   it("דטרמיניסטי: אותו זרע נותן בדיוק אותו משחק", () => {
-    const a = runGame("determinism", 42, 3, defaultSettings("full"));
-    const b = runGame("determinism", 42, 3, defaultSettings("full"));
+    const a = runGame("determinism", 42, 3, timed("full"));
+    const b = runGame("determinism", 42, 3, timed("full"));
     expect(a.moves).toBe(b.moves);
     expect(JSON.stringify(a.state)).toBe(JSON.stringify(b.state));
   });

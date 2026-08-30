@@ -49,6 +49,8 @@ export function LocalGameProvider({
   const [events, setEvents] = useState<GameEvent[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  const clearError = useCallback(() => setError(null), []);
+
   const dispatch = useCallback((action: Action, seat?: number) => {
     setState((prev) => {
       const actor = seat ?? prev.currentSeat;
@@ -71,9 +73,9 @@ export function LocalGameProvider({
     canControl: () => true,
     dispatch,
     error,
-    clearError: () => setError(null),
+    clearError,
     now: Date.now(),
-  }), [state, events, dispatch, error]);
+  }), [state, events, dispatch, error, clearError]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -73,7 +73,13 @@ export interface Settings {
   mode: "full" | "quick" | "blitz";
   auctions: boolean;
   hotelThreshold: number;
-  turnSeconds: number;
+  /**
+   * שניות לתור, או null — בלי הגבלה.
+   *
+   * ברירת המחדל היא null: שעון שרץ על התור הפך משחק משפחתי ללחוץ, ומי
+   * שהתלבט על קנייה נענש. המנגנון נשאר במנוע למי שירצה אותו.
+   */
+  turnSeconds: number | null;
   hardLimitMinutes: number | null;
   rentSurgeAfterMinutes: number | null;
   rentSurgeMultiplier: number;

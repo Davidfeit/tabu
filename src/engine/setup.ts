@@ -6,11 +6,12 @@ import type { GameState, Player, Settings } from "./types";
 export interface SeatSpec { userId: string; name: string; token: string }
 
 const MODE_DEFAULTS: Record<Settings["mode"], Partial<Settings>> = {
-  full:  { auctions: true,  hotelThreshold: 4, turnSeconds: 60, hardLimitMinutes: null,
+  // turnSeconds: null בכל המצבים — שעון על התור הפך משחק משפחתי ללחוץ.
+  full:  { auctions: true,  hotelThreshold: 4, turnSeconds: null, hardLimitMinutes: null,
            rentSurgeAfterMinutes: null },
-  quick: { auctions: false, hotelThreshold: 3, turnSeconds: 30, hardLimitMinutes: 60,
+  quick: { auctions: false, hotelThreshold: 3, turnSeconds: null, hardLimitMinutes: 60,
            rentSurgeAfterMinutes: 45 },
-  blitz: { auctions: false, hotelThreshold: 2, turnSeconds: 20, hardLimitMinutes: 30,
+  blitz: { auctions: false, hotelThreshold: 2, turnSeconds: null, hardLimitMinutes: 30,
            rentSurgeAfterMinutes: 20 },
 };
 
@@ -41,7 +42,7 @@ export function defaultSettings(mode: Settings["mode"] = "quick"): Settings {
     mode,
     auctions: true,
     hotelThreshold: 4,
-    turnSeconds: 30,
+    turnSeconds: null,
     hardLimitMinutes: null,
     rentSurgeAfterMinutes: null,
     rentSurgeMultiplier: 1.5,
@@ -122,7 +123,8 @@ export function createGame(
     debt: null,
     pendingMove: null,
     pot: 0,
-    turnDeadline: now + settings.turnSeconds * 1000,
+    turnDeadline: settings.turnSeconds === null
+      ? null : now + settings.turnSeconds * 1000,
     startedAt: now,
     finishedAt: null,
     winnerSeat: null,

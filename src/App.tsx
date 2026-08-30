@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { SeatSpec } from "@/engine/setup";
 import type { GameState, Settings } from "@/engine/types";
 import { api, CONFIG_PROBLEM, ONLINE_ENABLED, staleServer, supabase } from "@/net/supabase";
@@ -27,13 +27,25 @@ import { VideoTiles } from "@/components/VideoTiles";
 import { WaitingRoom } from "@/components/WaitingRoom";
 
 /** הודעת שגיאה חולפת. השגיאות מגיעות כקודים מהמנוע ומתורגמות ב-messages.ts. */
+/**
+ * הודעת שגיאה שנעלמת מעצמה.
+ *
+ * למה זה לא עבד קודם: clearError נוצר מחדש בכל רינדור, והאפקט תלוי בו.
+ * ספירת השניות של התור גרמה לרינדור פעמיים בשנייה, כלומר הטיימר של
+ * ההיעלמות אופס שוב ושוב ולא הגיע לסופו לעולם — ההודעה נשארה על המסך
+ * עד הפעולה הבאה. עכשיו האפקט תלוי בטקסט בלבד, והפונקציה נקראת דרך ref.
+ */
 function ErrorToast() {
   const { error, clearError } = useGame();
+  const clear = useRef(clearError);
+  clear.current = clearError;
+
   useEffect(() => {
     if (!error) return;
-    const id = setTimeout(clearError, 3200);
+    const id = setTimeout(() => clear.current(), 3200);
     return () => clearTimeout(id);
-  }, [error, clearError]);
+  }, [error]);
+
   if (!error) return null;
   return (
     <div dir="rtl" role="status" aria-live="assertive"

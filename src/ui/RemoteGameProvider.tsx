@@ -105,17 +105,23 @@ export function RemoteGameProvider({
         setError(null);
       })
       .catch((e: Error) => {
+        // STALE אינו שגיאה של המשתמש אלא מרוץ גרסאות: שני לקוחות פעלו
+        // מאותו מצב, והשרת קיבל את הראשון. הטעינה מחדש מיישרת הכול תוך
+        // שבריר שנייה, ואין למי להתלונן — הודעה כאן רק מבהילה.
+        if (e.message === "STALE") { void reload(); return; }
         // המצב שממנו יצאנו הוא מה שחוסם, ולכן הוא זה שמסביר.
         setError(errorText(e.message as never, stateRef.current) || "השרת דחה את הפעולה");
         if (optimisticFrom) void reload();
       });
   }, [roomId, mySeat, reload]);
 
+  const clearError = useCallback(() => setError(null), []);
+
   const value = useMemo<GameClient>(() => ({
     state, events, mySeat,
     canControl: (seat) => seat === mySeat,
-    dispatch, error, clearError: () => setError(null), now: Date.now(),
-  }), [state, events, mySeat, dispatch, error]);
+    dispatch, error, clearError, now: Date.now(),
+  }), [state, events, mySeat, dispatch, error, clearError]);
 
   return <GameCtx.Provider value={value}>{children}</GameCtx.Provider>;
 }

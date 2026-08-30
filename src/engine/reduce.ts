@@ -29,7 +29,8 @@ function phaseOf(s: GameState): Phase {
 // ── ניהול תור ─────────────────────────────────────────────────────────────
 
 function setDeadline(s: GameState, now: number): void {
-  s.turnDeadline = now + s.settings.turnSeconds * 1000;
+  s.turnDeadline = s.settings.turnSeconds === null
+    ? null : now + s.settings.turnSeconds * 1000;
 }
 
 /** האם חלף הזמן הקצוב למשחק. */
