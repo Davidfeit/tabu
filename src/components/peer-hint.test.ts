@@ -6,34 +6,34 @@ import { peerHint } from "./VideoTiles";
 const peer = (connection: RTCPeerConnectionState): PeerState =>
   fakePeer({ id: "p", connection });
 
-describe("סיבת היעדר וידאו", () => {
-  // שלושת המצבים נראו זהים על המסך, ולכן כל תקלה נראתה כמו אותה תקלה.
-  it("אין עמית בכלל", () => {
-    expect(peerHint(undefined)).toMatch(/לא נוצר חיבור/);
+/**
+ * מה שכתוב על משבצת בלי וידאו.
+ *
+ * הטקסט הזה נקרא ע"י מי שיושב לשחק, ולכן הוא בשפה שלו: "ICE נכשל —
+ * נדרש ממסר TURN" נכון לגמרי ולא עוזר לאף אחד. ההבחנות הטכניות חיות
+ * בשורות האבחון, שמופיעות רק כשמדליקים אותן במפורש.
+ */
+describe("מה כתוב על משבצת בלי וידאו", () => {
+  it("בזמן ההתחברות — מתחבר, בלי ז'רגון", () => {
+    for (const c of ["new", "connecting"] as RTCPeerConnectionState[]) {
+      expect(peerHint(peer(c))).toBe("מתחבר…");
+    }
+    expect(peerHint(undefined)).toBe("מתחבר…");
   });
 
-  // ההבחנה המכריעה: new פירושו שאף הודעת סיגנלינג לא הגיעה מהצד השני,
-  // ואילו connecting פירושו שההודעות עברו ו-ICE כבר מנסה. שני העולמות
-  // האלה נראו "מתחבר…" ולכן היו בלתי ניתנים להבחנה.
-  it("new = הסיגנלינג לא הגיע; connecting = הגיע ו-ICE מנסה", () => {
-    expect(peerHint(peer("new"))).toMatch(/הסיגנלינג לא הגיע/);
-    expect(peerHint(peer("connecting"))).toMatch(/ICE/);
-    expect(peerHint(peer("new"))).not.toBe(peerHint(peer("connecting")));
+  it("חיבור שנוצר בלי תמונה — זו המצלמה שלו, וזה מה שנאמר", () => {
+    expect(peerHint(peer("connected"))).toBe("המצלמה שלו כבויה");
+  });
+
+  it("כשל אמיתי נאמר בפשטות, בלי ICE ובלי TURN", () => {
+    const failed = peerHint(peer("failed"))!;
+    expect(failed).toBe("אין חיבור וידאו");
+    expect(failed).not.toMatch(/ICE|TURN/);
   });
 
   it("כשל ממסר גובר על מצב החיבור — הוא הסיבה, לא התסמין", () => {
     expect(peerHint(peer("new"), "השרת ישן")).toBe("השרת ישן");
   });
-
-  it("החיבור נכשל — חסר ממסר", () => {
-    expect(peerHint(peer("failed"))).toMatch(/ממסר/);
-  });
-
-  it("מחובר אבל בלי מסלול וידאו", () => {
-    expect(peerHint(peer("connected"))).toMatch(/בלי וידאו/);
-  });
-
-
 
   it("כל מצב מקבל טקסט, בלי undefined שקט", () => {
     const all: RTCPeerConnectionState[] =

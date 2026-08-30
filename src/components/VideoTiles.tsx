@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { videoInfo, type PeerState } from "@/net/mesh";
+import { useDiag } from "@/ui/useDiag";
 import type { MediaErrorKind } from "@/net/media";
 import type { SignalStats } from "@/net/transport";
 import type { GameState } from "@/engine/types";
@@ -48,6 +49,8 @@ export function VideoTiles({
   onToggleVideo?: () => void;
 }) {
   const byUser = new Map(peers.map((p) => [p.id, p]));
+  // האבחון כבוי כברירת מחדל — הוא כלי לפתרון תקלה, לא חלק מהמשחק.
+  const diag = useDiag();
 
   return (
     <div className="relative h-full w-full">
@@ -81,7 +84,7 @@ export function VideoTiles({
         </button>
       )}
 
-      {videoOn && (
+      {videoOn && diag && (
         <VideoDiag selfId={selfId} wanted={wanted} peers={peers}
                    players={state.players.map((p) => ({ name: p.name, userId: p.userId }))}
                    stats={stats} relayError={relayError} />
@@ -105,18 +108,23 @@ export function VideoTiles({
  * חיבור בכלל (סיגנלינג חסום), חיבור שמנסה ונכשל (NAT בלי ממסר), וחיבור
  * מוצלח שפשוט לא הביא מסלול וידאו. בלי ההבחנה הזו כל תקלה נראתה זהה.
  */
+/**
+ * מה לומר לשחקן על משבצת בלי וידאו.
+ *
+ * בשפה שלו ולא בשפה שלי: "ICE נכשל — נדרש ממסר TURN" נכון לגמרי, ולא
+ * עוזר לאף אחד שיושב לשחק. ההבחנות הטכניות עברו לשורות האבחון, שמופיעות
+ * רק כשמדליקים אותן; כאן נשאר מה שיש לשחקן מה לעשות איתו, או לפחות
+ * להבין ממנו.
+ */
 export function peerHint(peer: PeerState | undefined, relayError?: string | null): string | undefined {
   if (relayError) return relayError;
-  if (!peer) return "לא נוצר חיבור לעמית";
+  if (!peer) return "מתחבר…";
   switch (peer.connection) {
-    case "connected":    return "מחובר, בלי וידאו";
-    case "failed":       return "ICE נכשל — נדרש ממסר TURN";
+    case "connected":    return "המצלמה שלו כבויה";
+    case "failed":       return "אין חיבור וידאו";
     case "disconnected": return "החיבור נותק";
-    case "closed":       return "החיבור נסגר";
-    // ההבחנה שחסרה: new = אף הודעת סיגנלינג לא הגיעה מהצד השני, ולכן אין
-    // עדיין תיאור מרוחק. connecting = ההודעות עברו ו-ICE באמת מנסה.
-    case "new":          return "ממתין לתשובה מהצד השני — הסיגנלינג לא הגיע";
-    default:             return "מתחבר… (ICE)";
+    case "closed":       return "אין וידאו";
+    default:             return "מתחבר…";
   }
 }
 
