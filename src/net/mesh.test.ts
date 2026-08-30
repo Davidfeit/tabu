@@ -293,7 +293,7 @@ describe("מועמדי ICE", () => {
 
     const ice = sent.find((m) => m.kind === "ice");
     expect(ice).toBeTruthy();
-    const c = (ice as { candidates: Record<string, unknown>[] }).candidates[0]!;
+    const c = (ice as unknown as { candidates: Record<string, unknown>[] }).candidates[0]!;
     expect(c.candidate).toBe("c-1");
     expect(c.sdpMid).toBe("0");
     expect("usernameFragment" in c).toBe(false);
