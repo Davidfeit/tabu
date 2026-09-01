@@ -227,8 +227,17 @@ async function commitAction(
       .select("version, state").eq("room_id", roomId).single();
     if (!row) return { ok: false, error: "NO_STATE", status: 404 };
 
+    // המושב נקבע מהמצב עצמו, לפי מזהה המשתמש — ולא ממספר המושב בטבלת
+    // החדר. שני המספורים האלה כבר התפצלו פעם, והתוצאה הייתה שחקן שפועל
+    // בשם מושב של מישהו אחר: המסך שלו אומר "תורך" והשרת עונה "לא תורך",
+    // ואין לו שום דרך להבין למה. מזהה המשתמש הוא היחיד שאינו תלוי מספור.
+    const statePlayers = (row.state as {
+      players?: { seat: number; userId: string }[];
+    }).players ?? [];
+    const actorSeat = statePlayers.find((p) => p.userId === userId)?.seat ?? seat;
+
     const result = reduce(row.state, action, {
-      seat, now: Date.now(), seed: room.server_seed,
+      seat: actorSeat, now: Date.now(), seed: room.server_seed,
     });
     if (!result.ok) return { ok: false, error: result.error, status: 422 };
 

@@ -33,6 +33,9 @@ export interface VideoTrackInfo { tracks: number; live: boolean; muted: boolean 
  * זו ההבחנה שקובעת אם צריך ממסר TURN או שהתקלה בכלל בצד השני, ואין
  * דרך להסיק אותה; רק למדוד. הערכים מ-getStats.
  */
+/** כמה מועמדי ICE נאספו מכל סוג. relay=0 פירושו שממסר לא ענה בכלל. */
+export interface GatherInfo { host: number; srflx: number; relay: number }
+
 export interface FlowInfo {
   /** בייטים של וידאו שהתקבלו מהעמית. */
   inBytes: number;
@@ -44,6 +47,7 @@ export interface FlowInfo {
 }
 
 const noFlow = (): FlowInfo => ({ inBytes: 0, outBytes: 0, framesDecoded: 0, path: "" });
+const noGather = (): GatherInfo => ({ host: 0, srflx: 0, relay: 0 });
 
 /** ספירת הודעות סיגנלינג לפי סוג, לכיוון אחד. */
 export interface SignalCount { offer: number; answer: number; ice: number }
@@ -64,6 +68,7 @@ export interface PeerState {
   /** כמה פעמים החיבור הוקם מחדש אחרי שנתקע. */
   resets: number;
   flow: FlowInfo;
+  gathered: GatherInfo;
   /**
    * השגיאה האחרונה בטיפול בהודעה.
    *
@@ -101,6 +106,14 @@ interface Peer {
   iceDropped: number;
   resets: number;
   flow: FlowInfo;
+  /**
+   * המועמדים שאספנו מקומית.
+   *
+   * זו הבדיקה היחידה שאומרת אם שרת הממסר בכלל עונה לנו — היא לא תלויה
+   * בצד השני, ברשת שלו, או בכלום חוץ מאיתנו ומהשרת. relay=0 בזמן ש-
+   * host>0 פירושו: הממסר שהוגדר אינו עובד, ואין טעם לחפש במקום אחר.
+   */
+  gathered: GatherInfo;
   lastError: string | null;
   /**
    * מועמדי ICE שהגיעו לפני התיאור המרוחק.
@@ -193,6 +206,7 @@ export class PeerMesh {
       pc, polite: isPolite(this.opts.selfId, peerId),
       makingOffer: false, ignoreOffer: false, stream: null, relayed: false,
       in: noCount(), out: noCount(), iceDropped: 0, resets: 0, flow: noFlow(),
+      gathered: noGather(),
       lastError: null, pendingIce: [], stuckTimer: null, staleTimer: null,
       dropTimer: null,
     };
@@ -222,6 +236,15 @@ export class PeerMesh {
       // ואז addIceCandidate זורק "Error processing ICE candidate" ומסלול
       // תקין לגמרי נזרק. בלעדיו המועמד מוחל על הסבב הנוכחי.
       const { usernameFragment: _drop, ...c } = candidate.toJSON();
+
+      // "typ host" / "typ srflx" / "typ relay" בתוך מחרוזת המועמד. זו
+      // הדרך היחידה לדעת אם שרת הממסר ענה לנו בכלל.
+      const typ = /\btyp (host|srflx|relay)\b/.exec(c.candidate ?? "")?.[1];
+      if (typ === "host" || typ === "srflx" || typ === "relay") {
+        peer.gathered[typ]++;
+        this.emit();
+      }
+
       this.batcher.add(peerId, c);
     };
 
@@ -487,7 +510,8 @@ export class PeerMesh {
       id, stream: p.stream, connection: p.pc.connectionState, relayed: p.relayed,
       signaling: p.pc.signalingState, polite: p.polite,
       in: { ...p.in }, out: { ...p.out }, iceDropped: p.iceDropped,
-      resets: p.resets, flow: { ...p.flow }, lastError: p.lastError,
+      resets: p.resets, flow: { ...p.flow }, gathered: { ...p.gathered },
+      lastError: p.lastError,
       video: videoInfo(p.stream),
     }));
   }

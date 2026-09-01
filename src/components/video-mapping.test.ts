@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { PeerState } from "@/net/mesh";
 import { fakePeer } from "@/net/peer-fixture";
 import { meshPeers } from "@/ui/useMesh";
+import { gridClass, visibleVideoPlayers } from "./VideoTiles";
 
 /**
  * השיוך המקוון: משבצת → עמית, לפי מזהה המשתמש.
@@ -89,5 +90,41 @@ describe("רשימת העמיתים לווידאו", () => {
 
   it("מסננת מזהים ריקים — שחקן בלי משתמש אינו עמית", () => {
     expect(meshPeers([p("a"), p(""), p("c")], "a")).toEqual(["c"]);
+  });
+});
+
+/**
+ * מי מקבל משבצת וידאו.
+ *
+ * שחקן טלפון (שלט) לא מריץ מצלמה, ומשבצת שחורה קבועה על שמו רק מקטינה
+ * את הווידאו של אלה שכן.
+ */
+describe("משבצות וידאו דינמיות", () => {
+  const P = (seat: number, userId: string) => ({ seat, userId });
+  const all = [P(0, "me"), P(1, "pc"), P(2, "phone")];
+
+  it("בזמן החסד כולם מוצגים — מי שנטען לאט לא נעלם", () => {
+    expect(visibleVideoPlayers(all, "me", 0, [], true)).toHaveLength(3);
+  });
+
+  it("אחרי החסד: אני, ומי שנשמעו ממנו סימני חיים", () => {
+    const peers = [
+      fakePeer({ id: "pc", in: { offer: 1, answer: 0, ice: 2 } }),
+      fakePeer({ id: "phone" }),               // קיים, ושותק לגמרי
+    ];
+    const shown = visibleVideoPlayers(all, "me", 0, peers, false);
+    expect(shown.map((p) => p.userId)).toEqual(["me", "pc"]);
+  });
+
+  it("זרם נחשב סימן חיים גם בלי סיגנלינג שנספר", () => {
+    const peers = [fakePeer({ id: "phone", stream: {} as MediaStream })];
+    expect(visibleVideoPlayers(all, "me", 0, peers, false).map((p) => p.userId))
+      .toContain("phone");
+  });
+
+  it("הרשת גדלה כשמשבצות מתפנות", () => {
+    expect(gridClass(1)).toContain("grid-cols-1");
+    expect(gridClass(2)).toBe("grid-cols-2 grid-rows-1");
+    expect(gridClass(4)).toBe("grid-cols-2 grid-rows-2");
   });
 });

@@ -23,6 +23,35 @@ const MEDIA_ERRORS: Record<MediaErrorKind, string> = {
 export const VIDEO_SEATS = [0, 1, 2, 3];
 
 /**
+ * מי מקבל משבצת וידאו.
+ *
+ * לא כל שחקן: מי שמשחק מהטלפון (שלט) לא מריץ מצלמה בכלל, ומשבצת שחורה
+ * קבועה על שמו רק מקטינה את הווידאו של אלה שכן. לכן משבצת מקבלים אני,
+ * וכל עמית שנשמעו ממנו סימני חיים בסיגנלינג או שיש ממנו זרם. בזמן
+ * החסד הראשוני כולם מוצגים — כדי שמי שרק נטען לא ייעלם.
+ */
+export function visibleVideoPlayers<P extends { seat: number; userId: string }>(
+  players: readonly P[], selfId: string, mySeat: number | null,
+  peers: readonly PeerState[], patient: boolean,
+): P[] {
+  return players.filter((p) => {
+    if (selfId ? p.userId === selfId : p.seat === mySeat) return true;
+    if (patient) return true;
+    const peer = peers.find((x) => x.id === p.userId);
+    if (!peer) return false;
+    return peer.stream !== null
+      || peer.in.offer + peer.in.answer + peer.in.ice > 0;
+  });
+}
+
+/** פריסת הרשת לפי מספר המשבצות: אחת גדולה, שתיים זו לצד זו, או 2×2. */
+export function gridClass(n: number): string {
+  if (n <= 1) return "grid-cols-1 grid-rows-1";
+  if (n === 2) return "grid-cols-2 grid-rows-1";
+  return "grid-cols-2 grid-rows-2";
+}
+
+/**
  * ארבעת חלונות הווידאו, ממלאים את מרכז הלוח.
  *
  * הרשת 2×2 קבועה ולא נגזרת ממספר השחקנים: מסגרת שמשנה גודל כשמישהו מצטרף
@@ -52,12 +81,26 @@ export function VideoTiles({
   // האבחון כבוי כברירת מחדל — הוא כלי לפתרון תקלה, לא חלק מהמשחק.
   const diag = useDiag();
 
+  // תקופת חסד: רבע דקה שבה כולם מקבלים משבצת. אחריה, מי שלא נשמע ממנו
+  // דבר — שחקן טלפון, או מי שוויתר על מצלמה — מפנה את מקומו, והווידאו
+  // של האחרים גדל בהתאם.
+  const [patient, setPatient] = useState(true);
+  useEffect(() => {
+    if (!videoOn) return;
+    setPatient(true);
+    const t = setTimeout(() => setPatient(false), 15_000);
+    return () => clearTimeout(t);
+  }, [videoOn]);
+
+  const seated = VIDEO_SEATS.map((s) => state.players[s])
+    .filter((p): p is NonNullable<typeof p> => p !== undefined);
+  const shown = visibleVideoPlayers(seated, selfId, mySeat, peers, patient);
+
   return (
     <div className="relative h-full w-full">
-      <div className="grid h-full w-full grid-cols-2 grid-rows-2 gap-[3%]">
-        {VIDEO_SEATS.map((seat) => {
-          const p = state.players[seat];
-          if (!p) return <EmptySeat key={seat} />;
+      <div className={`grid h-full w-full gap-[3%] ${gridClass(shown.length)}`}>
+        {shown.map((p) => {
+          const seat = p.seat;
           // לפי מזהה ולא לפי מושב: כשהמספור מתפצל, "אני" נופל על המשבצת
           // של מישהו אחר — ואז המצלמה שלי מוצגת שם, והזרם שלו לא מוצג בכלל.
           const isMe = selfId ? p.userId === selfId : p.seat === mySeat;

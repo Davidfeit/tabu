@@ -75,6 +75,12 @@ export function diagLines(d: DiagInput): string[] {
                (p.resets ? ` · הוקם מחדש ${p.resets}` : ""));
     // המדידה שקובעת: יוצא ולא נכנס = הרשת חוסמת את המדיה, ודרוש ממסר.
     // לא יוצא בכלל = התקלה אצלנו. שני המצבים נראים זהים בלעדיה.
+    const g = p.gathered;
+    if (g.host || g.srflx || g.relay) {
+      // relay=0 בזמן ש-host>0 הוא מבחן חד-משמעי: הממסר שהוגדר לא ענה.
+      lines.push(`   מועמדים: host ${g.host} · srflx ${g.srflx} · relay ${g.relay}` +
+                 (g.relay === 0 ? " ← אין ממסר" : ""));
+    }
     const kb = (n: number) => `${Math.round(n / 1024)} ק״ב`;
     if (p.flow.outBytes || p.flow.inBytes || p.flow.path) {
       lines.push(`   זרימה: יוצא ${kb(p.flow.outBytes)} · נכנס ${kb(p.flow.inBytes)}` +
