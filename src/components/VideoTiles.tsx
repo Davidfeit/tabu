@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { flowing } from "@/net/frames";
 import { videoInfo, type PeerState } from "@/net/mesh";
 import { useDiag } from "@/ui/useDiag";
 import type { MediaErrorKind } from "@/net/media";
@@ -33,10 +34,12 @@ export const VIDEO_SEATS = [0, 1, 2, 3];
 export function visibleVideoPlayers<P extends { seat: number; userId: string }>(
   players: readonly P[], selfId: string, mySeat: number | null,
   peers: readonly PeerState[], patient: boolean,
+  framesFrom?: ReadonlySet<string>,
 ): P[] {
   return players.filter((p) => {
     if (selfId ? p.userId === selfId : p.seat === mySeat) return true;
     if (patient) return true;
+    if (framesFrom?.has(p.userId)) return true;   // תמונות = סימן חיים
     const peer = peers.find((x) => x.id === p.userId);
     if (!peer) return false;
     return peer.stream !== null
@@ -60,7 +63,7 @@ export function gridClass(n: number): string {
  */
 export function VideoTiles({
   state, mySeat, local, peers, error, relayError, wanted = [], selfId = "", stats,
-  videoOn = true, onToggleVideo,
+  videoOn = true, onToggleVideo, frames,
 }: {
   state: GameState;
   mySeat: number | null;
@@ -76,6 +79,8 @@ export function VideoTiles({
   /** האם המצלמה דולקת. כשהיא כבויה אין מה לאבחן. */
   videoOn?: boolean;
   onToggleVideo?: () => void;
+  /** תמונות סטילס מהעמיתים — המסלול העוקף כשוידאו ישיר לא נסגר. */
+  frames?: Map<string, string>;
 }) {
   const byUser = new Map(peers.map((p) => [p.id, p]));
   // האבחון כבוי כברירת מחדל — הוא כלי לפתרון תקלה, לא חלק מהמשחק.
@@ -94,7 +99,8 @@ export function VideoTiles({
 
   const seated = VIDEO_SEATS.map((s) => state.players[s])
     .filter((p): p is NonNullable<typeof p> => p !== undefined);
-  const shown = visibleVideoPlayers(seated, selfId, mySeat, peers, patient);
+  const shown = visibleVideoPlayers(seated, selfId, mySeat, peers, patient,
+                                    new Set(frames?.keys() ?? []));
 
   return (
     <div className="relative h-full w-full">
@@ -105,17 +111,23 @@ export function VideoTiles({
           // של מישהו אחר — ואז המצלמה שלי מוצגת שם, והזרם שלו לא מוצג בכלל.
           const isMe = selfId ? p.userId === selfId : p.seat === mySeat;
           const peer = byUser.get(p.userId);
-          const stream = isMe ? local : peer?.stream ?? null;
+          // וידאו זורם עדיף תמיד; כשאין — תמונת סטילס; ורק בהיעדר שתיהן,
+          // הרמז הטקסטואלי.
+          const live = isMe || (peer !== undefined && flowing(peer));
+          const stream = isMe ? local : live ? peer!.stream : null;
+          const frame = !isMe && !live ? frames?.get(p.userId) ?? null : null;
           return (
             <SeatTile key={seat}
                       name={p.name + (isMe ? " (את/ה)" : "")}
                       seat={p.seat}
                       token={p.token}
                       stream={stream}
+                      frame={frame}
                       mirrored={isMe}
                       dimmed={p.bankrupt}
                       active={p.seat === state.currentSeat && !p.bankrupt}
-                      hint={isMe || !videoOn ? undefined : peerHint(peer, relayError)} />
+                      hint={isMe || !videoOn || frame ? undefined
+                            : peerHint(peer, relayError)} />
           );
         })}
       </div>
@@ -174,9 +186,9 @@ export function peerHint(peer: PeerState | undefined, relayError?: string | null
   }
 }
 
-export function SeatTile({ name, seat, token, stream, mirrored, active, dimmed, hint }: {
+export function SeatTile({ name, seat, token, stream, frame, mirrored, active, dimmed, hint }: {
   name: string; seat: number; token: string;
-  stream: MediaStream | null; mirrored: boolean;
+  stream: MediaStream | null; frame?: string | null; mirrored: boolean;
   active: boolean; dimmed?: boolean; hint?: string;
 }) {
   return (
@@ -185,7 +197,17 @@ export function SeatTile({ name, seat, token, stream, mirrored, active, dimmed, 
                      ${dimmed ? "opacity-40" : ""}
                      ${active ? "border-toy-sun ring-4 ring-toy-sun/40"
                               : "border-white/85"}`}>
-      {stream ? <VideoFrame stream={stream} mirrored={mirrored} /> : (
+      {stream ? <VideoFrame stream={stream} mirrored={mirrored} /> : frame ? (
+        <>
+          <img src={frame} alt={`תמונה מ${name}`}
+               className="h-full w-full object-cover" />
+          {/* שיהיה ברור שזה לא וידאו תקוע אלא מסלול אחר, חי */}
+          <span className="absolute left-1 top-1 rounded-full bg-black/60 px-2 py-0.5
+                           text-[0.6rem] text-amber-200/90">
+            תמונות · הרשת חוסמת וידאו
+          </span>
+        </>
+      ) : (
         <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-2">
           <Token token={token} seat={seat} size="22%" dimmed={dimmed} />
           {/* קריא בצילום מסך, בכוונה: זו השורה שאומרת למה אין וידאו, ובלי

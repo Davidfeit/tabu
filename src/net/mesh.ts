@@ -297,6 +297,9 @@ export class PeerMesh {
   /** הודעת סיגנלינג נכנסת מעמית. */
   async handle(message: SignalMessage): Promise<void> {
     if (this.closed) return;
+    // תמונות סטילס אינן עניינו של מנוע החיבורים — הן המסלול העוקף שלו.
+    // מי שמטפל בהן הוא useMesh, לפני שההודעה מגיעה לכאן.
+    if (message.kind === "frame") return;
     const peerId = message.from;
     if (!this.peers.has(peerId)) this.connect(peerId);
     const peer = this.peers.get(peerId);

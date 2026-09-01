@@ -214,6 +214,7 @@ function OnlineBody({ room, onLeave, videoOn, onToggleVideo, transport, relayErr
       // אותה בחזרה, ובלעדיהן כיבוי היה מסלול חד-כיווני.
       videoTiles={videoOn === null ? undefined : (
         <VideoTilesBridge local={mesh.local} peers={mesh.peers} error={mesh.error}
+                          frames={mesh.frames}
                           relayError={relayError} mySeat={room.seat}
                           wanted={peerIds} selfId={room.userId}
                           stats={transport?.stats}

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
+import { framePlan, FRAME_MS, FRAME_TTL_MS } from "@/net/frames";
 import {
-  acquireLocalStream, classifyMediaError, diagnoseMedia, releaseLocalStream,
-  type MediaDiagnosis, type MediaErrorKind,
+  acquireLocalStream, classifyMediaError, diagnoseMedia, FrameGrabber,
+  releaseLocalStream, type MediaDiagnosis, type MediaErrorKind,
 } from "@/net/media";
 import { PeerMesh, type PeerState } from "@/net/mesh";
 import { iceServers } from "@/net/supabase";
@@ -21,6 +22,13 @@ export function meshPeers(players: { userId: string }[], selfId: string): string
 export interface MeshStatus {
   local: MediaStream | null;
   peers: PeerState[];
+  /**
+   * תמונות סטילס מהעמיתים, לפי מזהה.
+   *
+   * מסלול המוצא האחרון: כשהרשת חוסמת חיבור ישיר, תמונה כל כמה שניות
+   * עוברת דרך ערוץ המשחק — שעובד תמיד, כי המשחק עצמו רץ עליו.
+   */
+  frames: Map<string, string>;
   error: MediaErrorKind | null;
   /** מה נמדד בפועל כשאי אפשר להפעיל מצלמה. */
   diagnosis: MediaDiagnosis | null;
@@ -44,6 +52,7 @@ export function useMesh(
 ): MeshStatus {
   const [local, setLocal] = useState<MediaStream | null>(null);
   const [peers, setPeers] = useState<PeerState[]>([]);
+  const [frames, setFrames] = useState<Map<string, string>>(new Map());
   const [discovered, setDiscovered] = useState<string[]>([]);
   const [error, setError] = useState<MediaErrorKind | null>(null);
   const [diagnosis, setDiagnosis] = useState<MediaDiagnosis | null>(null);
@@ -71,6 +80,10 @@ export function useMesh(
     let created: PeerMesh | null = null;
     let unsubscribe: (() => void) | undefined;
     let unpresence: (() => void) | undefined;
+    let grabber: FrameGrabber | null = null;
+    let frameTimer: ReturnType<typeof setInterval> | undefined;
+    // הגעת כל תמונה, לפי שולח — גם לניקוי ישנות וגם כסימן חיים.
+    const frameAt = new Map<string, number>();
 
     (async () => {
       let stream: MediaStream;
@@ -99,12 +112,56 @@ export function useMesh(
       created = m;
       setMesh(m);
 
-      unsubscribe = transport.subscribe(selfId, (msg) => void m.handle(msg));
+      unsubscribe = transport.subscribe(selfId, (msg) => {
+        // תמונות מטופלות כאן; כל השאר שייך למנוע החיבורים.
+        if (msg.kind === "frame") {
+          frameAt.set(msg.from, Date.now());
+          setFrames((old) => new Map(old).set(msg.from, msg.jpeg));
+          return;
+        }
+        void m.handle(msg);
+      });
       if (peerIds === null) unpresence = transport.presence(selfId, setDiscovered);
+
+      // ── מסלול התמונות ──
+      // וידאו אמיתי מקבל הזדמנות מלאה (תקופת חסד), ואז מי שחי בערוץ
+      // ולא זורם ממנו וידאו מקבל תמונה כל כמה שניות דרך הממסר של
+      // המשחק. seq כדי שתמונה שהגיעה באיחור לא תדרוס חדשה ממנה.
+      grabber = new FrameGrabber(stream);
+      const startedAt = Date.now();
+      let seq = 0;
+      frameTimer = setInterval(() => {
+        const now = Date.now();
+
+        // תמונה שלא התחדשה — הצד השני סגר, או שהווידאו האמיתי חזר.
+        let expired = false;
+        for (const [id, at] of frameAt) {
+          if (now - at > FRAME_TTL_MS) { frameAt.delete(id); expired = true; }
+        }
+        if (expired) {
+          setFrames((old) => {
+            const next = new Map(old);
+            for (const id of next.keys()) if (!frameAt.has(id)) next.delete(id);
+            return next;
+          });
+        }
+
+        const targets = framePlan(m.snapshot(), [...frameAt.keys()], now - startedAt);
+        if (targets.length === 0) return;
+        const jpeg = grabber?.grab();
+        if (!jpeg) return;
+        seq++;
+        for (const id of targets) {
+          transport.send(id, { kind: "frame", from: selfId, jpeg, seq });
+        }
+      }, FRAME_MS);
     })();
 
     return () => {
       cancelled = true;
+      if (frameTimer) clearInterval(frameTimer);
+      grabber?.dispose();
+      setFrames(new Map());
       unsubscribe?.();
       unpresence?.();
       created?.close();
@@ -127,5 +184,5 @@ export function useMesh(
 
   useEffect(() => () => { releaseLocalStream(); }, []);
 
-  return { local, peers, error, diagnosis, ready: local !== null };
+  return { local, peers, frames, error, diagnosis, ready: local !== null };
 }

@@ -132,3 +132,42 @@ export async function capSender(sender: RTCRtpSender): Promise<void> {
   params.encodings[0]!.maxFramerate = 15;
   try { await sender.setParameters(params); } catch { /* לא קריטי */ }
 }
+
+/**
+ * צילום סטילס מהמצלמה, לתמונות מצב מהמוצא האחרון.
+ *
+ * וידאו נסתר שמנגן את הזרם המקומי, וקנבס שמצלם ממנו. ImageCapture היה
+ * חוסך את שניהם, אבל הוא קיים רק בכרום — והטלפונים כאן הם כל הסיפור.
+ */
+export class FrameGrabber {
+  private video: HTMLVideoElement;
+  private canvas: HTMLCanvasElement;
+
+  constructor(stream: MediaStream) {
+    this.video = document.createElement("video");
+    this.video.muted = true;
+    this.video.playsInline = true;
+    this.video.srcObject = stream;
+    void this.video.play().catch(() => { /* מושתק — לא אמור להיחסם */ });
+    this.canvas = document.createElement("canvas");
+  }
+
+  /** JPEG קטן כ-data URL, או null אם עוד אין פריים לצלם. */
+  grab(): string | null {
+    const vw = this.video.videoWidth, vh = this.video.videoHeight;
+    if (!vw || !vh) return null;
+    const w = 320, h = Math.round((320 * vh) / vw);
+    this.canvas.width = w; this.canvas.height = h;
+    const ctx = this.canvas.getContext("2d");
+    if (!ctx) return null;
+    ctx.drawImage(this.video, 0, 0, w, h);
+    // איכות 0.5: ‏6–12KB לתמונה. מספיק לפנים, קטן מספיק לערוץ.
+    try { return this.canvas.toDataURL("image/jpeg", 0.5); } catch { return null; }
+  }
+
+  dispose(): void {
+    this.video.srcObject = null;
+    this.video.remove();
+    this.canvas.remove();
+  }
+}

@@ -127,4 +127,9 @@ describe("משבצות וידאו דינמיות", () => {
     expect(gridClass(2)).toBe("grid-cols-2 grid-rows-1");
     expect(gridClass(4)).toBe("grid-cols-2 grid-rows-2");
   });
+
+  it("מי ששולח תמונות סטילס נשאר על המסך גם בלי סיגנלינג", () => {
+    const shown = visibleVideoPlayers(all, "me", 0, [], false, new Set(["phone"]));
+    expect(shown.map((p) => p.userId)).toEqual(["me", "phone"]);
+  });
 });

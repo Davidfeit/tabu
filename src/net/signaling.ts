@@ -19,7 +19,17 @@
 export type SignalMessage =
   | { kind: "offer"; from: string; sdp: string }
   | { kind: "answer"; from: string; sdp: string }
-  | { kind: "ice"; from: string; candidates: RTCIceCandidateInit[] };
+  | { kind: "ice"; from: string; candidates: RTCIceCandidateInit[] }
+  /**
+   * תמונת סטילס — מסלול הווידאו של מוצא אחרון.
+   *
+   * כשהרשת חוסמת חיבור ישיר בין המכשירים (וזה קורה, גם בתוך בית אחד),
+   * WebRTC פשוט לא ייסגר בלי ממסר. אבל ערוץ הסיגנלינג — שרת → DB →
+   * Realtime — עובד תמיד, כי המשחק עצמו רץ עליו. אז תמונה כל שתי שניות
+   * רוכבת עליו: לא וידאו זורם, אבל רואים זה את זה, וזה ההבדל בין משחק
+   * עם פנים למשחק עם ריבועים שחורים.
+   */
+  | { kind: "frame"; from: string; jpeg: string; seq: number };
 
 export const signalTopic = (playerId: string): string => `sig:${playerId}`;
 
