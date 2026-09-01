@@ -48,16 +48,17 @@ export function visibleVideoPlayers<P extends { seat: number; userId: string }>(
 }
 
 /**
- * פריסת הרשת לפי מספר המשבצות.
+ * פריסת הרשת: תמיד 2×2, לא משנה כמה משתתפים יש.
  *
- * מרכז הלוח ריבועי, והמצלמה מצלמת רחב (16:9). לכן צורת המשבצת קובעת כמה
- * מהתמונה נחתך: שתי משבצות זו לצד זו יוצרות שני מלבנים *גבוהים*, והווידאו
- * שממלא אותם מאבד את רוב הרוחב ומתקרב לפנים עד כדי עיוות. שתיים זו מעל זו
- * נותנות מלבנים רחבים, קרובים ליחס המצלמה — כמעט בלי חיתוך.
+ * ניסינו לגזור את הפריסה ממספר המשתתפים, וזה נראה טוב יותר לרגע ורע יותר
+ * בפועל: המשבצות זזות ומשנות גודל בכל הצטרפות, עזיבה או פשיטת רגל — בדיוק
+ * ברגע שבו כולם מסתכלים על המסך — ואף אחד כבר לא יודע איפה לחפש את מי.
+ * מקום קבוע לכל מושב שווה יותר מניצול מלא של השטח.
+ *
+ * המחיר ידוע ומקובל: המשבצת יוצאת כמעט ריבועית, המצלמה רחבה, ולכן נחתך
+ * ממנה חלק מהרוחב.
  */
-export function gridClass(n: number): string {
-  if (n <= 1) return "grid-cols-1 grid-rows-1";
-  if (n === 2) return "grid-cols-1 grid-rows-2";
+export function gridClass(_n?: number): string {
   return "grid-cols-2 grid-rows-2";
 }
 
@@ -93,9 +94,10 @@ export function VideoTiles({
   // האבחון כבוי כברירת מחדל — הוא כלי לפתרון תקלה, לא חלק מהמשחק.
   const diag = useDiag();
 
-  // תקופת חסד: רבע דקה שבה כולם מקבלים משבצת. אחריה, מי שלא נשמע ממנו
-  // דבר — שחקן טלפון, או מי שוויתר על מצלמה — מפנה את מקומו, והווידאו
-  // של האחרים גדל בהתאם.
+  // תקופת חסד: רבע דקה שבה כולם מקבלים משבצת, כי חיבור וידאו לוקח כמה
+  // שניות ומשבצת שנעלמת ומופיעה גרועה ממשבצת ריקה. אחריה, מי שלא נשמע
+  // ממנו דבר — שחקן טלפון, או מי שוויתר על מצלמה — משאיר את המשבצת שלו
+  // ריקה במקום להציג בה תקלה שאינה תקלה.
   const [patient, setPatient] = useState(true);
   useEffect(() => {
     if (!videoOn) return;
@@ -111,9 +113,15 @@ export function VideoTiles({
 
   return (
     <div className="relative h-full w-full">
-      <div className={`grid h-full w-full gap-[3%] ${gridClass(shown.length)}`}>
-        {shown.map((p) => {
-          const seat = p.seat;
+      <div className={`grid h-full w-full gap-[3%] ${gridClass()}`}>
+        {VIDEO_SEATS.map((seat) => {
+          // המשבצת שייכת למושב, לא למקום ברשימה: כך שחקן שמוותר על מצלמה
+          // או יוצא מהמשחק לא מזיז את כל מי שיושב אחריו.
+          const p = shown.find((x) => x.seat === seat);
+          if (!p) {
+            const sitting = seated.find((x) => x.seat === seat);
+            return <EmptySeat key={seat} name={sitting?.name} seat={seat} />;
+          }
           // לפי מזהה ולא לפי מושב: כשהמספור מתפצל, "אני" נופל על המשבצת
           // של מישהו אחר — ואז המצלמה שלי מוצגת שם, והזרם שלו לא מוצג בכלל.
           const isMe = selfId ? p.userId === selfId : p.seat === mySeat;
@@ -236,11 +244,23 @@ export function SeatTile({ name, seat, token, stream, frame, mirrored, active, d
   );
 }
 
-export function EmptySeat() {
+/**
+ * משבצת בלי וידאו.
+ *
+ * שני מצבים שונים שנראו פעם זהים: מושב שאין בו אף אחד, ומושב שיש בו שחקן
+ * שפשוט לא משדר — בשלט מהטלפון, או עם מצלמה כבויה. השני הוא לא תקלה, ולכן
+ * הוא מקבל את השם ולא הודעת שגיאה.
+ */
+export function EmptySeat({ name, seat }: { name?: string; seat?: number } = {}) {
   return (
     <div className="flex min-h-0 min-w-0 items-center justify-center rounded-2xl border-[3px]
-                    border-dashed border-white/40 text-[0.68rem] text-white/45">
-      מושב פנוי
+                    border-dashed border-white/40 px-2 text-center text-[0.68rem] text-white/45">
+      {name
+        ? <span className="font-display font-bold" style={{
+            color: seat === undefined ? undefined : seatColor(seat),
+            opacity: 0.75, unicodeBidi: "plaintext",
+          }}>{name}</span>
+        : "מושב פנוי"}
     </div>
   );
 }

@@ -122,11 +122,10 @@ describe("משבצות וידאו דינמיות", () => {
       .toContain("phone");
   });
 
-  it("הרשת גדלה כשמשבצות מתפנות", () => {
-    expect(gridClass(1)).toContain("grid-cols-1");
-    // שתיים זו מעל זו, כדי שהמשבצת תהיה רחבה כמו המצלמה ולא תחתוך.
-    expect(gridClass(2)).toBe("grid-cols-1 grid-rows-2");
-    expect(gridClass(4)).toBe("grid-cols-2 grid-rows-2");
+  it("הרשת קבועה 2×2 ולא זזה עם מספר המשתתפים", () => {
+    // מקום קבוע לכל מושב: משבצות שמשנות גודל בכל הצטרפות או עזיבה מבלבלות
+    // יותר ממה שהן חוסכות בשטח.
+    for (const n of [1, 2, 3, 4]) expect(gridClass(n)).toBe("grid-cols-2 grid-rows-2");
   });
 
   it("מי ששולח תמונות סטילס נשאר על המסך גם בלי סיגנלינג", () => {
