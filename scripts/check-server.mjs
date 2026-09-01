@@ -52,6 +52,19 @@ function localOps() {
   return [...m[1].matchAll(/"([^"]+)"/g)].map((x) => x[1]);
 }
 
+/**
+ * מהלכי המשחק שהמנוע כאן מכיר.
+ *
+ * נקרא מהמקור ולא מהחבילה המקובצת, כי החבילה מתעדכנת רק בבנייה — ואם
+ * שכחו לבנות, זו בדיוק התקלה שהבדיקה הזו אמורה לתפוס.
+ */
+function localActions() {
+  const src = readFileSync(join(ROOT, "src/engine/reduce.ts"), "utf8");
+  const m = /const KNOWN: Record<ActionType, true> = \{([^}]*)\}/.exec(src);
+  if (!m) return [];
+  return [...m[1].matchAll(/(\w+):\s*true/g)].map((x) => x[1]).sort();
+}
+
 function head() {
   try {
     return execFileSync("git", ["-C", ROOT, "log", "-1", "--format=%h %s"], {
@@ -107,6 +120,30 @@ if (missing.length) {
     "הקוד כאן חדש יותר מהפונקציה שרצה בענן.",
     "",
     "   npm run setup:supabase    ואז    npm run check:server");
+}
+
+// שכבה שנייה: לא שמות הפעולות אלא המנוע עצמו. הפונקציה יכולה להכיר את
+// כל שמות ה-API ועדיין להריץ מנוע ישן, כי הוא נכנס אליה כחבילה מקובצת —
+// וזה נראה למשתמש כמו כפתור שבור ("פעולה לא מוכרת") ולא כמו שרת ישן.
+const wantActions = localActions();
+const liveActions = Array.isArray(body?.actions) ? body.actions : null;
+if (wantActions.length && !liveActions) {
+  fail("המנוע שרץ בענן ישן",
+    "הפונקציה לא מדווחת בכלל אילו מהלכים היא מכירה, כלומר היא נפרסה",
+    "לפני שהדיווח הזה נולד.",
+    "",
+    "   npm run setup:supabase    ואז    npm run check:server");
+}
+if (liveActions) {
+  const goneActions = wantActions.filter((a) => !liveActions.includes(a));
+  if (goneActions.length) {
+    fail(`במנוע שבשרת חסרים מהלכים: ${goneActions.join(", ")}`,
+      "שמות הפעולות תואמים, אבל המנוע עצמו ישן — ולכן מהלכים חדשים",
+      "יחזרו ללקוח כ\"פעולה לא מוכרת\".",
+      "",
+      "   npm run setup:supabase    ואז    npm run check:server");
+  }
+  console.log(`   מהלכים במנוע: ${liveActions.length} מתוך ${wantActions.length} שבקוד`);
 }
 
 // הפונקציה השנייה. 401 כאן הוא התשובה התקינה — סימן שהיא נפרסה וחיה.

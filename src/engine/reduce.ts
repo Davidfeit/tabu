@@ -8,11 +8,36 @@ import {
 } from "./selectors";
 import { DEED_POSITIONS, startingCash } from "./setup";
 import type {
-  Action, Ctx, ErrorCode, GameEvent, GameState, Result, TradeOffer,
+  Action, ActionType, Ctx, ErrorCode, GameEvent, GameState, Result, TradeOffer,
 } from "./types";
 import type { Phase } from "./types";
 
 const TRADE_TTL_MS = 60_000;
+
+/**
+ * הפעולות שהמנוע הזה מכיר, כרשימה שאפשר לשאול עליה מרחוק.
+ *
+ * המנוע רץ בשני מקומות שנפרסים בנפרד — הדפדפן (וורסל, בכל דחיפה)
+ * וה-Edge Function (רק ב-setup:supabase). כששני החצאים מתפצלים, פעולה
+ * חדשה נשלחת לשרת שלא מכיר אותה, הוא עונה UNKNOWN_ACTION, והמשתמש רואה
+ * "פעולה לא מוכרת" — שנראה כמו באג בכפתור ולא כמו שרת ישן. הרשימה
+ * נשלחת בתשובת ops, והלקוח משווה מולה ומזהיר מראש.
+ *
+ * ‏Record<ActionType, true> הוא השמירה: פעולה חדשה שלא נרשמה כאן לא
+ * תעבור הידור, ופעולה שנמחקה תסומן כמפתח מיותר.
+ */
+const KNOWN: Record<ActionType, true> = {
+  roll: true, buy_property: true, decline_property: true,
+  auction_bid: true, auction_pass: true,
+  build_house: true, sell_house: true, mortgage: true, unmortgage: true,
+  pay_jail_fine: true, use_jail_card: true, acknowledge_card: true,
+  propose_trade: true, accept_trade: true, reject_trade: true,
+  end_turn: true, declare_bankruptcy: true, claim_timeout: true,
+  finish_now: true, add_player: true,
+};
+
+/** שמות הפעולות, ממוינים כדי שההשוואה בין שרת ללקוח תהיה יציבה. */
+export const ENGINE_ACTIONS: string[] = Object.keys(KNOWN).sort();
 
 /**
  * קריאת השלב בלי שהטיפוס יצומצם.

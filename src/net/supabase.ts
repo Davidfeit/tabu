@@ -108,20 +108,31 @@ export const api = {
     call<{ version: number; state: unknown }>("play", { roomId, action, idempotencyKey }),
   signal: (roomId: string, to: string, message: unknown) =>
     call<{ ok: true }>("signal", { roomId, to, message }),
-  ops: () => call<{ ops: string[] }>("ops"),
+  ops: () => call<{ ops: string[]; actions?: string[] }>("ops"),
 };
 
 /**
- * האם ה-Edge Function שנפרסה מכירה את הפעולות שהלקוח צריך.
+ * האם ה-Edge Function שנפרסה מכירה את מה שהלקוח הזה צריך.
  *
  * האתר נפרס אוטומטית בכל דחיפה, אבל הפונקציות נפרסות רק ב-setup:supabase.
  * שני החצאים יכולים להתפצל בשקט, ואז תקלת שרת נראית כמו תקלת רשת.
+ *
+ * שתי רמות, כי היו לנו שתי תקלות שונות: שם פעולת API שהשרת לא מכיר
+ * (signal), וסוג מהלך שהמנוע שנפרס לא מכיר (finish_now — הכפתור עבד
+ * בדפדפן וחזר "פעולה לא מוכרת"). ‏actions חסר לגמרי פירושו שרת שנפרס
+ * לפני שהסימון הזה נולד, כלומר בהכרח ישן.
  */
-export async function staleServer(required: string[]): Promise<string | null> {
+export async function staleServer(
+  required: string[], actions: string[] = [],
+): Promise<string | null> {
   try {
-    const { ops } = await api.ops();
-    const missing = required.filter((op) => !ops.includes(op));
-    return missing.length ? `חסרות פעולות בשרת: ${missing.join(", ")}` : null;
+    const res = await api.ops();
+    const missing = required.filter((op) => !res.ops.includes(op));
+    if (missing.length) return `חסרות פעולות בשרת: ${missing.join(", ")}`;
+    if (!actions.length) return null;
+    if (!res.actions) return "מנוע המשחק בשרת ישן";
+    const gone = actions.filter((a) => !res.actions!.includes(a));
+    return gone.length ? `מנוע המשחק בשרת ישן (חסר: ${gone.join(", ")})` : null;
   } catch (e) {
     const raw = e instanceof Error ? e.message : String(e);
     if (raw === "UNKNOWN_OP") return "ה-Edge Function בשרת ישנה";

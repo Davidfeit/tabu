@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { ENGINE_ACTIONS } from "@/engine/reduce";
 import type { SeatSpec } from "@/engine/setup";
 import type { GameState, Settings } from "@/engine/types";
 import { api, CONFIG_PROBLEM, ONLINE_ENABLED, signIn, staleServer, supabase } from "@/net/supabase";
@@ -147,7 +148,9 @@ function OnlineGame({ room, initial, version, onLeave }: {
   // מתפצלים, תקלת שרת נראית כמו תקלת רשת — ולכן נבדק במפורש.
   const [stale, setStale] = useState<string | null>(null);
   useEffect(() => {
-    void staleServer(["signal"]).then(setStale);
+    // כל הפעולות שהבניין הזה מכיר, ולא רשימה ידנית: כך כל חוק חדש
+    // שנוסף למנוע נבדק מול השרת מעצמו, בלי שמישהו יזכור לעדכן כאן.
+    void staleServer(["signal"], ENGINE_ACTIONS).then(setStale);
   }, []);
   const transport = useMemo(
     () => (videoOn && !phone

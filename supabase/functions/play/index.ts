@@ -9,7 +9,7 @@
  * יומן ושידור, הכל בטרנזקציה אחת. ראה db/002_commit_move.sql.
  */
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { createGame, defaultSettings, reduce } from "../_shared/engine.js";
+import { ENGINE_ACTIONS, createGame, defaultSettings, reduce } from "../_shared/engine.js";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -320,7 +320,9 @@ async function handle(req: Request): Promise<Response> {
   // שאלת גרסה, לא פעולת משחק: נענית לפני ההזדהות בכוונה. אחרת שרת ישן
   // ושרת חדש עונים אותו 401 לבודק חיצוני, ואי אפשר להבדיל ביניהם —
   // וזו בדיוק ההבחנה שבגללה הפעולה קיימת. אין כאן שום מידע פרטי.
-  if (op === "ops") return json({ ok: true, ops: OPS });
+  // actions מגיע מהמנוע המקובץ עצמו, לא מרשימה שנכתבת כאן ביד: כך
+  // התשובה מתארת את מה שבאמת נפרס, ולא את מה שהתכוונו לפרוס.
+  if (op === "ops") return json({ ok: true, ops: OPS, actions: ENGINE_ACTIONS });
 
   const userId = await callerId(req);
   if (!userId) return json({ ok: false, error: "UNAUTHENTICATED" }, 401);

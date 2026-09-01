@@ -5,7 +5,7 @@
  * Function. גם הדפדפן משתמש בו — לחיזוי אופטימי ולמצב מקומי. מקור אחד,
  * ולכן אי אפשר שהשרת והלקוח יחלקו על חוק.
  */
-export { reduce } from "./reduce";
+export { reduce, ENGINE_ACTIONS } from "./reduce";
 export { createGame, defaultSettings, passStartBonus, DEED_POSITIONS } from "./setup";
 export type { SeatSpec } from "./setup";
 export {
