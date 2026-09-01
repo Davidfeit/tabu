@@ -124,7 +124,8 @@ describe("משבצות וידאו דינמיות", () => {
 
   it("הרשת גדלה כשמשבצות מתפנות", () => {
     expect(gridClass(1)).toContain("grid-cols-1");
-    expect(gridClass(2)).toBe("grid-cols-2 grid-rows-1");
+    // שתיים זו מעל זו, כדי שהמשבצת תהיה רחבה כמו המצלמה ולא תחתוך.
+    expect(gridClass(2)).toBe("grid-cols-1 grid-rows-2");
     expect(gridClass(4)).toBe("grid-cols-2 grid-rows-2");
   });
 

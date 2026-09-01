@@ -28,7 +28,13 @@ class FakePC {
   constructor() { FakePC.instances.push(this); }
 
   private queued = false;
-  addTrack() {
+  /** השולחים שנוצרו, כדי ש-getSenders יחזיר משהו אמיתי לבדיקת התקרות. */
+  senders: { track: { kind: string }; getParameters: () => { encodings: [{ maxBitrate?: number }] };
+             setParameters: (p: { encodings: [{ maxBitrate?: number }] }) => Promise<void> }[] = [];
+
+  getSenders() { return this.senders; }
+
+  addTrack(track: { kind: string } = { kind: "video" }) {
     // כמו בדפדפן: כל המסלולים שנוספים ברצף מפיקים אירוע אחד, והוא נורה
     // רק כשאפשר להציע. שני אירועים היו מייצרים כאן תקלה שלא קיימת.
     if (!this.queued) {
@@ -38,7 +44,16 @@ class FakePC {
         if (this.signalingState === "stable") this.onnegotiationneeded?.();
       });
     }
-    return { getParameters: () => ({ encodings: [{}] }), setParameters: async () => {} };
+    const encodings: [{ maxBitrate?: number }] = [{}];
+    const sender = {
+      track,
+      getParameters: () => ({ encodings }),
+      setParameters: async (p: { encodings: [{ maxBitrate?: number }] }) => {
+        encodings[0] = p.encodings[0];
+      },
+    };
+    this.senders.push(sender);
+    return sender;
   }
 
   async setLocalDescription(d?: { type: string }) {

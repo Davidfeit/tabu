@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { CAPTURE, classifyMediaError, diagnoseMedia, diagnosisLine, MAX_BITRATE } from "./media";
+import {
+  bitrateFor, CAPTURE, classifyMediaError, diagnoseMedia, diagnosisLine, MAX_BITRATE,
+} from "./media";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -86,12 +88,19 @@ describe("אבחון סביבה", () => {
 describe("אילוצי הצילום", () => {
   it("מצלם ישר ברזולוציית היעד ולא מקטין", () => {
     const v = CAPTURE.video as MediaTrackConstraints;
-    expect((v.width as { ideal: number }).ideal).toBe(320);
-    expect((v.height as { ideal: number }).ideal).toBe(180);
+    expect((v.width as { ideal: number }).ideal).toBe(640);
+    expect((v.height as { ideal: number }).ideal).toBe(360);
   });
 
-  it("תקציב ההעלאה ב-6 שחקנים נשאר סביר", () => {
-    expect(5 * (MAX_BITRATE + 24_000)).toBeLessThan(1_000_000);
+  it("תקציב ההעלאה נשמר גם בשולחן מלא", () => {
+    // שולח אחד לכל עמית, ועוד אודיו. הסכום הוא מה שחייב להישאר סביר.
+    expect(5 * (bitrateFor(5) + 24_000)).toBeLessThan(1_300_000);
+  });
+
+  it("שניים־שלושה משתתפים מקבלים את האיכות המלאה", () => {
+    expect(bitrateFor(1)).toBe(MAX_BITRATE);
+    expect(bitrateFor(2)).toBe(MAX_BITRATE);
+    expect(bitrateFor(5)).toBeLessThan(MAX_BITRATE);
   });
 
   it("מבקש עיבוד אודיו — שישה מיקרופונים פתוחים ללא ביטול הד הם הד", () => {

@@ -47,10 +47,17 @@ export function visibleVideoPlayers<P extends { seat: number; userId: string }>(
   });
 }
 
-/** פריסת הרשת לפי מספר המשבצות: אחת גדולה, שתיים זו לצד זו, או 2×2. */
+/**
+ * פריסת הרשת לפי מספר המשבצות.
+ *
+ * מרכז הלוח ריבועי, והמצלמה מצלמת רחב (16:9). לכן צורת המשבצת קובעת כמה
+ * מהתמונה נחתך: שתי משבצות זו לצד זו יוצרות שני מלבנים *גבוהים*, והווידאו
+ * שממלא אותם מאבד את רוב הרוחב ומתקרב לפנים עד כדי עיוות. שתיים זו מעל זו
+ * נותנות מלבנים רחבים, קרובים ליחס המצלמה — כמעט בלי חיתוך.
+ */
 export function gridClass(n: number): string {
   if (n <= 1) return "grid-cols-1 grid-rows-1";
-  if (n === 2) return "grid-cols-2 grid-rows-1";
+  if (n === 2) return "grid-cols-1 grid-rows-2";
   return "grid-cols-2 grid-rows-2";
 }
 

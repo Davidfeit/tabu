@@ -11,13 +11,17 @@
 /**
  * מצלמים ישר ברזולוציית היעד, ולא 720p עם הקטנה.
  *
- * המשבצות במרכז הלוח קטנות וכולן באותו גודל — ולכן אין צורך ב-simulcast,
- * מה שבדרך כלל הורג mesh. אבל צילום גדול והקטנה פר-שולח עולה פי חמש
- * בעבודת שינוי גודל, גם בדסקטופ.
+ * אין כאן simulcast — כל המשבצות באותו גודל, ולכן אין למי לשלוח איכות
+ * שונה — וצילום גדול והקטנה פר-שולח עולה פי חמש בעבודת שינוי גודל.
+ *
+ * ‏320×180 נבחר כשהמשבצות היו ארבע קטנות בפינת הלוח. מרגע שהפריסה גדלה
+ * לפי מספר המשתתפים, שני אנשים מקבלים משבצת של כ-580 פיקסלים רוחב, וזרם
+ * של 320 נמתח עליה כמעט פי שניים ונראה מטושטש. 640×360 הוא הגודל שממלא
+ * אותה בלי מתיחה, ועדיין זעום מבחינת רוחב פס.
  */
 export const CAPTURE: MediaStreamConstraints = {
   video: {
-    width: { ideal: 320 }, height: { ideal: 180 },
+    width: { ideal: 640 }, height: { ideal: 360 },
     frameRate: { ideal: 15, max: 20 },
   },
   audio: {
@@ -25,7 +29,28 @@ export const CAPTURE: MediaStreamConstraints = {
   },
 };
 
-export const MAX_BITRATE = 150_000;
+/**
+ * תקרת קצב לשולח יחיד.
+ *
+ * ‏400kb/s ל-640×360 ב-15 פריימים לשנייה זה נוח לקודק, ובמשחק של שעתיים
+ * עם שלושה משתתפים זה פחות מגיגה-בייט דרך הממסר — שבריר מהמכסה החינמית.
+ */
+export const MAX_BITRATE = 400_000;
+
+/**
+ * תקציב ההעלאה הכולל.
+ *
+ * ב-mesh כל אחד שולח עותק נפרד לכל שאר המשתתפים, ולכן ההעלאה גדלה
+ * לינארית איתם — וקו ביתי שנחנק לא נראה כמו עומס אלא כמו וידאו מקוטע.
+ * התקציב קבוע, והאיכות לשולח נגזרת ממנו: שניים־שלושה מקבלים את המקסימום,
+ * שולחן מלא מקבל פחות לכל אחד.
+ */
+export const UPLINK_BUDGET = 1_000_000;
+
+/** הקצב לכל עמית, בהינתן כמה עמיתים יש כרגע. */
+export function bitrateFor(peers: number): number {
+  return Math.min(MAX_BITRATE, Math.round(UPLINK_BUDGET / Math.max(1, peers)));
+}
 
 export type MediaErrorKind =
   | "denied" | "no_device" | "in_use" | "constraints" | "unknown"
@@ -124,11 +149,11 @@ export function releaseLocalStream(): void {
   held = null;
 }
 
-/** מקבע תקרת קצב לכל שולח, כדי ש-6 זרמים לא יחנקו את ההעלאה. */
-export async function capSender(sender: RTCRtpSender): Promise<void> {
+/** מקבע תקרת קצב לשולח, כדי שכמה זרמים לא יחנקו את ההעלאה. */
+export async function capSender(sender: RTCRtpSender, peers = 5): Promise<void> {
   const params = sender.getParameters();
   if (!params.encodings?.length) params.encodings = [{}];
-  params.encodings[0]!.maxBitrate = MAX_BITRATE;
+  params.encodings[0]!.maxBitrate = bitrateFor(peers);
   params.encodings[0]!.maxFramerate = 15;
   try { await sender.setParameters(params); } catch { /* לא קריטי */ }
 }

@@ -197,7 +197,19 @@ export class PeerMesh {
     for (const id of wanted) {
       if (!this.peers.has(id)) this.connect(id);
     }
+    // התקציב מתחלק בין העמיתים, ולכן הצטרפות או עזיבה משנה את התקרה גם
+    // לחיבורים שכבר פתוחים — אחרת שחקן רביעי חונק קו שהיה תקין לשלושה.
+    this.recap();
     this.emit();
+  }
+
+  /** מיישר את תקרות הקצב של כל השולחים למספר העמיתים הנוכחי. */
+  private recap(): void {
+    for (const peer of this.peers.values()) {
+      for (const sender of peer.pc.getSenders()) {
+        if (sender.track?.kind === "video") void capSender(sender, this.peers.size);
+      }
+    }
   }
 
   private connect(peerId: string): void {
@@ -214,7 +226,7 @@ export class PeerMesh {
 
     for (const track of this.opts.localStream.getTracks()) {
       const sender = pc.addTrack(track, this.opts.localStream);
-      if (track.kind === "video") void capSender(sender);
+      if (track.kind === "video") void capSender(sender, this.peers.size);
     }
 
     pc.ontrack = ({ streams, track }) => {
