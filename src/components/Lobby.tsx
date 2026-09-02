@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { BOARD } from "@/lib/board";
 import type { Settings } from "@/engine/types";
 import { loadProfile, saveProfile } from "@/net/profile";
-import { api, signIn } from "@/net/supabase";
+import { CHESS_ACTIONS } from "@/chess/reduce";
+import { api, signIn, staleServer } from "@/net/supabase";
 import { Button } from "./Button";
 import { Token } from "./Token";
 
@@ -20,6 +21,9 @@ const JOIN_ERRORS: Record<string, string> = {
   NO_ROOM: "לא נמצא חדר עם הקוד הזה",
   ROOM_FULL: "החדר מלא",
   ALREADY_STARTED: "המשחק בחדר הזה כבר התחיל",
+  SERVER_NO_CHESS:
+    "השרת עדיין לא מכיר שחמט. אחרי דחיפה הוא נפרס תוך דקה — נסו שוב; " +
+    "אם זה נשאר, הריצו npm run setup:supabase.",
   AUTH_ANON_DISABLED:
     "התחברות אנונימית כבויה בפרויקט Supabase. " +
     "הפעילו אותה ב-Authentication → Providers → Anonymous sign-ins.",
@@ -159,6 +163,13 @@ export function Lobby({ onJoined, onBack, invite, game = "tabu" }: {
         <>
         <Button variant="primary" disabled={!ready || busy} className="w-full !py-2"
                 onClick={() => run(async () => {
+                  // שרת שלא מכיר שחמט פותח חדר שחמט כמונופול, בשקט: הוא
+                  // מתעלם מהתג ובונה את הלוח היחיד שהוא יודע. עדיף לעצור
+                  // כאן עם הסבר מאשר להושיב שניים מול לוח לא נכון.
+                  if (game === "chess") {
+                    const stale = await staleServer([], CHESS_ACTIONS);
+                    if (stale) throw new Error("SERVER_NO_CHESS");
+                  }
                   const userId = await signIn();
                   const r = await api.createRoom(name.trim(), token, settings);
                   return { roomId: r.roomId, seat: 0, code: r.code!, userId, isHost: true };
