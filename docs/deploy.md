@@ -52,7 +52,27 @@ Settings → Pages → Source: **GitHub Actions**.
 [supabase.com](https://supabase.com) → פרויקט חדש, אזור
 **eu-central-1 (פרנקפורט)** — הקרוב ביותר לישראל, ~50–65ms.
 
-### 2. פקודה אחת
+### 2. פריסה אוטומטית מ-GitHub (מומלץ)
+
+האתר עולה לוורסל בכל דחיפה. כדי שגם צד השרת יעלה בכל דחיפה — ולא רק
+כשמישהו נזכר להריץ סקריפט — מגדירים **פעם אחת** שני סודות בריפו:
+
+GitHub → הריפו → Settings → Secrets and variables → Actions →
+New repository secret:
+
+| שם | ערך |
+|---|---|
+| `PGURL` | מחרוזת ה-**Session pooler** עם הסיסמה בפנים (Project Settings → Database → Connection string) — בדיוק מה שהסקריפט מבקש ידנית |
+| `SUPABASE_ACCESS_TOKEN` | [Account → Access Tokens](https://supabase.com/dashboard/account/tokens) → Generate new token |
+
+מכאן, כל דחיפה ל-`main` שנוגעת ב-`supabase/`, ב-`db/`, במנוע או
+בסקריפטים מריצה את `.github/workflows/supabase.yml`: אותו
+`setup-supabase.sh` בדיוק, שמסתיים בשאלה לשרת החי מה הוא מכיר. אפשר גם
+להפעיל ידנית: Actions → "פריסת צד השרת" → Run workflow.
+
+הסודות נשארים ב-GitHub; הם לא מגיעים לצ'אט, ללוג או לקוד.
+
+### 2ב. או: פקודה אחת במחשב
 
 ```bash
 cd tabu

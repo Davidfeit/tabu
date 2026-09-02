@@ -1,0 +1,71 @@
+name: פריסת צד השרת
+
+# הבעיה שזה פותר: האתר עולה לוורסל בכל דחיפה, אבל ה-Edge Functions
+# והסכימה נפרסו רק כשמישהו הריץ npm run setup:supabase במחשב שלו — עם
+# מחרוזת חיבור וסיסמה בכל פעם. שני החצאים נפרדו שוב ושוב, וכל פעם זה
+# נראה כמו באג באפליקציה ("הכפתור לא עובד", "אין וידאו").
+#
+# מכאן: כל דחיפה ל-main שנוגעת בצד השרת פורסת אותו מכאן, עם אותו סקריפט
+# בדיוק שרץ במחשב — כולל הבדיקה בסוף ששואלת את השרת החי מה הוא מכיר.
+#
+# הגדרה חד-פעמית, בריפו: Settings → Secrets and variables → Actions:
+#   PGURL                  מחרוזת ה-Session pooler, עם הסיסמה בפנים
+#   SUPABASE_ACCESS_TOKEN  supabase.com/dashboard/account/tokens
+on:
+  push:
+    branches: [main]
+    paths:
+      - "supabase/**"
+      - "db/**"
+      - "src/engine/**"
+      - "src/chess/**"
+      - "src/lib/**"
+      - "data/**"
+      - "scripts/**"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/supabase.yml"
+  workflow_dispatch:
+
+# פריסה אחת בכל רגע, ולא מבטלים אחת שכבר באוויר — פריסה חצי-גמורה
+# גרועה מפריסה מיותרת.
+concurrency:
+  group: supabase
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Supabase
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: יש סודות?
+        env:
+          PGURL: ${{ secrets.PGURL }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        run: |
+          missing=()
+          [ -n "$PGURL" ] || missing+=(PGURL)
+          [ -n "$SUPABASE_ACCESS_TOKEN" ] || missing+=(SUPABASE_ACCESS_TOKEN)
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::חסרים הסודות: ${missing[*]}"
+            echo "Settings → Secrets and variables → Actions → New repository secret"
+            echo "PGURL = מחרוזת ה-Session pooler (Project Settings → Database → Connection string)"
+            echo "SUPABASE_ACCESS_TOKEN = supabase.com/dashboard/account/tokens"
+            exit 1
+          fi
+
+      # אותו סקריפט שרץ במחשב. בלי טרמינל הוא לא שואל כלום: PGURL
+      # והאסימון מהסביבה, והוא נגמר בבדיקה מול השרת החי.
+      - name: סכימה, מדיניות, Edge Functions, ואימות
+        env:
+          PGURL: ${{ secrets.PGURL }}
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          CI: "1"
+        run: ./scripts/setup-supabase.sh

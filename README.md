@@ -44,6 +44,11 @@ npm run db:test      # בדיקות SQL מול Postgres מקומי
 `npm run setup:supabase` שמחיל סכימה, מריץ את הבדיקה החוסמת ופורס את
 ה-Edge Functions.
 
+**צד השרת עולה לבד.** עם שני סודות בריפו (`PGURL`,
+`SUPABASE_ACCESS_TOKEN`) — פעם אחת — `.github/workflows/supabase.yml`
+מריץ את אותו סקריפט בכל דחיפה שנוגעת בשרת. בלי זה שני החצאים מתפצלים,
+וזה נראה מהדפדפן כמו באג.
+
 ---
 
 ## מבנה

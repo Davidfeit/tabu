@@ -140,9 +140,12 @@ WARN
 esac
 
 step "פורס Edge Functions"
-# הקיבוץ מריץ esbuild מ-node_modules. שכפול טרי של המאגר לא מתקין אותו,
-# והכשל שם ("Cannot find package 'esbuild'") לא מרמז על התלויות.
-if [[ ! -d node_modules/esbuild ]]; then
+# הקיבוץ מריץ esbuild מ-node_modules ומקבץ גם את תלויות המנוע (chess.js).
+# git pull מעדכן את package.json אבל לא מתקין כלום, ואז הקיבוץ נופל על
+# "Could not resolve" — וזה קרה בפועל. לכן מתקינים כשהנעילה חדשה ממה
+# שמותקן, ולא רק כשהתיקייה חסרה. כשהכול מעודכן זה מסתיים תוך שנייה.
+if [[ ! -f node_modules/.package-lock.json \
+      || package-lock.json -nt node_modules/.package-lock.json ]]; then
   printf '   מתקין תלויות (npm install)\n'
   npm install --no-audit --no-fund
 fi
