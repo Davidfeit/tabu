@@ -64,11 +64,15 @@ export function inviteCode(hash: string): string | null {
   return /^[A-Z0-9]{4,8}$/.test(raw) ? raw : null;
 }
 
-export function Lobby({ onJoined, onBack, invite }: {
+export type GameKind = "tabu" | "chess";
+
+export function Lobby({ onJoined, onBack, invite, game = "tabu" }: {
   onJoined: (room: JoinedRoom) => void;
   onBack: () => void;
   /** קוד מקישור הזמנה. כשהוא קיים, המסך הופך למסך הצטרפות בלבד. */
   invite?: string | null;
+  /** איזה משחק לפתוח. מי שמצטרף לא בוחר — החדר כבר יודע. */
+  game?: GameKind;
 }) {
   // מי שכבר שיחק לא מקליד את שמו שוב.
   const saved = useMemo(loadProfile, []);
@@ -95,14 +99,18 @@ export function Lobby({ onJoined, onBack, invite }: {
     finally { setBusy(false); }
   }
 
-  // מכרזים ועסקאות הוסרו: הם עצרו את המשחק וסיבכו אותו יותר משתרמו.
-  const settings: Partial<Settings> = { mode: "quick", auctions: false };
+  // מכרזים הוסרו: הם עצרו את המשחק וסיבכו אותו יותר משתרמו. תג המשחק
+  // נאפה בהגדרות החדר — השרת יוצר לפיו את הלוח הנכון בהתחלה.
+  const settings: Partial<Settings> & { game: GameKind } =
+    { mode: "quick", auctions: false, game };
 
   return (
     <div dir="rtl" className="mx-auto max-w-md space-y-5 px-4 py-10">
       <header className="text-center">
-        <h1 className="toy-title font-logo text-6xl">טאבו</h1>
-        <p className="mt-2 font-display text-base text-ink/70">משחק אונליין עם וידאו</p>
+        <h1 className="toy-title font-logo text-6xl">{game === "chess" && !invite ? "שחמט" : "טאבו"}</h1>
+        <p className="mt-2 font-display text-base text-ink/70">
+          {invite ? "הצטרפות למשחק" : game === "chess" ? "שחמט אונליין עם וידאו" : "משחק אונליין עם וידאו"}
+        </p>
       </header>
 
       <section className="toy-card space-y-3 p-4">
@@ -201,7 +209,7 @@ export function Lobby({ onJoined, onBack, invite }: {
       <div className="text-center">
         <button onClick={onBack}
                 className="text-[0.8rem] text-ink/50 underline-offset-4 hover:underline">
-          חזרה למשחק מקומי
+          חזרה
         </button>
       </div>
     </div>

@@ -5,8 +5,10 @@ const BTN = `toy-btn !h-9 !w-9 !p-0
              focus-visible:outline focus-visible:outline-2 focus-visible:outline-toy-sun`;
 
 /** בקרות תצוגה. צפות בפינה כדי לא לגזול מקום מהלוח. */
-export function ViewControls({ bare, onToggleBare }: {
-  bare: boolean; onToggleBare: () => void;
+export function ViewControls({ bare = false, onToggleBare }: {
+  bare?: boolean;
+  /** בלי זה אין כפתור הסתרה — בשחמט אין פאנלים להסתיר. */
+  onToggleBare?: () => void;
 }) {
   const [full, toggleFull, supported] = useFullscreen();
   const diag = useDiag();
@@ -19,6 +21,7 @@ export function ViewControls({ bare, onToggleBare }: {
             title="מזהה הבנייה שמוגשת כרגע">
         {__BUILD_ID__}
       </span>
+      {onToggleBare && (
       <button onClick={onToggleBare} className={BTN}
               title={bare ? "הצגת הפאנלים" : "הסתרת הפאנלים — לוח גדול יותר"}
               aria-label={bare ? "הצגת הפאנלים" : "הסתרת הפאנלים"}
@@ -30,6 +33,7 @@ export function ViewControls({ bare, onToggleBare }: {
             : <><path d="M4 5v14M20 5v14" /><path d="M9 9l3 3-3 3M15 9l-3 3 3 3" /></>}
         </svg>
       </button>
+      )}
 
       {/* אבחון וידאו — כבוי כברירת מחדל, ונדלק רק כשמחפשים תקלה. */}
       <button onClick={toggleDiag} className={BTN} aria-pressed={diag}

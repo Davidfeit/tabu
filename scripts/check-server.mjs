@@ -59,10 +59,15 @@ function localOps() {
  * שכחו לבנות, זו בדיוק התקלה שהבדיקה הזו אמורה לתפוס.
  */
 function localActions() {
-  const src = readFileSync(join(ROOT, "src/engine/reduce.ts"), "utf8");
-  const m = /const KNOWN: Record<ActionType, true> = \{([^}]*)\}/.exec(src);
-  if (!m) return [];
-  return [...m[1].matchAll(/(\w+):\s*true/g)].map((x) => x[1]).sort();
+  // שני המשחקים, כי שניהם רצים באותה פונקציה — ראה src/engine/any.ts.
+  const files = ["src/engine/reduce.ts", "src/chess/reduce.ts"];
+  const out = [];
+  for (const f of files) {
+    const src = readFileSync(join(ROOT, f), "utf8");
+    const m = /const KNOWN: Record<\w+, true> = \{([^}]*)\}/.exec(src);
+    if (m) out.push(...[...m[1].matchAll(/(\w+):\s*true/g)].map((x) => x[1]));
+  }
+  return out.sort();
 }
 
 function head() {

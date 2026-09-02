@@ -16,6 +16,9 @@ await build({
   bundle: true,
   format: "esm",
   platform: "neutral",
+  // בפלטפורמה "neutral" esbuild לא בוחר שדה כניסה בעצמו, ובלי זה חבילת
+  // chess.js (חוקי השחמט) לא נפתרת בכלל. ESM קודם — זה מה ש-Deno מריץ.
+  mainFields: ["module", "main"],
   target: "es2022",
   loader: { ".json": "json" },
   alias: { "@": root + "src" },

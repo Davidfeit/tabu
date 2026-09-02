@@ -6,6 +6,12 @@
  * ולכן אי אפשר שהשרת והלקוח יחלקו על חוק.
  */
 export { reduce, ENGINE_ACTIONS } from "./reduce";
+export {
+  CHESS_ACTIONS, createChessGame, reduceChess, position, targets, isPromotion, captured,
+} from "@/chess/reduce";
+export type { ChessAction, ChessState, ChessPlayer, ChessEnding } from "@/chess/types";
+export { createAnyGame, reduceAny, ALL_ACTIONS, isChess } from "./any";
+export type { AnyState, AnyAction, AnyOutcome } from "./any";
 export { createGame, defaultSettings, passStartBonus, DEED_POSITIONS } from "./setup";
 export type { SeatSpec } from "./setup";
 export {

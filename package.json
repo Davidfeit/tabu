@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.112.4",
+    "chess.js": "^1.4.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },

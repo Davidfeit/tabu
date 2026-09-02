@@ -9,7 +9,7 @@
  * יומן ושידור, הכל בטרנזקציה אחת. ראה db/002_commit_move.sql.
  */
 import { createClient } from "jsr:@supabase/supabase-js@2";
-import { ENGINE_ACTIONS, createGame, defaultSettings, reduce } from "../_shared/engine.js";
+import { ALL_ACTIONS, createAnyGame, defaultSettings, reduceAny } from "../_shared/engine.js";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -55,6 +55,9 @@ async function callerId(req: Request): Promise<string | null> {
 
 async function createRoom(userId: string, body: Record<string, unknown>) {
   const settings = { ...defaultSettings("quick"), ...(body.settings as object ?? {}) };
+  // שחמט הוא לשניים, וזה נאכף כאן ולא בלקוח: החדר מלא ברגע שיש יריב,
+  // ומי שמגיע שלישי עם הקישור מקבל ROOM_FULL ולא מושב בלי כלים.
+  const maxPlayers = (settings as { game?: string }).game === "chess" ? 2 : 4;
   // הזרע נשאר בשרת. ה-hash מתפרסם עכשיו, הזרע עצמו רק בסיום — וכך אפשר
   // לשחזר כל גלגול בדיעבד ולהוכיח שלא שונה.
   const seed = crypto.randomUUID() + crypto.randomUUID();
@@ -63,7 +66,7 @@ async function createRoom(userId: string, body: Record<string, unknown>) {
   )].map((b) => b.toString(16).padStart(2, "0")).join("");
 
   const { data, error } = await admin.from("game_rooms").insert({
-    code: roomCode(), host_id: userId, status: "lobby",
+    code: roomCode(), host_id: userId, status: "lobby", max_players: maxPlayers,
     settings, server_seed: seed, server_seed_hash: hash,
   }).select("id, code").single();
   if (error) return json({ ok: false, error: "ROOM_CREATE_FAILED" }, 500);
@@ -175,7 +178,8 @@ async function startGame(userId: string, roomId: string) {
     .select("user_id, display_name, token").eq("room_id", roomId).order("seat");
   if (!players || players.length < 2) return json({ ok: false, error: "NOT_ENOUGH" }, 409);
 
-  const state = createGame(
+  // איזה משחק — לפי הגדרות החדר. מכאן והלאה המצב עצמו נושא את התג.
+  const state = createAnyGame(
     players.map((p) => ({ userId: p.user_id, name: p.display_name, token: p.token })),
     room.settings, room.server_seed, Date.now(),
   );
@@ -236,7 +240,7 @@ async function commitAction(
     }).players ?? [];
     const actorSeat = statePlayers.find((p) => p.userId === userId)?.seat ?? seat;
 
-    const result = reduce(row.state, action, {
+    const result = reduceAny(row.state, action, {
       seat: actorSeat, now: Date.now(), seed: room.server_seed,
     });
     if (!result.ok) return { ok: false, error: result.error, status: 422 };
@@ -322,7 +326,7 @@ async function handle(req: Request): Promise<Response> {
   // וזו בדיוק ההבחנה שבגללה הפעולה קיימת. אין כאן שום מידע פרטי.
   // actions מגיע מהמנוע המקובץ עצמו, לא מרשימה שנכתבת כאן ביד: כך
   // התשובה מתארת את מה שבאמת נפרס, ולא את מה שהתכוונו לפרוס.
-  if (op === "ops") return json({ ok: true, ops: OPS, actions: ENGINE_ACTIONS });
+  if (op === "ops") return json({ ok: true, ops: OPS, actions: ALL_ACTIONS });
 
   const userId = await callerId(req);
   if (!userId) return json({ ok: false, error: "UNAUTHENTICATED" }, 401);

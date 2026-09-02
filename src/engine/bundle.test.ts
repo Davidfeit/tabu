@@ -39,6 +39,20 @@ describe("חבילת המנוע ל-Deno", () => {
     expect(r.events.some((e: { type: string }) => e.type === "rolled")).toBe(true);
   });
 
+  it("מריצה גם שחמט — חוקי המשחק (chess.js) מוטמעים בפנים", async () => {
+    const mod = await import(BUNDLE);
+    const seats = [{ userId: "a", name: "דנה", token: "camel" },
+                   { userId: "b", name: "יואב", token: "scooter" }];
+    const game = mod.createAnyGame(seats, { game: "chess" }, "seed", 1_700_000_000_000);
+    expect(game.game).toBe("chess");
+    const r = mod.reduceAny(game, { type: "chess_move", from: "e2", to: "e4" },
+                            { seat: 0, now: 1_700_000_000_000, seed: "seed" });
+    expect(r.ok).toBe(true);
+    expect(r.state.currentSeat).toBe(1);
+    expect(mod.ALL_ACTIONS).toContain("chess_move");
+    expect(mod.ALL_ACTIONS).toContain("finish_now");
+  });
+
   it("מסכימה עם המקור — אותו זרע נותן אותו משחק בדיוק", async () => {
     const bundled = await import(BUNDLE);
     const source = await import("./index");

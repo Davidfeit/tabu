@@ -1,7 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ENGINE_ACTIONS } from "@/engine/reduce";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { ALL_ACTIONS, isChess, type AnyState } from "@/engine/any";
 import type { SeatSpec } from "@/engine/setup";
 import type { GameState, Settings } from "@/engine/types";
+import type { ChessState } from "@/chess/types";
+import { LocalChessProvider, RemoteChessProvider, useChess } from "@/chess/ChessContext";
+import { ChessScreen } from "@/chess/ChessScreen";
+import { ChessSetup } from "@/chess/ChessSetup";
+import { Toast } from "@/components/Toast";
 import { api, CONFIG_PROBLEM, ONLINE_ENABLED, signIn, staleServer, supabase } from "@/net/supabase";
 import { RoomTransport, type SignalTransport } from "@/net/transport";
 import { LocalGameProvider, useGame } from "@/ui/GameContext";
@@ -15,7 +20,7 @@ import { Button } from "@/components/Button";
 import { CardModal } from "@/components/CardModal";
 import { EventLog } from "@/components/EventLog";
 import { GameOver } from "@/components/GameOver";
-import { inviteCode, Lobby, type JoinedRoom } from "@/components/Lobby";
+import { inviteCode, Lobby, type GameKind, type JoinedRoom } from "@/components/Lobby";
 import { forgetRoom, freshRoom, loadProfile, rememberRoom } from "@/net/profile";
 import { ManagePanel } from "@/components/ManagePanel";
 import { MoneyFlow } from "@/components/MoneyFlow";
@@ -31,32 +36,29 @@ import { VideoTiles } from "@/components/VideoTiles";
 import { WaitingRoom } from "@/components/WaitingRoom";
 
 /** הודעת שגיאה חולפת. השגיאות מגיעות כקודים מהמנוע ומתורגמות ב-messages.ts. */
-/**
- * הודעת שגיאה שנעלמת מעצמה.
- *
- * למה זה לא עבד קודם: clearError נוצר מחדש בכל רינדור, והאפקט תלוי בו.
- * ספירת השניות של התור גרמה לרינדור פעמיים בשנייה, כלומר הטיימר של
- * ההיעלמות אופס שוב ושוב ולא הגיע לסופו לעולם — ההודעה נשארה על המסך
- * עד הפעולה הבאה. עכשיו האפקט תלוי בטקסט בלבד, והפונקציה נקראת דרך ref.
- */
 function ErrorToast() {
   const { error, clearError } = useGame();
-  const clear = useRef(clearError);
-  clear.current = clearError;
+  return <Toast error={error} onClear={clearError} />;
+}
 
+/**
+ * האתר נפרס בכל דחיפה; הפונקציות רק ב-setup:supabase. כששני החצאים
+ * מתפצלים, תקלת שרת נראית כמו תקלת רשת — ולכן נבדק במפורש, בשני המשחקים.
+ */
+function StaleBanner() {
+  const [stale, setStale] = useState<string | null>(null);
   useEffect(() => {
-    if (!error) return;
-    const id = setTimeout(() => clear.current(), 3200);
-    return () => clearTimeout(id);
-  }, [error]);
-
-  if (!error) return null;
+    // כל הפעולות שהבניין הזה מכיר, ולא רשימה ידנית: כך כל חוק חדש
+    // שנוסף למנוע נבדק מול השרת מעצמו, בלי שמישהו יזכור לעדכן כאן.
+    void staleServer(["signal"], ALL_ACTIONS).then(setStale);
+  }, []);
+  if (!stale) return null;
   return (
-    <div dir="rtl" role="status" aria-live="assertive"
-         className="tabu-pop fixed inset-x-0 top-4 z-50 mx-auto w-fit rounded-full
-                    border-[3px] border-white bg-[#ef4b4b] px-5 py-2 text-sm font-bold
-                    text-white shadow-[0_5px_0_#b32626,0_16px_26px_-12px_rgba(140,20,20,0.7)]">
-      {error}
+    <div role="alert" dir="rtl"
+         className="absolute inset-x-0 top-0 z-50 bg-amber-500/90 px-3 py-2 text-center
+                    text-[0.82rem] font-medium text-neutral-900">
+      {stale} — הריצו <code className="font-mono">git pull &amp;&amp; npm run setup:supabase</code>,
+      ואז <code className="font-mono">npm run check:server</code> כדי לוודא שזה תפס.
     </div>
   );
 }
@@ -133,46 +135,42 @@ function GameScreen({ onRestart, videoTiles }: {
   );
 }
 
-/** מסך המשחק המקוון, כולל רשת הווידאו. */
+/** התעבורה של הווידאו — נוצרת רק אחרי אישור המצלמה, כדי לא לפתוח ערוצים לחינם. */
+function useVideoTransport(roomId: string, videoOn: boolean | null) {
+  const [relayError, setRelayError] = useState<string | null>(null);
+  const transport = useMemo(
+    () => (videoOn
+      ? new RoomTransport(supabase().realtime as never, roomId,
+                          (to, message) => api.signal(roomId, to, message),
+                          setRelayError)
+      : null),
+    [videoOn, roomId]);
+  return { transport, relayError };
+}
+
+/** מסך המשחק המקוון — מונופול או שחמט, לפי מה שהחדר מריץ. */
 function OnlineGame({ room, initial, version, onLeave }: {
+  room: JoinedRoom; initial: AnyState; version: number; onLeave: () => void;
+}) {
+  return isChess(initial)
+    ? <OnlineChess room={room} initial={initial} version={version} onLeave={onLeave} />
+    : <OnlineTabu room={room} initial={initial} version={version} onLeave={onLeave} />;
+}
+
+function OnlineTabu({ room, initial, version, onLeave }: {
   room: JoinedRoom; initial: GameState; version: number; onLeave: () => void;
 }) {
   // בטלפון אין לוח ואין וידאו: הלוח על המסך המשותף שכולם רואים, וכולם
   // באותו חדר. הטלפון הוא שלט — ולכן גם לא מבקשים ממנו מצלמה.
   const phone = useIsPhone();
   const [videoOn, setVideoOn] = useState<boolean | null>(null);
-  // התעבורה נוצרת רק אחרי אישור המצלמה, כדי לא לפתוח ערוצים לחינם.
-  const [relayError, setRelayError] = useState<string | null>(null);
-
-  // האתר נפרס בכל דחיפה; הפונקציות רק ב-setup:supabase. כששני החצאים
-  // מתפצלים, תקלת שרת נראית כמו תקלת רשת — ולכן נבדק במפורש.
-  const [stale, setStale] = useState<string | null>(null);
-  useEffect(() => {
-    // כל הפעולות שהבניין הזה מכיר, ולא רשימה ידנית: כך כל חוק חדש
-    // שנוסף למנוע נבדק מול השרת מעצמו, בלי שמישהו יזכור לעדכן כאן.
-    void staleServer(["signal"], ENGINE_ACTIONS).then(setStale);
-  }, []);
-  const transport = useMemo(
-    () => (videoOn && !phone
-      ? new RoomTransport(supabase().realtime as never, room.roomId,
-                          (to, message) => api.signal(room.roomId, to, message),
-                          setRelayError)
-      : null),
-    [videoOn, phone, room.roomId]);
+  const { transport, relayError } = useVideoTransport(room.roomId, videoOn && !phone);
 
   return (
     <RemoteGameProvider roomId={room.roomId} userId={room.userId} mySeat={room.seat}
                         initialState={initial} initialVersion={version}>
       <ErrorToast />
-      {stale && (
-        <div role="alert" dir="rtl"
-             className="absolute inset-x-0 top-0 z-50 bg-amber-500/90 px-3 py-2 text-center
-                        text-[0.82rem] font-medium text-neutral-900">
-          {stale} — הריצו <code className="font-mono">git pull &amp;&amp; npm run setup:supabase</code>,
-          ואז <code className="font-mono">npm run check:server</code> כדי לוודא שזה תפס.
-          המשחק עובד; הווידאו וההצטרפות באמצע לא.
-        </div>
-      )}
+      <StaleBanner />
       {phone ? (
         <PhoneController onLeave={onLeave} />
       ) : (
@@ -244,29 +242,109 @@ function VideoTilesBridge(props: Omit<Parameters<typeof VideoTiles>[0], "state">
   return <VideoTiles state={state} {...props} />;
 }
 
+/**
+ * שחמט מקוון.
+ *
+ * בניגוד למונופול, הטלפון כאן הוא לוח ולא שלט: לוח 8×8 נכנס יפה ברוחב
+ * טלפון, ומי שמשחק שחמט מהטלפון בדרך כלל לא יושב מול מסך משותף — ולכן
+ * גם המצלמה מוצעת לו.
+ */
+function OnlineChess({ room, initial, version, onLeave }: {
+  room: JoinedRoom; initial: ChessState; version: number; onLeave: () => void;
+}) {
+  const [videoOn, setVideoOn] = useState<boolean | null>(null);
+  const { transport, relayError } = useVideoTransport(room.roomId, videoOn);
+
+  return (
+    <RemoteChessProvider roomId={room.roomId} userId={room.userId}
+                         initialState={initial} initialVersion={version}>
+      <StaleBanner />
+      {videoOn === null && (
+        <MediaPrompt onAllow={() => setVideoOn(true)} onSkip={() => setVideoOn(false)} />
+      )}
+      <OnlineChessBody room={room} onLeave={onLeave} videoOn={videoOn}
+                       onToggleVideo={() => setVideoOn((v) => !v)}
+                       transport={transport} relayError={relayError} />
+    </RemoteChessProvider>
+  );
+}
+
+function OnlineChessBody({ room, onLeave, videoOn, onToggleVideo, transport, relayError }: {
+  room: JoinedRoom;
+  onLeave: () => void;
+  videoOn: boolean | null;
+  onToggleVideo: () => void;
+  transport: SignalTransport | null;
+  relayError: string | null;
+}) {
+  const { state } = useChess();
+  const peerIds = useMemo(() => meshPeers(state.players, room.userId),
+                          [state.players, room.userId]);
+  const mesh = useMesh(room.userId, peerIds, transport);
+
+  return (
+    <ChessScreen
+      onLeave={onLeave}
+      videoTiles={videoOn === null ? undefined : (
+        <VideoTiles state={state} local={mesh.local} peers={mesh.peers} error={mesh.error}
+                    frames={mesh.frames} relayError={relayError} mySeat={room.seat}
+                    wanted={peerIds} selfId={room.userId} stats={transport?.stats}
+                    videoOn={videoOn} onToggleVideo={onToggleVideo}
+                    // שניים בלבד: בשורה בטלפון, בטור לצד הלוח במחשב.
+                    seats={[0, 1]}
+                    grid="grid-cols-2 grid-rows-1 lg:grid-cols-1 lg:grid-rows-2" />
+      )}
+    />
+  );
+}
+
 // ── מסך פתיחה ────────────────────────────────────────────────────────────
 
 type Screen =
   | { kind: "home" }
   | { kind: "local"; seats: SeatSpec[]; settings: Partial<Settings>; key: number }
-  | { kind: "lobby" }
+  | { kind: "localChess"; names: [string, string] | null; key: number }
+  | { kind: "lobby"; game: GameKind }
   | { kind: "waiting"; room: JoinedRoom }
-  | { kind: "online"; room: JoinedRoom; state: GameState; version: number };
+  | { kind: "online"; room: JoinedRoom; state: AnyState; version: number };
 
-function Home({ onLocal, onOnline }: { onLocal: () => void; onOnline: () => void }) {
+const GAMES: { key: GameKind; label: string; icon: string; blurb: string }[] = [
+  { key: "tabu", label: "טאבו", icon: "🎲", blurb: "משחק הנדל״ן הישראלי" },
+  { key: "chess", label: "שחמט", icon: "♟️", blurb: "לבן, שחור, ומי שחושב רחוק יותר" },
+];
+
+function Home({ onLocal, onOnline }: {
+  onLocal: (game: GameKind) => void; onOnline: (game: GameKind) => void;
+}) {
+  const [game, setGame] = useState<GameKind>("tabu");
+  const chosen = GAMES.find((g) => g.key === game)!;
   return (
     <div dir="rtl" className="mx-auto max-w-sm space-y-7 px-4 py-16 text-center">
       <div>
         <h1 className="toy-title font-logo text-7xl">טאבו</h1>
-        <p className="mt-2 font-display text-base text-ink/70">משחק הנדל״ן הישראלי</p>
+        <p className="mt-2 font-display text-base text-ink/70">{chosen.blurb}</p>
       </div>
+
+      {/* בחירת משחק: שני כפתורים גדולים, כמו קופסאות על מדף. */}
+      <div className="grid grid-cols-2 gap-3" role="radiogroup" aria-label="איזה משחק">
+        {GAMES.map((g) => (
+          <button key={g.key} role="radio" aria-checked={game === g.key}
+                  onClick={() => setGame(g.key)}
+                  className={`toy-card flex flex-col items-center gap-1 p-4 transition
+                              ${game === g.key ? "toy-card--turn" : "opacity-80 hover:opacity-100"}`}>
+            <span className="text-4xl" aria-hidden="true">{g.icon}</span>
+            <span className="font-display text-lg font-bold text-ink">{g.label}</span>
+          </button>
+        ))}
+      </div>
+
       <div className="flex flex-col items-stretch gap-3">
-        <Button variant="primary" className="!py-3 !text-lg" onClick={onOnline}
+        <Button variant="primary" className="!py-3 !text-lg" onClick={() => onOnline(game)}
                 disabled={!ONLINE_ENABLED}>
           🎥 משחק אונליין עם וידאו
         </Button>
-        <Button className="!py-3 !text-base" onClick={onLocal}>
-          🎲 משחק מקומי על מסך אחד
+        <Button className="!py-3 !text-base" onClick={() => onLocal(game)}>
+          {chosen.icon} משחק מקומי על מסך אחד
         </Button>
       </div>
       {!ONLINE_ENABLED && (
@@ -301,7 +379,7 @@ export default function App() {
     // זיכרון, לא כוונה, ומי שפתח את האתר היום רוצה מסך פתיחה.
     const code = inviteCode(location.hash) ?? freshRoom(me);
     if (!code) return;
-    if (!me) { setScreen({ kind: "lobby" }); return; }
+    if (!me) { setScreen({ kind: "lobby", game: "tabu" }); return; }
 
     let alive = true;
     void (async () => {
@@ -315,7 +393,7 @@ export default function App() {
         } });
       } catch {
         // חדר שנסגר, קוד ישן, או שרת שלא ענה — הלובי יסביר.
-        if (alive) setScreen({ kind: "lobby" });
+        if (alive) setScreen({ kind: "lobby", game: "tabu" });
       }
     })();
     return () => { alive = false; };
@@ -337,15 +415,28 @@ export default function App() {
   }, []);
   const startOnline = useCallback((room: JoinedRoom) =>
     (state: unknown, version: number) =>
-      setScreen({ kind: "online", room, state: state as GameState, version }), []);
+      setScreen({ kind: "online", room, state: state as AnyState, version }), []);
 
   return (
     // toy-scene מצייר את השמיים, העננים והגבעות מאחורי הכול. הלוח עצמו
     // לא משתנה — הוא פשוט מונח על הנוף הזה, כמו לוח על שולחן בחצר.
     <div dir="rtl" className="toy-scene min-h-screen">
       {screen.kind === "home" && (
-        <Home onLocal={() => setScreen({ kind: "local", seats: [], settings: {}, key: 0 })}
-              onOnline={() => setScreen({ kind: "lobby" })} />
+        <Home onLocal={(game) => setScreen(game === "chess"
+                ? { kind: "localChess", names: null, key: 0 }
+                : { kind: "local", seats: [], settings: {}, key: 0 })}
+              onOnline={(game) => setScreen({ kind: "lobby", game })} />
+      )}
+
+      {screen.kind === "localChess" && screen.names === null && (
+        <ChessSetup onBack={toHome}
+                    onStart={(names) => setScreen({ kind: "localChess", names, key: Date.now() })} />
+      )}
+
+      {screen.kind === "localChess" && screen.names !== null && (
+        <LocalChessProvider key={screen.key} names={screen.names}>
+          <ChessScreen onLeave={toHome} />
+        </LocalChessProvider>
       )}
 
       {screen.kind === "local" && screen.seats.length === 0 && (
@@ -361,7 +452,9 @@ export default function App() {
       )}
 
       {screen.kind === "lobby" && (
-        <Lobby invite={typeof location === "undefined" ? null : inviteCode(location.hash)} onJoined={(room) => setScreen({ kind: "waiting", room })} onBack={toHome} />
+        <Lobby invite={typeof location === "undefined" ? null : inviteCode(location.hash)}
+               game={screen.game}
+               onJoined={(room) => setScreen({ kind: "waiting", room })} onBack={toHome} />
       )}
 
       {screen.kind === "waiting" && (

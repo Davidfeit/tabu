@@ -4,7 +4,6 @@ import { videoInfo, type PeerState } from "@/net/mesh";
 import { useDiag } from "@/ui/useDiag";
 import type { MediaErrorKind } from "@/net/media";
 import type { SignalStats } from "@/net/transport";
-import type { GameState } from "@/engine/types";
 import { diagLines, mediaBlocked, needsDiag } from "./videoDiag";
 import { seatColor, Token } from "./Token";
 import { VideoFrame } from "./VideoPanel";
@@ -69,11 +68,23 @@ export function gridClass(_n?: number): string {
  * או פושט רגל מזיזה את כל מה שסביבה, וזה בדיוק הרגע שבו מסתכלים על המסך.
  * מושב ריק נשאר ריק.
  */
+/** מה שהמשבצות צריכות לדעת על המשחק — משותף למונופול ולשחמט. */
+export interface VideoSeats {
+  players: readonly {
+    seat: number; userId: string; name: string; token: string; bankrupt?: boolean;
+  }[];
+  currentSeat: number;
+}
+
 export function VideoTiles({
   state, mySeat, local, peers, error, relayError, wanted = [], selfId = "", stats,
-  videoOn = true, onToggleVideo, frames,
+  videoOn = true, onToggleVideo, frames, seats = VIDEO_SEATS, grid = gridClass(),
 }: {
-  state: GameState;
+  state: VideoSeats;
+  /** אילו מושבים מקבלים משבצת. ברירת המחדל: ארבעת הראשונים. */
+  seats?: number[];
+  /** מחלקות הרשת. ברירת המחדל: 2×2 קבוע. */
+  grid?: string;
   mySeat: number | null;
   local: MediaStream | null;
   peers: PeerState[];
@@ -106,15 +117,15 @@ export function VideoTiles({
     return () => clearTimeout(t);
   }, [videoOn]);
 
-  const seated = VIDEO_SEATS.map((s) => state.players[s])
+  const seated = seats.map((s) => state.players[s])
     .filter((p): p is NonNullable<typeof p> => p !== undefined);
   const shown = visibleVideoPlayers(seated, selfId, mySeat, peers, patient,
                                     new Set(frames?.keys() ?? []));
 
   return (
     <div className="relative h-full w-full">
-      <div className={`grid h-full w-full gap-[3%] ${gridClass()}`}>
-        {VIDEO_SEATS.map((seat) => {
+      <div className={`grid h-full w-full gap-[3%] ${grid}`}>
+        {seats.map((seat) => {
           // המשבצת שייכת למושב, לא למקום ברשימה: כך שחקן שמוותר על מצלמה
           // או יוצא מהמשחק לא מזיז את כל מי שיושב אחריו.
           const p = shown.find((x) => x.seat === seat);
