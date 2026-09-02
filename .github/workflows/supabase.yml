@@ -61,6 +61,28 @@ jobs:
             exit 1
           fi
 
+          # ה-CLI עונה על אסימון שגוי ב-"Invalid access token format" רק אחרי
+          # שכל שאר הפריסה כבר רצה, ובלי לרמוז מה כן צריך להיות שם. הצורה
+          # ידועה מראש, אז בודקים אותה כאן. הערך עצמו לא מודפס — רק אורכו.
+          case "$SUPABASE_ACCESS_TOKEN" in
+            sbp_*) ;;
+            *)
+              echo "::error::SUPABASE_ACCESS_TOKEN אינו אסימון אישי של Supabase"
+              echo "אסימון תקין מתחיל ב-sbp_ (התקבלו ${#SUPABASE_ACCESS_TOKEN} תווים שלא מתחילים כך)."
+              echo "זה לא מפתח ה-anon, לא ה-service_role ולא סיסמת בסיס הנתונים —"
+              echo "אלה שלושה דברים אחרים לגמרי."
+              echo ""
+              echo "supabase.com/dashboard/account/tokens → Generate new token → Copy,"
+              echo "ואז Settings → Secrets → SUPABASE_ACCESS_TOKEN → Update."
+              exit 1 ;;
+          esac
+          # רווח או שורה חדשה שנדבקו בהעתקה שוברים אותו באותה שגיאה בדיוק.
+          case "$SUPABASE_ACCESS_TOKEN" in
+            *[[:space:]]*)
+              echo "::error::באסימון יש רווח או שורה חדשה — הדביקו אותו בלי רווחים בקצוות"
+              exit 1 ;;
+          esac
+
       # הסקריפט מריץ psql. הוא קיים בדימוי של GitHub, אבל לא מובטח —
       # ובלעדיו הכשל הוא "psql לא מותקן" אחרי שכבר נכנסנו לסודות.
       - name: psql
