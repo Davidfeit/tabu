@@ -157,6 +157,7 @@ if (liveActions) {
 // הראה בדיוק אותו דבר כמו תקלת רשת.
 let iceStatus = "לא נבדק";
 let turn = null;
+let turnNames = [];
 try {
   const r = await fetch(`${url}/functions/v1/ice`, {
     method: "POST",
@@ -167,12 +168,21 @@ try {
   iceStatus = r.status === 404 ? "לא נפרסה" : `חיה (HTTP ${r.status})`;
   const b = await r.json().catch(() => null);
   if (typeof b?.turn === "boolean") turn = b.turn;
+  if (Array.isArray(b?.names)) turnNames = b.names;
 } catch { iceStatus = "לא נענתה"; }
 console.log(`   פונקציית ice: ${iceStatus}`);
 if (turn === true) {
   console.log(`   ${green("מפתחות TURN: מוגדרים")}`);
 } else if (turn === false) {
   console.log(`   \x1b[33mמפתחות TURN: לא מוגדרים\x1b[0m`);
+  if (turnNames.length) {
+    // השמות שהשרת כן רואה. "TURN_KEY_ID " עם רווח, או turn_key_id, נראים
+    // בלוח הבקרה בדיוק כמו הנכון — וכאן ההבדל גלוי.
+    console.log(`     סודות עם שם דומה שכן קיימים: ${turnNames.map((n) => JSON.stringify(n)).join(", ")}`);
+    console.log("     הנדרשים בדיוק: \"TURN_KEY_ID\", \"TURN_KEY_API_TOKEN\"");
+  } else {
+    console.log("     השרת לא רואה שום סוד ששמו מכיל TURN.");
+  }
   console.log("     בלי ממסר, וידאו לא יעבוד ברשת שחוסמת עמית-לעמית.");
   console.log("     Supabase → Edge Functions → Secrets:");
   console.log("       TURN_KEY_ID, TURN_KEY_API_TOKEN  (מ-Cloudflare Realtime → TURN)");

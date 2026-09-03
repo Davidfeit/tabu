@@ -63,9 +63,14 @@ async function handle(req: Request): Promise<Response> {
   let probe: Record<string, unknown> = {};
   try { probe = await req.clone().json(); } catch { /* גוף ריק — לא נורא */ }
   if (probe.op === "status") {
+    // "הסודות כבר קיימים" מול "השרת לא רואה אותם" — ההבדל כמעט תמיד בשם:
+    // אות קטנה, רווח בסוף, שם אחר. השמות בלבד, מסוננים לנושא, בלי ערכים.
+    const names = Object.keys(Deno.env.toObject())
+      .filter((k) => /turn|cloudflare|^cf_/i.test(k)).sort();
     return json({
       ok: true,
       turn: Boolean(Deno.env.get("TURN_KEY_ID") && Deno.env.get("TURN_KEY_API_TOKEN")),
+      names,
     });
   }
 
