@@ -56,6 +56,19 @@ async function handle(req: Request): Promise<Response> {
     });
   }
 
+  // שאלת תצורה, לא אישורים: נענית לפני ההזדהות, כמו ops ב-play. הצורך
+  // הוכח — המפתחות נוצרו בקלאודפלייר ומעולם לא נשמרו כאן, ואיש לא ידע
+  // עד שמשחק חי נכשל. עכשיו הפריסה עצמה שואלת ואומרת. התשובה היא בוליאני
+  // על תצורה, בלי שום ערך סודי.
+  let probe: Record<string, unknown> = {};
+  try { probe = await req.clone().json(); } catch { /* גוף ריק — לא נורא */ }
+  if (probe.op === "status") {
+    return json({
+      ok: true,
+      turn: Boolean(Deno.env.get("TURN_KEY_ID") && Deno.env.get("TURN_KEY_API_TOKEN")),
+    });
+  }
+
   // רק משתמש מזוהה. אחרת זהו ממסר חינמי לכל מי שמוצא את הכתובת.
   const auth = req.headers.get("authorization");
   if (!auth?.startsWith("Bearer ")) return json({ error: "UNAUTHENTICATED" }, 401);

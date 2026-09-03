@@ -151,17 +151,32 @@ if (liveActions) {
   console.log(`   מהלכים במנוע: ${liveActions.length} מתוך ${wantActions.length} שבקוד`);
 }
 
-// הפונקציה השנייה. 401 כאן הוא התשובה התקינה — סימן שהיא נפרסה וחיה.
+// הפונקציה השנייה. 401 על גוף ריק הוא התשובה התקינה — סימן שהיא חיה.
+// עם {op:"status"} היא גם אומרת אם מפתחות ה-TURN הוגדרו, וזו השאלה
+// שעלתה לנו ימים: בלי ממסר אין וידאו ברשת שחוסמת עמית-לעמית, והמסך
+// הראה בדיוק אותו דבר כמו תקלת רשת.
 let iceStatus = "לא נבדק";
+let turn = null;
 try {
   const r = await fetch(`${url}/functions/v1/ice`, {
     method: "POST",
     headers: { "content-type": "application/json", apikey: key,
                authorization: `Bearer ${key}` },
-    body: "{}",
+    body: JSON.stringify({ op: "status" }),
   });
   iceStatus = r.status === 404 ? "לא נפרסה" : `חיה (HTTP ${r.status})`;
+  const b = await r.json().catch(() => null);
+  if (typeof b?.turn === "boolean") turn = b.turn;
 } catch { iceStatus = "לא נענתה"; }
 console.log(`   פונקציית ice: ${iceStatus}`);
+if (turn === true) {
+  console.log(`   ${green("מפתחות TURN: מוגדרים")}`);
+} else if (turn === false) {
+  console.log(`   \x1b[33mמפתחות TURN: לא מוגדרים\x1b[0m`);
+  console.log("     בלי ממסר, וידאו לא יעבוד ברשת שחוסמת עמית-לעמית.");
+  console.log("     Supabase → Edge Functions → Secrets:");
+  console.log("       TURN_KEY_ID, TURN_KEY_API_TOKEN  (מ-Cloudflare Realtime → TURN)");
+  console.log("     או כסודות בריפו, והפריסה תדחוף אותם לבד.");
+}
 
 console.log(`\n${green("✓ השרת מעודכן — כל הפעולות שהקוד צריך קיימות בו")}\n`);

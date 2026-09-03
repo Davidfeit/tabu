@@ -232,6 +232,41 @@ deploy_fn() {
         "והקוד נמצא ב-supabase/functions/$1/."
   fi
 }
+# ── סודות שהפונקציות קוראות בזמן ריצה ─────────────────────────────────────
+#
+# בלי מפתחות TURN אין ממסר, ובלי ממסר אין וידאו ברשת שחוסמת עמית-לעמית —
+# וזה בדיוק מה שקרה כאן: המפתחות נוצרו בקלאודפלייר ומעולם לא הגיעו
+# ל-Supabase, כי זה היה השלב הידני היחיד שנשאר. כשהערכים קיימים בסביבה
+# (סודות הריפו), הם נדחפים מכאן, ואין עוד מקום לפספס.
+#
+# הערכים עוברים דרך קובץ זמני ולא בשורת הפקודה: ארגומנטים נראים ב-ps
+# לכל תהליך במכונה, וגם נכנסים להיסטוריית מעטפת.
+SECRET_FILE=""
+cleanup_secret_file() { [[ -n "$SECRET_FILE" ]] && rm -f "$SECRET_FILE"; }
+trap cleanup_secret_file EXIT
+
+SECRETS=()
+[[ -n "${TURN_KEY_ID:-}" ]]         && SECRETS+=("TURN_KEY_ID=$TURN_KEY_ID")
+[[ -n "${TURN_KEY_API_TOKEN:-}" ]]  && SECRETS+=("TURN_KEY_API_TOKEN=$TURN_KEY_API_TOKEN")
+[[ -n "${ALLOWED_ORIGIN:-}" ]]      && SECRETS+=("ALLOWED_ORIGIN=$ALLOWED_ORIGIN")
+if [[ ${#SECRETS[@]} -gt 0 ]]; then
+  SECRET_FILE="$(mktemp)"
+  chmod 600 "$SECRET_FILE"
+  printf '%s\n' "${SECRETS[@]}" > "$SECRET_FILE"
+  # רק השמות מודפסים. הערכים לא מגיעים ליומן בשום מצב.
+  NAMES="$(printf '%s\n' "${SECRETS[@]}" | cut -d= -f1 | tr '\n' ' ')"
+  if "${SUPA[@]}" secrets set --project-ref "$PROJECT_REF" \
+       --env-file "$SECRET_FILE" >/dev/null 2>&1; then
+    printf '   סודות עודכנו: %s\n' "$NAMES"
+  else
+    printf '   \033[33m⚠ עדכון הסודות נכשל (%s) — הפונקציות ייפרסו בלעדיהם.\033[0m\n' \
+      "$NAMES" >&2
+  fi
+  rm -f "$SECRET_FILE"; SECRET_FILE=""
+fi
+
+# הפריסה אחרי הסודות, ולא לפניהם: פונקציה קוראת את הסביבה בעליית המופע,
+# ולכן סוד שנקבע אחרי הפריסה נכנס לתוקף רק בהעלאה הבאה — שיכולה לאחר.
 deploy_fn play
 deploy_fn ice
 

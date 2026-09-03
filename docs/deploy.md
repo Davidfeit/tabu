@@ -63,7 +63,9 @@ New repository secret:
 | שם | ערך |
 |---|---|
 | `PGURL` | מחרוזת ה-**Session pooler** עם הסיסמה בפנים (Project Settings → Database → Connection string) — בדיוק מה שהסקריפט מבקש ידנית |
-| `SUPABASE_ACCESS_TOKEN` | [Account → Access Tokens](https://supabase.com/dashboard/account/tokens) → Generate new token |
+| `SUPABASE_ACCESS_TOKEN` | [Account → Access Tokens](https://supabase.com/dashboard/account/tokens) → Generate new token. מתחיל ב-`sbp_` |
+| `TURN_KEY_ID`, `TURN_KEY_API_TOKEN` | אופציונלי אבל הכרחי לווידאו ברשתות שחוסמות עמית-לעמית: Cloudflare → Realtime → TURN → Create. הפריסה דוחפת אותם לסודות ה-Edge Functions בעצמה |
+| `ALLOWED_ORIGIN` | אופציונלי: כתובת האתר. גם הוא נדחף מכאן |
 
 מכאן, כל דחיפה ל-`main` שנוגעת ב-`supabase/`, ב-`db/`, במנוע או
 בסקריפטים מריצה את `.github/workflows/supabase.yml`: אותו
