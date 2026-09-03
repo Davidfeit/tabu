@@ -242,7 +242,12 @@ deploy_fn() {
 # הערכים עוברים דרך קובץ זמני ולא בשורת הפקודה: ארגומנטים נראים ב-ps
 # לכל תהליך במכונה, וגם נכנסים להיסטוריית מעטפת.
 SECRET_FILE=""
-cleanup_secret_file() { [[ -n "$SECRET_FILE" ]] && rm -f "$SECRET_FILE"; }
+# if ולא &&: כשאין קובץ, רשימת && מחזירה 1, ו-trap שמסתיים ב-1 תחת set -e
+# הופך ריצה שהצליחה כולה לכישלון — בדיוק אחרי "✓ צד השרת מוכן". קרה.
+cleanup_secret_file() {
+  if [[ -n "$SECRET_FILE" ]]; then rm -f "$SECRET_FILE"; fi
+  return 0
+}
 trap cleanup_secret_file EXIT
 
 SECRETS=()
