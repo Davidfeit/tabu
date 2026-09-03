@@ -64,8 +64,11 @@ async function handle(req: Request): Promise<Response> {
 
   const keyId = Deno.env.get("TURN_KEY_ID");
   const token = Deno.env.get("TURN_KEY_API_TOKEN");
-  // בלי TURN עדיין עובד לרוב המשתמשים — רק לא למי שמאחורי symmetric NAT.
-  if (!keyId || !token) return json({ iceServers: [] });
+  // reason נוסע עם התשובה כדי שהאבחון בדפדפן יוכל להבדיל בין "לא הוגדרו
+  // מפתחות" לבין "המפתחות הוגדרו וקלאודפלייר דחה אותם". שני המצבים נראו
+  // מהמסך זהים — אין ממסר — ושלחו אותנו לחפש במקום הלא נכון. אין כאן שום
+  // ערך סודי: רק למה זה נכשל.
+  if (!keyId || !token) return json({ iceServers: [], reason: "no_keys" });
 
   const res = await fetch(
     `https://rtc.live.cloudflare.com/v1/turn/keys/${keyId}/credentials/generate-ice-servers`,
@@ -75,6 +78,7 @@ async function handle(req: Request): Promise<Response> {
       body: JSON.stringify({ ttl: 10_800 }),
     },
   );
-  if (!res.ok) return json({ iceServers: [] });
-  return json(await res.json());
+  if (!res.ok) return json({ iceServers: [], reason: `cf_${res.status}` });
+  const body = await res.json();
+  return json({ ...body, reason: "ok" });
 }

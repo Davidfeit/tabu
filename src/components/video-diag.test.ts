@@ -114,3 +114,20 @@ it("חיבור תקין עם מסלול ריק נאמר במפורש", () => {
   expect(l).toContain("לא זורמים פריימים");
   expect(l).toContain("המצלמה שלו כבויה");
 });
+
+describe("שרתי הממסר", () => {
+  const base = { selfId: "me", wanted: [], peers: [] };
+
+  it("אומר כמה ממסרים פרטיים הגיעו מהשרת", () => {
+    const l = diagLines({ ...base, ice: { privateCount: 1, publicCount: 4, reason: "ok" } });
+    expect(l.some((x) => x.includes("1 פרטיים") && x.includes("4 ציבוריים"))).toBe(true);
+  });
+
+  it("מבדיל בין מפתחות חסרים לבין דחייה של קלאודפלייר", () => {
+    const none = diagLines({ ...base, ice: { privateCount: 0, publicCount: 4, reason: "no_keys" } });
+    expect(none.some((x) => x.includes("לא הוגדרו מפתחות"))).toBe(true);
+
+    const denied = diagLines({ ...base, ice: { privateCount: 0, publicCount: 4, reason: "cf_401" } });
+    expect(denied.some((x) => x.includes("קלאודפלייר דחה") && x.includes("401"))).toBe(true);
+  });
+});

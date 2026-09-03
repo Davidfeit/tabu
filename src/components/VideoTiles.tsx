@@ -3,6 +3,7 @@ import { flowing } from "@/net/frames";
 import { videoInfo, type PeerState } from "@/net/mesh";
 import { useDiag } from "@/ui/useDiag";
 import type { MediaErrorKind } from "@/net/media";
+import { iceInfo } from "@/net/supabase";
 import type { SignalStats } from "@/net/transport";
 import { diagLines, mediaBlocked, needsDiag } from "./videoDiag";
 import { seatColor, Token } from "./Token";
@@ -79,12 +80,21 @@ export interface VideoSeats {
 export function VideoTiles({
   state, mySeat, local, peers, error, relayError, wanted = [], selfId = "", stats,
   videoOn = true, onToggleVideo, frames, seats = VIDEO_SEATS, grid = gridClass(),
+  diagBelow = false,
 }: {
   state: VideoSeats;
   /** אילו מושבים מקבלים משבצת. ברירת המחדל: ארבעת הראשונים. */
   seats?: number[];
   /** מחלקות הרשת. ברירת המחדל: 2×2 קבוע. */
   grid?: string;
+  /**
+   * להציג את האבחון *מתחת* למשבצות ולא מעליהן.
+   *
+   * במרכז לוח המונופול יש מקום, ושכבה תחתונה שקופה לא מסתירה פנים. בשחמט
+   * העמודה צרה וגבוהה, ואותה שכבה כיסתה משבצת שלמה — כלומר האבחון הסתיר
+   * בדיוק את מה שבאנו לאבחן.
+   */
+  diagBelow?: boolean;
   mySeat: number | null;
   local: MediaStream | null;
   peers: PeerState[];
@@ -123,8 +133,8 @@ export function VideoTiles({
                                     new Set(frames?.keys() ?? []));
 
   return (
-    <div className="relative h-full w-full">
-      <div className={`grid h-full w-full gap-[3%] ${grid}`}>
+    <div className={`relative h-full w-full ${diagBelow ? "flex flex-col gap-1" : ""}`}>
+      <div className={`grid w-full gap-[3%] ${diagBelow ? "min-h-0 flex-1" : "h-full"} ${grid}`}>
         {seats.map((seat) => {
           // המשבצת שייכת למושב, לא למקום ברשימה: כך שחקן שמוותר על מצלמה
           // או יוצא מהמשחק לא מזיז את כל מי שיושב אחריו.
@@ -166,7 +176,7 @@ export function VideoTiles({
       )}
 
       {videoOn && diag && (
-        <VideoDiag selfId={selfId} wanted={wanted} peers={peers}
+        <VideoDiag selfId={selfId} wanted={wanted} peers={peers} below={diagBelow}
                    players={state.players.map((p) => ({ name: p.name, userId: p.userId }))}
                    stats={stats} relayError={relayError} />
       )}
@@ -285,10 +295,10 @@ export function EmptySeat({ name, seat }: { name?: string; seat?: number } = {})
  * "לא זורמים פריימים" בזמן שהווידאו כבר זרם: אירוע ה-unmute יכול
  * להקדים את ההאזנה לו, ואז אין מה שיעדכן.
  */
-function VideoDiag({ selfId, wanted, peers, players, stats, relayError }: {
+function VideoDiag({ selfId, wanted, peers, players, stats, relayError, below }: {
   selfId: string; wanted: string[]; peers: PeerState[];
   players: { name: string; userId: string }[];
-  stats?: SignalStats; relayError?: string | null;
+  stats?: SignalStats; relayError?: string | null; below?: boolean;
 }) {
   const [, tick] = useState(0);
   useEffect(() => {
@@ -301,12 +311,15 @@ function VideoDiag({ selfId, wanted, peers, players, stats, relayError }: {
   if (!needsDiag({ wanted, peers: live })) return null;
 
   return (
-    <div dir="rtl" className="pointer-events-none absolute inset-x-0 bottom-0 space-y-0.5
-                              bg-black/70 px-2 py-1 text-[0.6rem] leading-tight
-                              text-amber-200/90">
-      {diagLines({ selfId, wanted, peers: live, players, stats, relayError }).map((l) => (
-        <div key={l} style={{ unicodeBidi: "plaintext" }}>{l}</div>
-      ))}
+    <div dir="rtl"
+         className={`space-y-0.5 bg-black/70 px-2 py-1 text-[0.6rem] leading-tight
+                     text-amber-200/90 ${below
+                       ? "max-h-40 shrink-0 overflow-y-auto rounded-xl"
+                       : "pointer-events-none absolute inset-x-0 bottom-0"}`}>
+      {diagLines({ selfId, wanted, peers: live, players, stats, relayError, ice: iceInfo() })
+        .map((l) => (
+          <div key={l} style={{ unicodeBidi: "plaintext" }}>{l}</div>
+        ))}
     </div>
   );
 }

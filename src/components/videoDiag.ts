@@ -18,6 +18,8 @@ export interface DiagInput {
   players?: { name: string; userId: string }[];
   stats?: SignalStats;
   relayError?: string | null;
+  /** מה השרת החזיר על שרתי ה-ICE. ראה iceInfo ב-net/supabase. */
+  ice?: { privateCount: number; publicCount: number; reason: string };
 }
 
 /**
@@ -130,6 +132,19 @@ export function diagLines(d: DiagInput): string[] {
     } else if (received > 0 && forMe === 0) {
       lines.push("מגיעות הודעות, אף אחת לא ממוענת אליי — המזהים לא תואמים");
     }
+  }
+
+  // relay 0 אומר שהממסר לא ענה, אבל לא אם בכלל *היה* ממסר לפנות אליו.
+  // ההבחנה הזו עלתה לנו ימים: המפתחות של קלאודפלייר היו מוגדרים, הלקוח
+  // זרק אותם בשקט (הם הגיעו כאובייקט ולא כמערך), והמסך הראה בדיוק את
+  // אותו "אין ממסר" כמו בלי מפתחות בכלל.
+  if (d.ice) {
+    const why = d.ice.reason === "ok" ? ""
+      : d.ice.reason === "no_keys" ? " ← לא הוגדרו מפתחות TURN בשרת"
+      : d.ice.reason.startsWith("cf_") ? ` ← קלאודפלייר דחה (${d.ice.reason.slice(3)})`
+      : ` ← ${d.ice.reason}`;
+    lines.push(`שרתי ממסר: ${d.ice.privateCount} פרטיים · ` +
+               `${d.ice.publicCount} ציבוריים${why}`);
   }
 
   if (d.relayError) lines.push(d.relayError);

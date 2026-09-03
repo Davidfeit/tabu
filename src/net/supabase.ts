@@ -172,15 +172,43 @@ const FREE_RELAY: RTCIceServer[] = [
     username: "openrelayproject", credential: "openrelayproject" },
 ];
 
+/**
+ * מה שקלאודפלייר מחזיר הוא **אובייקט אחד**, לא מערך.
+ *
+ * ‏generate-ice-servers מחזיר {"iceServers": {"urls": [...], "username", "credential"}} —
+ * ערך יחיד עם רשימת כתובות בתוכו. הקוד כאן בדק Array.isArray, שהוא false
+ * לאובייקט, ולכן זרק את האישורים בשקט וחזר לממסר הציבורי בלבד. מהמסך זה
+ * נראה בדיוק כמו "לא הוגדרו מפתחות": relay 0. שני הצורות מטופלות עכשיו,
+ * כי גם ספקים אחרים מחזירים מערך.
+ */
+function toIceServers(x: unknown): RTCIceServer[] {
+  if (Array.isArray(x)) return x.filter((s) => s && typeof s === "object") as RTCIceServer[];
+  if (x && typeof x === "object" && "urls" in (x as object)) return [x as RTCIceServer];
+  return [];
+}
+
+/** מה באמת התקבל בפעם האחרונה. נקרא ע"י האבחון בלבד. */
+export interface IceInfo { privateCount: number; publicCount: number; reason: string }
+let lastIce: IceInfo = { privateCount: 0, publicCount: 0, reason: "טרם נבדק" };
+export const iceInfo = (): IceInfo => lastIce;
+
 export async function iceServers(): Promise<RTCIceServer[]> {
   const base: RTCIceServer[] = [{ urls: "stun:stun.l.google.com:19302" }];
-  if (!ONLINE_ENABLED) return [...base, ...FREE_RELAY];
+  if (!ONLINE_ENABLED) {
+    lastIce = { privateCount: 0, publicCount: FREE_RELAY.length, reason: "לא מקוון" };
+    return [...base, ...FREE_RELAY];
+  }
+  let reason = "השרת לא ענה";
   try {
     const sb = supabase();
     const { data } = await sb.functions.invoke("ice", { body: {} });
-    if (Array.isArray(data?.iceServers) && data.iceServers.length) {
-      return [...base, ...data.iceServers, ...FREE_RELAY];
+    const mine = toIceServers((data as { iceServers?: unknown })?.iceServers);
+    reason = String((data as { reason?: unknown })?.reason ?? "בלי סיבה");
+    if (mine.length) {
+      lastIce = { privateCount: mine.length, publicCount: FREE_RELAY.length, reason };
+      return [...base, ...mine, ...FREE_RELAY];
     }
-  } catch { /* אין אישורים פרטיים — נשארים עם הציבורי */ }
+  } catch { reason = "הקריאה נכשלה"; }
+  lastIce = { privateCount: 0, publicCount: FREE_RELAY.length, reason };
   return [...base, ...FREE_RELAY];
 }

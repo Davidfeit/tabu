@@ -293,7 +293,9 @@ function OnlineChessBody({ room, onLeave, videoOn, onToggleVideo, transport, rel
                     videoOn={videoOn} onToggleVideo={onToggleVideo}
                     // שניים בלבד: בשורה בטלפון, בטור לצד הלוח במחשב.
                     seats={[0, 1]}
-                    grid="grid-cols-2 grid-rows-1 lg:grid-cols-1 lg:grid-rows-2" />
+                    grid="grid-cols-2 grid-rows-1 lg:grid-cols-1 lg:grid-rows-2"
+                    // העמודה צרה, ושכבת אבחון מעל המשבצות מכסה פנים שלמות.
+                    diagBelow />
       )}
     />
   );
